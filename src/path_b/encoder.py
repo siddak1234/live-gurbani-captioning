@@ -1,13 +1,17 @@
-"""MMS-1B CTC encoder wrapper.
+"""CTC encoder wrappers for Path B.
 
-Loads `facebook/mms-1b-all` with the Punjabi (`pan`) language adapter and
-produces per-frame log-probability matrices for audio files. Caches the
-log-prob matrix to disk so re-runs don't re-encode (encoding ~7 sec per file
-on Apple Silicon MPS; cached load is instant).
+Supports two model families:
 
-Cache file layout per audio:
-  <cache_dir>/<stem>__mms-pan.npz       log_probs as compressed npz
-  <cache_dir>/<stem>__mms-pan.meta.json frame_duration, blank_id, vocab
+- **MMS-1B with language adapters** (`facebook/mms-1b-all`, `target_lang="pan"`).
+  Generic multilingual model adapted to Punjabi via small adapter layers.
+
+- **Punjabi-specialized CTC models** (e.g. `kdcyberdude/w2v-bert-punjabi`,
+  `gagan3012/wav2vec2-xlsr-punjabi`, Vakyansh, etc.). Already fine-tuned on
+  Punjabi speech; loaded via the generic `AutoModelForCTC`.
+
+Cache filenames encode the model key + language so transcripts don't collide
+across model swaps. Encoding is chunked (60s pieces) so wav2vec2's O(T^2)
+attention fits in Apple Silicon unified memory.
 """
 
 from __future__ import annotations
@@ -21,31 +25,58 @@ import numpy as np
 
 @dataclass
 class CtcOutput:
-    log_probs: np.ndarray            # (T_frames, vocab_size), float32, log-space
-    frame_duration: float            # seconds per frame (~0.02 for MMS)
-    vocab: dict[str, int]            # character → token id
-    inv_vocab: dict[int, str]        # token id → character
+    log_probs: np.ndarray
+    frame_duration: float
+    vocab: dict[str, int]
+    inv_vocab: dict[int, str]
     blank_id: int
 
 
-_encoder_singleton = None
+_encoder_cache: dict[tuple[str, str | None], "_CtcEncoder"] = {}
 
 
-class _MmsEncoder:
-    def __init__(self, model_id: str = "facebook/mms-1b-all", target_lang: str = "pan"):
+def _is_mms(model_id: str) -> bool:
+    return "mms" in model_id.lower()
+
+
+def _cache_key(model_id: str) -> str:
+    """Sanitize a HF repo path for use in a filename."""
+    return model_id.split("/")[-1].replace("/", "_").replace(":", "_")
+
+
+class _CtcEncoder:
+    def __init__(self, model_id: str, target_lang: str | None = None):
         import torch
-        from transformers import AutoProcessor, Wav2Vec2ForCTC
-
-        self.processor = AutoProcessor.from_pretrained(model_id)
-        self.processor.tokenizer.set_target_lang(target_lang)
-        self.model = Wav2Vec2ForCTC.from_pretrained(
-            model_id, target_lang=target_lang, ignore_mismatched_sizes=True
+        from transformers import (
+            AutoFeatureExtractor,
+            AutoModelForCTC,
+            AutoTokenizer,
+            Wav2Vec2ForCTC,
         )
+
+        self.model_id = model_id
+        self.target_lang = target_lang
+
+        # Load tokenizer + feature extractor separately. MMS bundles them into a
+        # Wav2Vec2Processor; w2v-BERT and similar models register the tokenizer
+        # alone under AutoProcessor, which makes attribute access inconsistent.
+        # Loading both pieces directly is robust across model families.
+        self.tokenizer = AutoTokenizer.from_pretrained(model_id)
+        self.feature_extractor = AutoFeatureExtractor.from_pretrained(model_id)
+
+        if _is_mms(model_id) and target_lang:
+            self.tokenizer.set_target_lang(target_lang)
+            self.model = Wav2Vec2ForCTC.from_pretrained(
+                model_id, target_lang=target_lang, ignore_mismatched_sizes=True
+            )
+        else:
+            self.model = AutoModelForCTC.from_pretrained(model_id)
+
         self.device = "mps" if torch.backends.mps.is_available() else "cpu"
         self.model = self.model.to(self.device)
-        self.vocab = self.processor.tokenizer.get_vocab()
+        self.vocab = self.tokenizer.get_vocab()
         self.inv_vocab = {v: k for k, v in self.vocab.items()}
-        self.blank_id = self.processor.tokenizer.pad_token_id
+        self.blank_id = self.tokenizer.pad_token_id
 
     def encode(
         self,
@@ -53,17 +84,9 @@ class _MmsEncoder:
         sample_rate: int = 16000,
         chunk_seconds: float = 60.0,
     ) -> CtcOutput:
-        """Encode audio in `chunk_seconds`-sized pieces and concatenate the log-probs.
-
-        wav2vec2 attention is O(T^2); a full kirtan track (7-10 min) overflows
-        Apple Silicon unified memory unless we chunk. 60s chunks fit comfortably
-        and wav2vec2 has only ~25ms of effective right-context, so chunk
-        boundaries don't introduce meaningful seams.
-        """
         if audio.ndim > 1:
             audio = audio.mean(axis=1)
         chunk_samples = int(chunk_seconds * sample_rate)
-
         pieces: list[np.ndarray] = []
         frame_duration = 0.02
         for start in range(0, len(audio), chunk_samples):
@@ -76,29 +99,35 @@ class _MmsEncoder:
     def _encode_chunk(self, audio: np.ndarray, sample_rate: int) -> tuple[np.ndarray, float]:
         import torch
 
-        inputs = self.processor(audio, sampling_rate=sample_rate, return_tensors="pt")
+        inputs = self.feature_extractor(audio, sampling_rate=sample_rate, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
-            logits = self.model(**inputs).logits  # (1, T, V)
+            logits = self.model(**inputs).logits
         log_probs = torch.log_softmax(logits[0], dim=-1).cpu().numpy().astype(np.float32)
         duration = len(audio) / sample_rate
         frame_duration = duration / log_probs.shape[0]
         return log_probs, frame_duration
 
 
-def _get_encoder() -> _MmsEncoder:
-    global _encoder_singleton
-    if _encoder_singleton is None:
-        _encoder_singleton = _MmsEncoder()
-    return _encoder_singleton
+def _get_encoder(model_id: str, target_lang: str | None) -> _CtcEncoder:
+    key = (model_id, target_lang)
+    if key not in _encoder_cache:
+        _encoder_cache[key] = _CtcEncoder(model_id, target_lang)
+    return _encoder_cache[key]
 
 
 def encode_file(
     audio_path: pathlib.Path | str,
     *,
+    model_id: str = "facebook/mms-1b-all",
+    target_lang: str | None = "pan",
     cache_dir: pathlib.Path | str | None = None,
 ) -> CtcOutput:
-    """Encode an audio file with MMS, returning CtcOutput. Caches to disk if `cache_dir`."""
+    """Encode an audio file with the chosen CTC model.
+
+    Caches log-probs to disk so re-runs are instant. Cache key includes
+    sanitized model_id + lang so swapping models doesn't collide.
+    """
     import soundfile as sf
 
     audio_path = pathlib.Path(audio_path)
@@ -107,8 +136,11 @@ def encode_file(
     if cache_dir is not None:
         cache_dir = pathlib.Path(cache_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
-        cache_path = cache_dir / f"{audio_path.stem}__mms-pan.npz"
-        meta_path = cache_dir / f"{audio_path.stem}__mms-pan.meta.json"
+        tag = f"{_cache_key(model_id)}"
+        if target_lang and _is_mms(model_id):
+            tag += f"-{target_lang}"
+        cache_path = cache_dir / f"{audio_path.stem}__{tag}.npz"
+        meta_path = cache_dir / f"{audio_path.stem}__{tag}.meta.json"
         if cache_path.exists() and meta_path.exists():
             data = np.load(cache_path)
             meta = json.loads(meta_path.read_text())
@@ -123,15 +155,14 @@ def encode_file(
 
     audio, sr = sf.read(str(audio_path), dtype="float32")
     assert sr == 16000, f"expected 16kHz, got {sr}"
-    encoder = _get_encoder()
+    encoder = _get_encoder(model_id, target_lang)
     out = encoder.encode(audio, sample_rate=sr)
 
     if cache_path is not None and meta_path is not None:
         np.savez_compressed(cache_path, log_probs=out.log_probs)
-        meta = {
+        meta_path.write_text(json.dumps({
             "frame_duration": out.frame_duration,
             "blank_id": out.blank_id,
             "inv_vocab": {str(k): v for k, v in out.inv_vocab.items()},
-        }
-        meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2))
+        }, ensure_ascii=False, indent=2))
     return out

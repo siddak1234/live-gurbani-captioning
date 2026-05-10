@@ -118,7 +118,13 @@ class ShabadHmm:
                 ext = self.ext_seqs[k_target]
                 S_k = len(a)
 
-                stay = a
+                # Disallow "stay" at the end position. Without this, alpha at
+                # the final blank grows monotonically by absorbing blank-emitting
+                # frames, and the HMM gets stuck on whichever line finished
+                # first. Forcing exit via cross-line transitions only.
+                stay = a.copy()
+                if S_k >= 1:
+                    stay[S_k - 1] = NEG_INF
                 advance = np.empty_like(a)
                 advance[0] = NEG_INF
                 advance[1:] = a[:-1]

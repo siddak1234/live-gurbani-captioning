@@ -71,6 +71,8 @@ def process_one(
     out_dir: pathlib.Path,
     switch_log_prob: float,
     viterbi: bool,
+    model_id: str,
+    target_lang: str | None,
 ) -> bool:
     gt = json.loads(gt_path.read_text())
     video_id = gt["video_id"]
@@ -85,7 +87,9 @@ def process_one(
         return False
 
     t0 = time.time()
-    ctc = encode_file(audio_path, cache_dir=mms_cache_dir)
+    ctc = encode_file(
+        audio_path, model_id=model_id, target_lang=target_lang, cache_dir=mms_cache_dir,
+    )
     t_encode = time.time() - t0
 
     lines_raw = [l for l in corpora[shabad_id] if l["line_idx"] != 0]
@@ -130,8 +134,13 @@ def main() -> int:
                         help="Cross-line transition log prob per frame (default log(1e-4) = -9.2)")
     parser.add_argument("--viterbi", action="store_true",
                         help="Use Viterbi (max-paths) instead of forward (sum-paths)")
+    parser.add_argument("--model-id", default="facebook/mms-1b-all",
+                        help="HF model ID for the CTC acoustic model")
+    parser.add_argument("--target-lang", default="pan",
+                        help='Language adapter for MMS models (ignored for others; "" to disable)')
     parser.add_argument("--limit", type=int, default=0)
     args = parser.parse_args()
+    target_lang = args.target_lang if args.target_lang else None
 
     corpus_dir = args.corpus_dir.resolve()
     corpora: dict[int, list[dict]] = {}
@@ -158,6 +167,8 @@ def main() -> int:
             out_dir=args.out_dir.resolve(),
             switch_log_prob=args.switch_log_prob,
             viterbi=args.viterbi,
+            model_id=args.model_id,
+            target_lang=target_lang,
         ):
             failures.append(gt_file.stem)
 

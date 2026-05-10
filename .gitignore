@@ -26,6 +26,7 @@ audio_vocals/
 .banidb_cache.json
 corpus_cache/
 asr_cache/
+asr_cache_vocals/
 mms_cache/
 
 # Editor / OS
