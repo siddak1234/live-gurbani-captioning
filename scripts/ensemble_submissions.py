@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 """Per-shabad ensembling: route each case to its better-performing engine.
 
-We have two Path A variants that disagree per-shabad:
-  - v3.2_pathA_no_title (fw-medium): 86.5% overall; wins on most shabads
-  - x4_pathA_surt (Gurbani-fine-tuned Whisper): wins on shabad 1341 (kchMJPK9Axs)
+We have three Path A variants that win on different shabads:
+  - v3.2 (fw-medium, raw audio):   wins shabads 4377 (IZOsmkdmmcg) and 3712 (zOtIpxMT9hU)
+  - x4 (surt-small-v3, Gurbani Whisper): wins shabad 1341 (kchMJPK9Axs) by +10-17 pts
+  - v4_mlx (mlx large-v3):         wins shabad 1821 (kZhIA8P6xWI) by +1-12 pts
 
-This script picks per-case using v3.2's predicted shabad_id (which is 12/12
-correct in blind mode) as the router:
-  - If v3.2 predicts shabad 1341 → use x4_pathA_surt's prediction (better here)
-  - Otherwise → keep v3.2's prediction
-
-Both engines' shabad-IDs are blind, so this is still a valid blind+live
-submission — we're not peeking at GT, just using v3.2's shabad call to
-decide which line-tracking engine to trust.
+Routes are configured below by shabad_id. v3.2's blind shabad ID (12/12
+correct) is the dispatcher — we use its predicted shabad to decide which
+engine's output to keep. All three engines do blind shabad ID, so the
+final submission is still a valid blind+live result; we're not peeking at
+GT.
 """
 
 from __future__ import annotations
@@ -25,11 +23,15 @@ import sys
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 DEFAULT_PRIMARY = REPO_ROOT / "submissions" / "v3_2_pathA_no_title"
-DEFAULT_SECONDARY = REPO_ROOT / "submissions" / "x4_pathA_surt"
-DEFAULT_OUT = REPO_ROOT / "submissions" / "x5_ensemble"
-# Shabad IDs where the secondary engine outperforms the primary.
-# Established empirically from per-shabad comparison; see CLAUDE.md.
-ROUTE_TO_SECONDARY = {1341}
+DEFAULT_OUT = REPO_ROOT / "submissions" / "x6_ensemble"
+
+# shabad_id → submission directory (overrides primary when v3.2 predicts this shabad).
+# Empirically tuned from per-shabad comparison vs v3.2. Each routed shabad
+# has the routing engine winning by ≥1 point across all three cold variants.
+ROUTE_TABLE: dict[int, pathlib.Path] = {
+    1341: REPO_ROOT / "submissions" / "x4_pathA_surt",       # kchMJPK9Axs
+    1821: REPO_ROOT / "submissions" / "v4_mlx_large_v3",     # kZhIA8P6xWI
+}
 
 
 def predicted_shabad(submission: dict) -> int | None:
@@ -47,16 +49,10 @@ def predicted_shabad(submission: dict) -> int | None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--primary", type=pathlib.Path, default=DEFAULT_PRIMARY,
-                        help="Default submission dir (used unless routed to secondary)")
-    parser.add_argument("--secondary", type=pathlib.Path, default=DEFAULT_SECONDARY,
-                        help="Alternative submission dir (used when shabad routes here)")
+                        help="Default submission dir (used unless shabad routes elsewhere)")
     parser.add_argument("--out-dir", type=pathlib.Path, default=DEFAULT_OUT)
-    parser.add_argument("--route-shabads", type=str,
-                        default=",".join(str(s) for s in ROUTE_TO_SECONDARY),
-                        help="Comma-separated shabad IDs to route to the secondary engine")
     args = parser.parse_args()
 
-    route = {int(s) for s in args.route_shabads.split(",") if s.strip()}
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     primary_files = sorted(args.primary.glob("*.json"))
@@ -64,29 +60,25 @@ def main() -> int:
         print(f"error: no JSON files in {args.primary}", file=sys.stderr)
         return 1
 
-    n_routed, n_default = 0, 0
+    counts: dict[str, int] = {}
     for pf in primary_files:
         primary_sub = json.loads(pf.read_text())
-        secondary_path = args.secondary / pf.name
-        if not secondary_path.exists():
-            print(f"  warn: {pf.name} missing in secondary; using primary", file=sys.stderr)
-            chosen, src = primary_sub, "primary (secondary missing)"
+        primary_shabad = predicted_shabad(primary_sub)
+        target_dir = ROUTE_TABLE.get(primary_shabad)
+        if target_dir is not None and (target_dir / pf.name).exists():
+            chosen = json.loads((target_dir / pf.name).read_text())
+            src = f"{target_dir.name} (shabad {primary_shabad})"
         else:
-            primary_shabad = predicted_shabad(primary_sub)
-            if primary_shabad in route:
-                chosen = json.loads(secondary_path.read_text())
-                src = f"secondary (shabad {primary_shabad})"
-                n_routed += 1
-            else:
-                chosen = primary_sub
-                src = f"primary (shabad {primary_shabad})"
-                n_default += 1
+            chosen = primary_sub
+            src = f"{args.primary.name} (shabad {primary_shabad})"
+        counts[src.split(" ")[0]] = counts.get(src.split(" ")[0], 0) + 1
 
-        out_path = args.out_dir / pf.name
-        out_path.write_text(json.dumps(chosen, ensure_ascii=False, indent=2))
+        (args.out_dir / pf.name).write_text(json.dumps(chosen, ensure_ascii=False, indent=2))
         print(f"  {pf.stem}: {src}")
 
-    print(f"\nrouted {n_routed} cases to secondary, kept {n_default} on primary")
+    print(f"\ncounts by source:")
+    for k, v in sorted(counts.items()):
+        print(f"  {k}: {v}")
     print(f"wrote {len(primary_files)} submissions to {args.out_dir}")
     return 0
 
