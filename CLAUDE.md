@@ -87,6 +87,8 @@ Live causality is honor-system — the scorer can't tell. The output JSON looks 
 | `v3_2_pathA_no_title` | + skip line 0 (Path A canonical) | **86.5%** |
 | `v4_mlx_medium` | mlx backend, medium model | 70.6% (regression) |
 | `v4_mlx_large_v3` | mlx backend, large-v3, lookback=45 | 83.8% |
+| `x4_pathA_surt` | surt-small-v3 (Gurbani-fine-tuned Whisper) | 74.0% (wins kchMJPK9Axs) |
+| **`x5_ensemble`** | **per-shabad route: v3.2 + surt for shabad 1341** | **91.2%** ← current canonical |
 
 What didn't work (don't re-try without new info): score-threshold > 0 (nulls correct-but-low chunks), top-1/top-2 margin gate (correlated with confidence but not causally), TF-IDF (exact-token match breaks under unidecode schwa-drop).
 
