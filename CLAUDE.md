@@ -202,6 +202,8 @@ python ../live-gurbani-captioning-benchmark-v1/eval.py \
 
 **Expected lift if executed well:** lyrics-alignment and Quran-recitation literature consistently report +10-15 points from in-domain fine-tuning. Target: blind+live 90-95%.
 
+**Cloud training**: see [docs/cloud_training.md](docs/cloud_training.md) for cell-by-cell Google Colab + RunPod walkthrough. Mac is fine for smoke tests; real fine-tune (20+ hours of data) needs cloud GPU. A100 turns days of CPU into hours.
+
 ## External references
 
 - **BaniDB** — https://api.banidb.com (e.g. `api.banidb.com/v2/shabads/{shabad_id}`). Source of canonical Gurmukhi lines and `verse_id`s.
