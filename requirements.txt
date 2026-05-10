@@ -1,0 +1,4 @@
+rapidfuzz
+yt-dlp
+faster-whisper
+unidecode

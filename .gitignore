@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.Python
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Audio assets (downloaded, not source)
+audio/
+*.wav
+*.mp3
+*.m4a
+
+# Caches
+.cache/
+*.banidb_cache.json
+.banidb_cache.json
+corpus_cache/
+asr_cache/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Claude Code per-developer state
+.claude/settings.local.json
