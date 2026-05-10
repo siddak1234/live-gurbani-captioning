@@ -15,6 +15,7 @@ env/
 
 # Audio assets (downloaded, not source)
 audio/
+audio_vocals/
 *.wav
 *.mp3
 *.m4a

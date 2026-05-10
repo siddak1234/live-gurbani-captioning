@@ -7,3 +7,6 @@ mlx-whisper  # Apple Silicon GPU backend (optional; faster-whisper is the defaul
 transformers
 torch
 soundfile
+# Phase X1 — vocal source separation
+demucs
+torchcodec  # required by recent torchaudio.save()

@@ -1,0 +1,69 @@
+{
+  "video_id": "zOtIpxMT9hU",
+  "segments": [
+    {
+      "start": 112.32000000000001,
+      "end": 138.32,
+      "line_idx": 3,
+      "shabad_id": 3712,
+      "verse_id": 42919,
+      "banidb_gurmukhi": "ਘਟਿ ਘਟੇ ਵਾਸੀ ਸਰਬ ਨਿਵਾਸੀ ਅਸਥਿਰੁ ਜਾ ਕਾ ਥਾਨੁ ਹੇ ॥੩॥"
+    },
+    {
+      "start": 138.32,
+      "end": 150.32,
+      "line_idx": 3,
+      "shabad_id": 3712,
+      "verse_id": 42919,
+      "banidb_gurmukhi": "ਘਟਿ ਘਟੇ ਵਾਸੀ ਸਰਬ ਨਿਵਾਸੀ ਅਸਥਿਰੁ ਜਾ ਕਾ ਥਾਨੁ ਹੇ ॥੩॥"
+    },
+    {
+      "start": 154.32,
+      "end": 179.32,
+      "line_idx": 4,
+      "shabad_id": 3712,
+      "verse_id": 42920,
+      "banidb_gurmukhi": "ਆਵੈ ਨ ਜਾਵੈ ਸੰਗੇ ਸਮਾਵੈ ਪੂਰਨ ਜਾ ਕਾ ਕਾਮੁ ਹੇ ॥੪॥"
+    },
+    {
+      "start": 180.32,
+      "end": 205.32,
+      "line_idx": 5,
+      "shabad_id": 3712,
+      "verse_id": 42921,
+      "banidb_gurmukhi": "ਭਗਤ ਜਨਾ ਕਾ ਰਾਖਣਹਾਰਾ ॥"
+    },
+    {
+      "start": 205.32,
+      "end": 221.32,
+      "line_idx": 6,
+      "shabad_id": 3712,
+      "verse_id": 42922,
+      "banidb_gurmukhi": "ਸੰਤ ਜੀਵਹਿ ਜਪਿ ਪ੍ਰਾਨ ਅਧਾਰਾ ॥"
+    },
+    {
+      "start": 221.32,
+      "end": 265.32,
+      "line_idx": 5,
+      "shabad_id": 3712,
+      "verse_id": 42921,
+      "banidb_gurmukhi": "ਭਗਤ ਜਨਾ ਕਾ ਰਾਖਣਹਾਰਾ ॥"
+    },
+    {
+      "start": 266.32,
+      "end": 275.32,
+      "line_idx": 6,
+      "shabad_id": 3712,
+      "verse_id": 42922,
+      "banidb_gurmukhi": "ਸੰਤ ਜੀਵਹਿ ਜਪਿ ਪ੍ਰਾਨ ਅਧਾਰਾ ॥"
+    },
+    {
+      "start": 275.32,
+      "end": 288.32,
+      "line_idx": 7,
+      "shabad_id": 3712,
+      "verse_id": 42923,
+      "banidb_gurmukhi": "ਕਰਨ ਕਾਰਨ ਸਮਰਥੁ ਸੁਆਮੀ ਨਾਨਕੁ ਤਿਸੁ ਕੁਰਬਾਨੁ ਹੇ ॥੫॥੨॥੩੨॥"
+    }
+  ]
+}

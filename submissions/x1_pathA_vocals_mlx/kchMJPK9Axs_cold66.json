@@ -1,0 +1,45 @@
+{
+  "video_id": "kchMJPK9Axs",
+  "segments": [
+    {
+      "start": 438.74,
+      "end": 479.12,
+      "line_idx": 3,
+      "shabad_id": 1341,
+      "verse_id": 15269,
+      "banidb_gurmukhi": "ਬਿਖੈ ਬਾਚੁ ਹਰਿ ਰਾਚੁ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ॥"
+    },
+    {
+      "start": 479.12,
+      "end": 483.22,
+      "line_idx": 3,
+      "shabad_id": 1341,
+      "verse_id": 15269,
+      "banidb_gurmukhi": "ਬਿਖੈ ਬਾਚੁ ਹਰਿ ਰਾਚੁ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ॥"
+    },
+    {
+      "start": 498.72,
+      "end": 558.12,
+      "line_idx": 9,
+      "shabad_id": 1341,
+      "verse_id": 15275,
+      "banidb_gurmukhi": "ਨਾਵਨ ਕਉ ਤੀਰਥ ਘਨੇ ਮਨ ਬਉਰਾ ਰੇ ਪੂਜਨ ਕਉ ਬਹੁ ਦੇਵ ॥"
+    },
+    {
+      "start": 558.72,
+      "end": 609.7,
+      "line_idx": 10,
+      "shabad_id": 1341,
+      "verse_id": 15276,
+      "banidb_gurmukhi": "ਕਹੁ ਕਬੀਰ ਛੂਟਨੁ ਨਹੀ ਮਨ ਬਉਰਾ ਰੇ ਛੂਟਨੁ ਹਰਿ ਕੀ ਸੇਵ ॥੪॥੧॥੬॥੫੭॥"
+    },
+    {
+      "start": 609.7,
+      "end": 650.0,
+      "line_idx": 3,
+      "shabad_id": 1341,
+      "verse_id": 15269,
+      "banidb_gurmukhi": "ਬਿਖੈ ਬਾਚੁ ਹਰਿ ਰਾਚੁ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ॥"
+    }
+  ]
+}

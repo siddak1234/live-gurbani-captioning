@@ -1,0 +1,37 @@
+{
+  "video_id": "zOtIpxMT9hU",
+  "segments": [
+    {
+      "start": 118.38000000000001,
+      "end": 150.72,
+      "line_idx": 3,
+      "shabad_id": 3712,
+      "verse_id": 42919,
+      "banidb_gurmukhi": "ਘਟਿ ਘਟੇ ਵਾਸੀ ਸਰਬ ਨਿਵਾਸੀ ਅਸਥਿਰੁ ਜਾ ਕਾ ਥਾਨੁ ਹੇ ॥੩॥"
+    },
+    {
+      "start": 150.72,
+      "end": 205.5,
+      "line_idx": 4,
+      "shabad_id": 3712,
+      "verse_id": 42920,
+      "banidb_gurmukhi": "ਆਵੈ ਨ ਜਾਵੈ ਸੰਗੇ ਸਮਾਵੈ ਪੂਰਨ ਜਾ ਕਾ ਕਾਮੁ ਹੇ ॥੪॥"
+    },
+    {
+      "start": 205.5,
+      "end": 221.26,
+      "line_idx": 6,
+      "shabad_id": 3712,
+      "verse_id": 42922,
+      "banidb_gurmukhi": "ਸੰਤ ਜੀਵਹਿ ਜਪਿ ਪ੍ਰਾਨ ਅਧਾਰਾ ॥"
+    },
+    {
+      "start": 221.26,
+      "end": 288.04,
+      "line_idx": 5,
+      "shabad_id": 3712,
+      "verse_id": 42921,
+      "banidb_gurmukhi": "ਭਗਤ ਜਨਾ ਕਾ ਰਾਖਣਹਾਰਾ ॥"
+    }
+  ]
+}
