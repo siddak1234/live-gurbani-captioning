@@ -29,6 +29,11 @@ import pathlib
 from dataclasses import asdict, dataclass
 
 # mlx-whisper short-name → HF repo lookup. Pass-through if the user supplies a full repo path.
+# Default windowing for huggingface_whisper backend. Override via env var
+# HF_WINDOW_SECONDS to A/B without code changes.
+import os as _os
+_HF_WINDOW_SECONDS = float(_os.environ.get("HF_WINDOW_SECONDS", "30"))
+
 MLX_REPOS = {
     "tiny": "mlx-community/whisper-tiny-mlx",
     "small": "mlx-community/whisper-small-mlx",
@@ -61,6 +66,11 @@ def _cache_path(
         return cache_dir / f"{audio_path.stem}__{model_size}{extra_tag}__{language}.json"
     if backend == "mlx_whisper":
         return cache_dir / f"{audio_path.stem}__mlx-{model_size}{extra_tag}__{language}.json"
+    if backend == "huggingface_whisper":
+        # Sanitize HF repo path for use as a filename: "user/repo" → "user_repo"
+        sanitized = model_size.replace("/", "_")
+        window_tag = f"_w{int(_HF_WINDOW_SECONDS)}"
+        return cache_dir / f"{audio_path.stem}__hf-{sanitized}{window_tag}{extra_tag}__{language}.json"
     raise ValueError(f"unknown backend: {backend}")
 
 
@@ -75,6 +85,10 @@ def transcribe(
     no_speech_threshold: float | None = None,
 ) -> list[AsrChunk]:
     """Transcribe audio with the selected backend, returning timestamped chunks."""
+    # HF repo paths like "surindersinghssj/surt-small-v3" force the HF backend,
+    # since custom-fine-tuned models aren't natively packaged for fw / mlx.
+    if "/" in model_size and backend in ("faster_whisper", "mlx_whisper"):
+        backend = "huggingface_whisper"
     audio_path = pathlib.Path(audio_path)
     if cache_dir is not None:
         cache_dir = pathlib.Path(cache_dir)
@@ -94,6 +108,9 @@ def transcribe(
         chunks = _transcribe_fw(audio_path, model_size, language, word_timestamps, no_speech_threshold)
     elif backend == "mlx_whisper":
         chunks = _transcribe_mlx(audio_path, model_size, language, word_timestamps, no_speech_threshold)
+    elif backend == "huggingface_whisper":
+        chunks = _transcribe_hf(audio_path, model_size, language,
+                                window_seconds=_HF_WINDOW_SECONDS)
     else:
         raise ValueError(f"unknown backend: {backend}")
 
@@ -122,6 +139,57 @@ def _transcribe_fw(audio_path, model_size, language, word_timestamps, no_speech_
     ]
 
 
+def _transcribe_hf(audio_path, model_size, language, *, window_seconds: float = 30.0):
+    """Transcribe via Hugging Face transformers, manually windowed.
+
+    Used for fine-tuned Whisper models that ship only as HF repos (not CT2 or
+    MLX format). Example: `surindersinghssj/surt-small-v3` — Whisper-small
+    fine-tuned on 660h of Gurbani audio. Trained without timestamp tokens, so
+    we can't use the pipeline's `return_timestamps=True` — we manually window
+    the audio into fixed-length chunks instead, assigning each chunk's
+    timestamp from its window position.
+    """
+    import numpy as np
+    import soundfile as sf
+    import torch
+    from transformers import WhisperForConditionalGeneration, WhisperProcessor
+
+    whisper_lang = {"pa": "punjabi", "hi": "hindi", "en": "english"}.get(language, language)
+
+    processor = WhisperProcessor.from_pretrained(model_size, language=whisper_lang, task="transcribe")
+    model = WhisperForConditionalGeneration.from_pretrained(model_size)
+    model.generation_config.language = whisper_lang
+    model.generation_config.task = "transcribe"
+    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    model = model.to(device)
+    model.eval()
+
+    audio, sr = sf.read(str(audio_path), dtype="float32")
+    if audio.ndim > 1:
+        audio = audio.mean(axis=1)
+    assert sr == 16000, f"expected 16kHz, got {sr}"
+
+    window_samples = int(window_seconds * sr)
+    chunks: list[AsrChunk] = []
+    for start_sample in range(0, len(audio), window_samples):
+        end_sample = min(len(audio), start_sample + window_samples)
+        clip = audio[start_sample:end_sample]
+        if len(clip) < sr // 2:
+            continue
+        inputs = processor(clip, sampling_rate=sr, return_tensors="pt")
+        input_features = inputs.input_features.to(device)
+        with torch.no_grad():
+            ids = model.generate(input_features, max_new_tokens=440)
+        text = processor.batch_decode(ids, skip_special_tokens=True)[0].strip()
+        if text:
+            chunks.append(AsrChunk(
+                start=float(start_sample / sr),
+                end=float(end_sample / sr),
+                text=text,
+            ))
+    return chunks
+
+
 def _transcribe_mlx(audio_path, model_size, language, word_timestamps, no_speech_threshold):
     import mlx_whisper
 
@@ -148,7 +216,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("audio_path", type=pathlib.Path)
     parser.add_argument("--backend", default="faster_whisper",
-                        choices=["faster_whisper", "mlx_whisper"])
+                        choices=["faster_whisper", "mlx_whisper", "huggingface_whisper"])
     parser.add_argument("--model", default="medium")
     parser.add_argument("--language", default="pa")
     parser.add_argument("--cache-dir", type=pathlib.Path, default=pathlib.Path("asr_cache"))

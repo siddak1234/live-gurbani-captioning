@@ -180,8 +180,10 @@ def main() -> int:
     parser.add_argument("--asr-cache-dir", type=pathlib.Path, default=DEFAULT_ASR_CACHE)
     parser.add_argument("--out-dir", type=pathlib.Path, default=DEFAULT_OUT_DIR)
     parser.add_argument("--backend", default="faster_whisper",
-                        choices=["faster_whisper", "mlx_whisper"],
-                        help="ASR backend; default reproduces v3.2 (Path A canonical)")
+                        choices=["faster_whisper", "mlx_whisper", "huggingface_whisper"],
+                        help="ASR backend; default reproduces v3.2 (Path A canonical). "
+                             "Use 'huggingface_whisper' with --model <user/repo> for "
+                             "custom-fine-tuned models (e.g. surindersinghssj/surt-small-v3).")
     parser.add_argument("--model", default="medium")
     parser.add_argument("--threshold", type=float, default=55.0)
     parser.add_argument("--margin", type=float, default=0.0,

@@ -183,11 +183,16 @@ python ../live-gurbani-captioning-benchmark-v1/eval.py \
 
 **Smoke-test (validated):** `PYTORCH_ENABLE_MPS_FALLBACK=1 python scripts/finetune_path_b.py --manifest <smoke.json> --output-dir /tmp/lora_smoke --max-steps 20`. ~1.4 steps/sec on Apple Silicon (CTC loss falls back to CPU; PyTorch MPS doesn't yet implement aten::_ctc_loss). Trainable params: 3.3M of 617M (0.53% via LoRA r=16).
 
-**Data sources to pursue (in priority order):**
+**Data sources (sorted by current relevance):**
 
-1. **YouTube kirtan with shabad-level metadata** — scrape Gurdwara live streams, Sikh Sangat channels. Annotation: use Path A v3.2 to forced-align audio → known shabad lines (the existing engine *is* a labeling tool). Aim for 20-50h. Holdout discipline: never touch the 4 benchmark shabads.
-2. **SikhiToTheMax / Khalis Foundation archives** — outreach to bod@khalisfoundation.org. They have line-timed broadcast recordings.
-3. **AI4Bharat IndicVoices Punjabi subset** — general Punjabi speech as a foundation pass before kirtan-specific fine-tuning. CC BY 4.0, HF-accessible.
+1. **🎯 `surindersinghssj` on HuggingFace** — ALREADY EXISTS, ALREADY DONE.
+   - [`surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical`](https://huggingface.co/datasets/surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical) — **300h of kirtan audio with line text labels**, 208k samples. Apache 2.0.
+   - [`surindersinghssj/surt-small-v3`](https://huggingface.co/surindersinghssj/surt-small-v3) — Whisper-small fine-tuned on 660h of Gurbani audio, produces canonical Gurmukhi directly.
+   - [`surindersinghssj/indicconformer-pa-v3-kirtan`](https://huggingface.co/surindersinghssj/indicconformer-pa-v3-kirtan) — IndicConformer fine-tune for kirtan (needs NeMo lib).
+   - Phase X4 (committed) confirmed: pure surt substitution hits 74.0% overall but wins +10-17 points on kchMJPK9Axs vs Path A v3.2. Oracle ensemble of {v3.2, X4} per case ≈ 90.3%.
+2. **YouTube kirtan with shabad-level metadata** — fallback if surindersinghssj isn't enough. `scripts/build_training_dataset.py` is built and ready.
+3. **SikhiToTheMax / Khalis Foundation archives** — outreach to bod@khalisfoundation.org for ground-truth line-timed broadcast recordings.
+4. **AI4Bharat IndicVoices Punjabi subset** — general Punjabi speech foundation.
 
 **Compute reality:**
 - Local Apple Silicon: fine for LoRA on tiny datasets (≤1h) and smoke tests
