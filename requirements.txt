@@ -10,3 +10,7 @@ soundfile
 # Phase X1 — vocal source separation
 demucs
 torchcodec  # required by recent torchaudio.save()
+# Phase B (fine-tuning) — train LoRA adapters on w2v-bert
+peft
+accelerate
+datasets

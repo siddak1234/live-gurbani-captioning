@@ -73,6 +73,7 @@ def process_one(
     viterbi: bool,
     model_id: str,
     target_lang: str | None,
+    adapter_dir: str | None,
 ) -> bool:
     gt = json.loads(gt_path.read_text())
     video_id = gt["video_id"]
@@ -88,7 +89,8 @@ def process_one(
 
     t0 = time.time()
     ctc = encode_file(
-        audio_path, model_id=model_id, target_lang=target_lang, cache_dir=mms_cache_dir,
+        audio_path, model_id=model_id, target_lang=target_lang,
+        adapter_dir=adapter_dir, cache_dir=mms_cache_dir,
     )
     t_encode = time.time() - t0
 
@@ -138,6 +140,8 @@ def main() -> int:
                         help="HF model ID for the CTC acoustic model")
     parser.add_argument("--target-lang", default="pan",
                         help='Language adapter for MMS models (ignored for others; "" to disable)')
+    parser.add_argument("--adapter-dir", default=None,
+                        help="Path to a LoRA/PEFT adapter saved from finetune_path_b.py")
     parser.add_argument("--limit", type=int, default=0)
     args = parser.parse_args()
     target_lang = args.target_lang if args.target_lang else None
@@ -169,6 +173,7 @@ def main() -> int:
             viterbi=args.viterbi,
             model_id=args.model_id,
             target_lang=target_lang,
+            adapter_dir=args.adapter_dir,
         ):
             failures.append(gt_file.stem)
 

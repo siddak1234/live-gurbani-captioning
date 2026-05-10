@@ -28,6 +28,8 @@ corpus_cache/
 asr_cache/
 asr_cache_vocals/
 mms_cache/
+training_data/
+lora_adapters/
 
 # Editor / OS
 .DS_Store

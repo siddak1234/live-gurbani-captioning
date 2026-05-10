@@ -45,7 +45,12 @@ def _cache_key(model_id: str) -> str:
 
 
 class _CtcEncoder:
-    def __init__(self, model_id: str, target_lang: str | None = None):
+    def __init__(
+        self,
+        model_id: str,
+        target_lang: str | None = None,
+        adapter_dir: str | None = None,
+    ):
         import torch
         from transformers import (
             AutoFeatureExtractor,
@@ -56,21 +61,26 @@ class _CtcEncoder:
 
         self.model_id = model_id
         self.target_lang = target_lang
+        self.adapter_dir = adapter_dir
 
-        # Load tokenizer + feature extractor separately. MMS bundles them into a
-        # Wav2Vec2Processor; w2v-BERT and similar models register the tokenizer
-        # alone under AutoProcessor, which makes attribute access inconsistent.
-        # Loading both pieces directly is robust across model families.
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
         self.feature_extractor = AutoFeatureExtractor.from_pretrained(model_id)
 
         if _is_mms(model_id) and target_lang:
             self.tokenizer.set_target_lang(target_lang)
-            self.model = Wav2Vec2ForCTC.from_pretrained(
+            base_model = Wav2Vec2ForCTC.from_pretrained(
                 model_id, target_lang=target_lang, ignore_mismatched_sizes=True
             )
         else:
-            self.model = AutoModelForCTC.from_pretrained(model_id)
+            base_model = AutoModelForCTC.from_pretrained(model_id)
+
+        # If a LoRA / PEFT adapter dir is provided, load and apply on top of base.
+        if adapter_dir is not None:
+            from peft import PeftModel
+
+            self.model = PeftModel.from_pretrained(base_model, adapter_dir)
+        else:
+            self.model = base_model
 
         self.device = "mps" if torch.backends.mps.is_available() else "cpu"
         self.model = self.model.to(self.device)
@@ -109,10 +119,12 @@ class _CtcEncoder:
         return log_probs, frame_duration
 
 
-def _get_encoder(model_id: str, target_lang: str | None) -> _CtcEncoder:
-    key = (model_id, target_lang)
+def _get_encoder(
+    model_id: str, target_lang: str | None, adapter_dir: str | None = None,
+) -> _CtcEncoder:
+    key = (model_id, target_lang, adapter_dir)
     if key not in _encoder_cache:
-        _encoder_cache[key] = _CtcEncoder(model_id, target_lang)
+        _encoder_cache[key] = _CtcEncoder(model_id, target_lang, adapter_dir)
     return _encoder_cache[key]
 
 
@@ -121,6 +133,7 @@ def encode_file(
     *,
     model_id: str = "facebook/mms-1b-all",
     target_lang: str | None = "pan",
+    adapter_dir: str | None = None,
     cache_dir: pathlib.Path | str | None = None,
 ) -> CtcOutput:
     """Encode an audio file with the chosen CTC model.
@@ -139,6 +152,8 @@ def encode_file(
         tag = f"{_cache_key(model_id)}"
         if target_lang and _is_mms(model_id):
             tag += f"-{target_lang}"
+        if adapter_dir:
+            tag += f"_lora-{_cache_key(adapter_dir)}"
         cache_path = cache_dir / f"{audio_path.stem}__{tag}.npz"
         meta_path = cache_dir / f"{audio_path.stem}__{tag}.meta.json"
         if cache_path.exists() and meta_path.exists():
@@ -155,7 +170,7 @@ def encode_file(
 
     audio, sr = sf.read(str(audio_path), dtype="float32")
     assert sr == 16000, f"expected 16kHz, got {sr}"
-    encoder = _get_encoder(model_id, target_lang)
+    encoder = _get_encoder(model_id, target_lang, adapter_dir)
     out = encoder.encode(audio, sample_rate=sr)
 
     if cache_path is not None and meta_path is not None:

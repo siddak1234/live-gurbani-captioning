@@ -130,7 +130,46 @@ Default `--backend faster_whisper` is the canonical Path A backend. `--backend m
 
 ### Path B status
 
-Empty scaffold. Will use the same audio/, corpus_cache/, and scoring as Path A.
+| Phase | Status | Result |
+|---|---|---|
+| B0-B3: MMS-1B + HMM | ✅ | 61.0% (below Path A 86.5%) |
+| X1: Demucs vocal separation | ✅ | fw -20.5, mlx +10.5 — not a universal win |
+| X3.0: swap to w2v-bert-punjabi | ✅ | 70.3% (+9.3 vs MMS, still below Path A) |
+| B.1: LoRA fine-tune pipeline | ✅ | smoke-tested, ready for real data |
+| B.2-B.6: collect kirtan data + fine-tune | ⏳ next | target 90-95% |
+
+### Fine-tuning (LoRA on w2v-bert) — multi-week plan
+
+The ASR plateau (Path A 86.5%, Path B 70.3%) is structural and only escapes via domain-adapted acoustic modeling.
+
+**Pipeline (built):**
+- `src/path_b/dataset.py` — manifest-driven (audio, text) data loader
+- `scripts/finetune_path_b.py` — LoRA fine-tune of any HF CTC model (default `kdcyberdude/w2v-bert-punjabi`)
+- `scripts/build_smoke_manifest.py` — generates a tiny pipeline-validation manifest from one benchmark audio file (NOT for real training — contaminates test set)
+- `scripts/run_path_b_hmm.py --adapter-dir <path>` — inference with a saved LoRA adapter
+- Training cache: `lora_adapters/<name>/` (gitignored)
+- Training data: `training_data/<manifest>/` (gitignored — keep audio off the public repo)
+
+**Smoke-test (validated):** `PYTORCH_ENABLE_MPS_FALLBACK=1 python scripts/finetune_path_b.py --manifest <smoke.json> --output-dir /tmp/lora_smoke --max-steps 20`. ~1.4 steps/sec on Apple Silicon (CTC loss falls back to CPU; PyTorch MPS doesn't yet implement aten::_ctc_loss). Trainable params: 3.3M of 617M (0.53% via LoRA r=16).
+
+**Data sources to pursue (in priority order):**
+
+1. **YouTube kirtan with shabad-level metadata** — scrape Gurdwara live streams, Sikh Sangat channels. Annotation: use Path A v3.2 to forced-align audio → known shabad lines (the existing engine *is* a labeling tool). Aim for 20-50h. Holdout discipline: never touch the 4 benchmark shabads.
+2. **SikhiToTheMax / Khalis Foundation archives** — outreach to bod@khalisfoundation.org. They have line-timed broadcast recordings.
+3. **AI4Bharat IndicVoices Punjabi subset** — general Punjabi speech as a foundation pass before kirtan-specific fine-tuning. CC BY 4.0, HF-accessible.
+
+**Compute reality:**
+- Local Apple Silicon: fine for LoRA on tiny datasets (≤1h) and smoke tests
+- Real fine-tune on 20-50h: needs cloud GPU (Colab Pro, RunPod). Single-GPU A100 should finish 20h dataset in a few hours.
+
+**Anti-overfitting hygiene:**
+- Hold out by *shabad identity*, not by recording
+- Strict separation: benchmark's 4 shabads (4377, 1821, 1341, 3712) NEVER appear in train
+- 80/10/10 train/val/test with shabad-level boundaries
+- Early stopping on val loss
+- LoRA's parameter efficiency (~0.5% trainable) is its own regularization
+
+**Expected lift if executed well:** lyrics-alignment and Quran-recitation literature consistently report +10-15 points from in-domain fine-tuning. Target: blind+live 90-95%.
 
 ## External references
 
