@@ -144,11 +144,42 @@ The ASR plateau (Path A 86.5%, Path B 70.3%) is structural and only escapes via 
 
 **Pipeline (built):**
 - `src/path_b/dataset.py` — manifest-driven (audio, text) data loader
+- `scripts/build_training_dataset.py` — **the data acquisition tool**. Takes a CSV of `(youtube_id, shabad_id)` pairs, downloads each, runs Path A v3.2 in oracle mode to forced-align line → time, writes a training manifest. Refuses benchmark shabads by default.
 - `scripts/finetune_path_b.py` — LoRA fine-tune of any HF CTC model (default `kdcyberdude/w2v-bert-punjabi`)
-- `scripts/build_smoke_manifest.py` — generates a tiny pipeline-validation manifest from one benchmark audio file (NOT for real training — contaminates test set)
+- `scripts/build_smoke_manifest.py` — generates a tiny pipeline-validation manifest (NOT for real training — contaminates test set)
 - `scripts/run_path_b_hmm.py --adapter-dir <path>` — inference with a saved LoRA adapter
 - Training cache: `lora_adapters/<name>/` (gitignored)
 - Training data: `training_data/<manifest>/` (gitignored — keep audio off the public repo)
+
+**End-to-end workflow once you have a CSV:**
+
+```bash
+# 1) Curate a CSV with non-benchmark shabads:
+#    youtube_id,shabad_id,notes
+#    abc123XYZ,5621,...
+
+# 2) Build training manifest (downloads + auto-labels via Path A):
+python scripts/build_training_dataset.py \
+  --input-csv my_kirtan_sources.csv \
+  --out-dir training_data/kirtan_v1 \
+  --backend faster_whisper --model medium
+
+# 3) Manually review/curate manifest.json (Path A labels are ~86% accurate; drop bad rows)
+
+# 4) Fine-tune (locally for small data, cloud GPU for scale):
+PYTORCH_ENABLE_MPS_FALLBACK=1 python scripts/finetune_path_b.py \
+  --manifest training_data/kirtan_v1/manifest.json \
+  --output-dir lora_adapters/kirtan_v1 \
+  --epochs 3 --batch-size 2
+
+# 5) Evaluate fine-tuned adapter:
+python scripts/run_path_b_hmm.py \
+  --model-id kdcyberdude/w2v-bert-punjabi --target-lang "" \
+  --adapter-dir lora_adapters/kirtan_v1 \
+  --out-dir submissions/pb_kirtan_v1
+python ../live-gurbani-captioning-benchmark-v1/eval.py \
+  --pred submissions/pb_kirtan_v1 --gt ../live-gurbani-captioning-benchmark-v1/test/
+```
 
 **Smoke-test (validated):** `PYTORCH_ENABLE_MPS_FALLBACK=1 python scripts/finetune_path_b.py --manifest <smoke.json> --output-dir /tmp/lora_smoke --max-steps 20`. ~1.4 steps/sec on Apple Silicon (CTC loss falls back to CPU; PyTorch MPS doesn't yet implement aten::_ctc_loss). Trainable params: 3.3M of 617M (0.53% via LoRA r=16).
 
