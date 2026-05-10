@@ -1,0 +1,69 @@
+{
+  "video_id": "IZOsmkdmmcg",
+  "segments": [
+    {
+      "start": 310.0,
+      "end": 320.0,
+      "line_idx": 1,
+      "shabad_id": 4377,
+      "verse_id": 52522,
+      "banidb_gurmukhi": "ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ॥"
+    },
+    {
+      "start": 320.0,
+      "end": 330.0,
+      "line_idx": 5,
+      "shabad_id": 3712,
+      "verse_id": 42921,
+      "banidb_gurmukhi": "ਭਗਤ ਜਨਾ ਕਾ ਰਾਖਣਹਾਰਾ ॥"
+    },
+    {
+      "start": 330.0,
+      "end": 350.0,
+      "line_idx": 2,
+      "shabad_id": 4377,
+      "verse_id": 52523,
+      "banidb_gurmukhi": "ਸਾਧਸੰਗਿ ਗਾਵਹਿ ਗੁਣ ਗੋਬਿੰਦ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨੁ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 350.0,
+      "end": 370.0,
+      "line_idx": 1,
+      "shabad_id": 4377,
+      "verse_id": 52522,
+      "banidb_gurmukhi": "ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ॥"
+    },
+    {
+      "start": 370.0,
+      "end": 390.0,
+      "line_idx": 4,
+      "shabad_id": 3712,
+      "verse_id": 42920,
+      "banidb_gurmukhi": "ਆਵੈ ਨ ਜਾਵੈ ਸੰਗੇ ਸਮਾਵੈ ਪੂਰਨ ਜਾ ਕਾ ਕਾਮੁ ਹੇ ॥੪॥"
+    },
+    {
+      "start": 390.0,
+      "end": 420.0,
+      "line_idx": 5,
+      "shabad_id": 3712,
+      "verse_id": 42921,
+      "banidb_gurmukhi": "ਭਗਤ ਜਨਾ ਕਾ ਰਾਖਣਹਾਰਾ ॥"
+    },
+    {
+      "start": 420.0,
+      "end": 450.0,
+      "line_idx": 4,
+      "shabad_id": 3712,
+      "verse_id": 42920,
+      "banidb_gurmukhi": "ਆਵੈ ਨ ਜਾਵੈ ਸੰਗੇ ਸਮਾਵੈ ਪੂਰਨ ਜਾ ਕਾ ਕਾਮੁ ਹੇ ॥੪॥"
+    },
+    {
+      "start": 450.0,
+      "end": 458.02525,
+      "line_idx": 3,
+      "shabad_id": 3712,
+      "verse_id": 42919,
+      "banidb_gurmukhi": "ਘਟਿ ਘਟੇ ਵਾਸੀ ਸਰਬ ਨਿਵਾਸੀ ਅਸਥਿਰੁ ਜਾ ਕਾ ਥਾਨੁ ਹੇ ॥੩॥"
+    }
+  ]
+}

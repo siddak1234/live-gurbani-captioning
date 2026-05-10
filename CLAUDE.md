@@ -2,9 +2,19 @@
 
 Orientation for Claude Code sessions in this repo. Read the paired benchmark for deeper detail; this file is an index, not a duplicate.
 
+## Project goal
+
+Build a **real, robust, scalable kirtan captioning engine** that works at user level on arbitrary recordings — not just the 4 shabads in the paired benchmark. The benchmark is a *measurement tool*, not the deliverable. Solutions that overfit to its 12 cases are leaderboard exercises, not deployable systems.
+
+Two parallel deliverables:
+1. **Honest benchmark scores** (we report them, *and* mark which are overfit vs generalizable).
+2. **A generalizable engine** (single-model pipeline trained on broad data; performs well on novel recordings the benchmark hasn't seen).
+
+This is not a stop-and-ship project. The solution is far from over — every committed submission is a step, not a finish line. Future sessions should keep pushing toward (2) even when (1)'s numbers look good.
+
 ## What this repo is
 
-An engine that consumes kirtan audio and emits line-level predictions to be scored against the paired benchmark. We do **not** ship the benchmark, the ground truth, or the scorer — we produce submissions for it.
+An engine that consumes kirtan audio and emits line-level predictions of which shabad and line is being sung at each moment. The paired benchmark provides a 12-case test set for measurement. We do **not** ship the benchmark, the ground truth, or the scorer — we produce submissions, but the actual production deliverable is the engine itself.
 
 ## Paired benchmark
 
@@ -73,25 +83,51 @@ Live causality is honor-system — the scorer can't tell. The output JSON looks 
 - **Stage 4** ✅ — live causal mode + tentative emission during ID buffer. **86.0%** blind+live (strictly causal). `submissions/v3_1_pathA_live_tentative/`.
 - **Stage 5** ⏳ — close the gap to 95%+. Path A's matcher/smoother are tapped out around 86-88%. Cheap probes (model size, mlx-whisper, ratio sweeps, TF-IDF) all fail to push past. Path A is now **frozen** at v3.2 = 86.5% live blind; Path B (CTC phoneme scoring + loop-aware HMM, in `src/path_b/`) is the principled next move with a realistic 95%+ ceiling.
 
-### Current leaderboard
+### Leaderboard (with generalization annotations)
 
-| Submission | Mode | Score |
-|---|---|---|
-| `v0_empty` | — | 26.0% |
-| `v1_pathA_oracle` | oracle + offline | 68.4% |
-| `v1_4_pathA_blend` | oracle + offline | 84.8% |
-| `v1_5_pathA_staybias` | oracle + offline | **88.2%** |
-| `v2_pathA_blind` | blind + offline | **88.2%** |
-| `v3_pathA_live` | blind + live (strict causal) | 78.4% |
-| `v3_1_pathA_live_tentative` | blind + live (causal + tentative) | 86.0% |
-| `v3_2_pathA_no_title` | + skip line 0 (Path A canonical) | **86.5%** |
-| `v4_mlx_medium` | mlx backend, medium model | 70.6% (regression) |
-| `v4_mlx_large_v3` | mlx backend, large-v3, lookback=45 | 83.8% |
-| `x4_pathA_surt` | surt-small-v3 (Gurbani-fine-tuned Whisper) | 74.0% (wins kchMJPK9Axs) |
-| `x5_ensemble` | per-shabad route: v3.2 + surt for shabad 1341 | 91.2% |
-| **`x6_ensemble`** | **3-way: v3.2 + surt(1341) + mlx-large-v3(1821)** | **92.8%** ← current canonical |
+**Read this column carefully.** Benchmark score ≠ deployable accuracy. Submissions marked *overfit* tune to specific shabads in the 12-case test set and would degrade on novel recordings.
 
-What didn't work (don't re-try without new info): score-threshold > 0 (nulls correct-but-low chunks), top-1/top-2 margin gate (correlated with confidence but not causally), TF-IDF (exact-token match breaks under unidecode schwa-drop).
+| Submission | Mode | Score | Generalizes? |
+|---|---|---|---|
+| `v0_empty` | — | 26.0% | n/a (baseline floor) |
+| `v3_2_pathA_no_title` | blind + live | **86.5%** | **Yes — current honest production candidate.** Generic fw-medium ASR; matcher/smoother tuning is mostly architecture-level, not shabad-specific. |
+| `v4_mlx_large_v3` | blind + live | 83.8% | Yes — alternative ASR backend (Apple GPU). |
+| `x4_pathA_surt` | blind + live | 74.0% | **Yes — best designed for generalization.** Uses surindersinghssj/surt-small-v3 (Whisper-small fine-tuned on 660h of kirtan). Lower benchmark score is real, but reflects honest accuracy on out-of-set kirtan. |
+| `x7_surt_only` | blind + live | 68.6% | Yes — surt with longer blind buffer; didn't help (kept for negative-result record). |
+| `x5_ensemble` | blind + live | 91.2% | **No — benchmark-overfit.** Route table `{1341 → surt}` chosen from test-set scores. |
+| **`x6_ensemble`** | **blind + live** | **92.8%** | **No — most overfit.** 3-way routing `{1341 → surt, 1821 → mlx, else → v3.2}` is empirically picked per test-shabad. Would degrade on shabads not in {4377, 1821, 1341, 3712}. |
+
+**What benchmark-overfit means concretely:** if a Sewadar plays a new kirtan recording of, say, shabad 5621, our X5/X6 ensembles route it to whichever engine the *default* path picks — they don't have a special rule for that shabad. The hard-coded route table is calibrated for the 4 test shabads. Real-world accuracy on out-of-set shabads is closer to x4_surt's 74% than x6's 92.8%.
+
+What didn't work (don't re-try without new info): score-threshold > 0 (nulls correct-but-low chunks), top-1/top-2 margin gate (correlated with confidence but not causally), TF-IDF (exact-token match breaks under unidecode schwa-drop), shorter blind-ID lookback than 30s (drops shabad-ID reliability), longer blind-ID lookback for surt (eats UEM in cold variants).
+
+## What we're really building toward
+
+The reference live captioning system at [bani.karanbirsingh.com](https://bani.karanbirsingh.com) is the **closest thing to the production target**. Its approach (per the writeup at [karanbirsingh.com/gurbani-captioning](http://www.karanbirsingh.com/gurbani-captioning)):
+- One 118M Punjabi conformer model trained on ~300h of YouTube kirtan
+- Forced-aligned to canonical SGGS lines via phonetic matching
+- State machine for shabad confirmation and line tracking
+- Runs against arbitrary Sikhnet Radio streams — true generalization, not per-shabad lookup
+
+Surinder Singh has open-sourced the dataset and models:
+- **[`gurbani-kirtan-yt-captions-300h-canonical`](https://huggingface.co/datasets/surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical)** — 300h labeled kirtan audio. Apache 2.0.
+- **[`surt-small-v3`](https://huggingface.co/surindersinghssj/surt-small-v3)** — Whisper-small fine-tuned on 660h of Gurbani.
+- **[`indicconformer-pa-v3-kirtan`](https://huggingface.co/surindersinghssj/indicconformer-pa-v3-kirtan)** — IndicConformer fine-tuned for kirtan (NeMo).
+
+**The path to a real engine starts with these.** Continued ensembling on our existing components will keep raising the benchmark score, but is dead-end work for the production goal.
+
+## Real roadmap (the actual remaining work)
+
+Numbered roughly by order, not by difficulty:
+
+1. **Establish honest evaluation hygiene.** Before claiming any new score, run on a held-out audio recording not used during tuning. Even just one new Sikhnet-Radio recording with a known-but-not-in-benchmark shabad lets us catch overfitting early.
+2. **Ship surt-small-v3 with better integration as the v0 production engine.** The standalone 74% is held back by ASR-vs-matcher chunk-granularity mismatch, not by the model itself. Investigate: word-level timestamps from the HF pipeline, custom decoding that respects line boundaries, or use surt's text + faster-whisper's timestamps as a hybrid.
+3. **Train our own model on the 300h dataset.** Pipeline already exists (`scripts/finetune_path_b.py`). Pull the HuggingFace dataset, LoRA-fine-tune surt-small-v3 (or `kdcyberdude/w2v-bert-punjabi`) with held-out shabads. Cloud GPU recommended (see [docs/cloud_training.md](docs/cloud_training.md)).
+4. **Move to forced alignment over the full shabad** (Path B done right) instead of per-chunk classification. Aligns the whole shabad text to the audio as one continuous problem; naturally handles line transitions including rapid ones. Architecture sketch is in `src/path_b/`.
+5. **Replace the route table with a learned dispatcher** — small classifier picking the engine based on audio features (tempo, vocal/instrumental ratio, etc.), not on shabad ID lookup. Makes ensembling honest by design.
+6. **Build the live deployment surface**: streaming audio in, captions out, Sewadar UI with confirm/reset buttons (matches the reference system's UX from karanbirsingh.com).
+
+Steps 1, 2, 3 are the highest-leverage real-world improvements. Steps 4-6 are the polish.
 
 ## Repo layout
 

@@ -1,0 +1,85 @@
+{
+  "video_id": "zOtIpxMT9hU",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 20.0,
+      "line_idx": 1,
+      "shabad_id": 3712,
+      "verse_id": 42917,
+      "banidb_gurmukhi": "ਵੈਦੋ ਨ ਵਾਈ ਭੈਣੋ ਨ ਭਾਈ ਏਕੋ ਸਹਾਈ ਰਾਮੁ ਹੇ ॥੧॥"
+    },
+    {
+      "start": 20.0,
+      "end": 30.0,
+      "line_idx": 4,
+      "shabad_id": 1341,
+      "verse_id": 15270,
+      "banidb_gurmukhi": "ਨਿਰਭੈ ਹੋਇ ਨ ਹਰਿ ਭਜੇ ਮਨ ਬਉਰਾ ਰੇ ਗਹਿਓ ਨ ਰਾਮ ਜਹਾਜੁ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 30.0,
+      "end": 40.0,
+      "line_idx": 3,
+      "shabad_id": 1341,
+      "verse_id": 15269,
+      "banidb_gurmukhi": "ਬਿਖੈ ਬਾਚੁ ਹਰਿ ਰਾਚੁ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ॥"
+    },
+    {
+      "start": 40.0,
+      "end": 50.0,
+      "line_idx": 1,
+      "shabad_id": 3712,
+      "verse_id": 42917,
+      "banidb_gurmukhi": "ਵੈਦੋ ਨ ਵਾਈ ਭੈਣੋ ਨ ਭਾਈ ਏਕੋ ਸਹਾਈ ਰਾਮੁ ਹੇ ॥੧॥"
+    },
+    {
+      "start": 50.0,
+      "end": 60.0,
+      "line_idx": 4,
+      "shabad_id": 1341,
+      "verse_id": 15270,
+      "banidb_gurmukhi": "ਨਿਰਭੈ ਹੋਇ ਨ ਹਰਿ ਭਜੇ ਮਨ ਬਉਰਾ ਰੇ ਗਹਿਓ ਨ ਰਾਮ ਜਹਾਜੁ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 60.0,
+      "end": 70.0,
+      "line_idx": 2,
+      "shabad_id": 1341,
+      "verse_id": 15268,
+      "banidb_gurmukhi": "ਕਾਮ ਸੁਆਇ ਗਜ ਬਸਿ ਪਰੇ ਮਨ ਬਉਰਾ ਰੇ ਅੰਕਸੁ ਸਹਿਓ ਸੀਸ ॥੧॥"
+    },
+    {
+      "start": 70.0,
+      "end": 100.0,
+      "line_idx": 7,
+      "shabad_id": 1341,
+      "verse_id": 15273,
+      "banidb_gurmukhi": "ਜਿਉ ਨਲਨੀ ਸੂਅਟਾ ਗਹਿਓ ਮਨ ਬਉਰਾ ਰੇ ਮਾਯਾ ਇਹੁ ਬਿਉਹਾਰੁ ॥"
+    },
+    {
+      "start": 100.0,
+      "end": 110.0,
+      "line_idx": 5,
+      "shabad_id": 1341,
+      "verse_id": 15271,
+      "banidb_gurmukhi": "ਮਰਕਟ ਮੁਸਟੀ ਅਨਾਜ ਕੀ ਮਨ ਬਉਰਾ ਰੇ ਲੀਨੀ ਹਾਥੁ ਪਸਾਰਿ ॥"
+    },
+    {
+      "start": 110.0,
+      "end": 120.0,
+      "line_idx": 3,
+      "shabad_id": 1341,
+      "verse_id": 15269,
+      "banidb_gurmukhi": "ਬਿਖੈ ਬਾਚੁ ਹਰਿ ਰਾਚੁ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ॥"
+    },
+    {
+      "start": 120.0,
+      "end": 288.9955625,
+      "line_idx": 8,
+      "shabad_id": 1341,
+      "verse_id": 15274,
+      "banidb_gurmukhi": "ਜੈਸਾ ਰੰਗੁ ਕਸੁੰਭ ਕਾ ਮਨ ਬਉਰਾ ਰੇ ਤਿਉ ਪਸਰਿਓ ਪਾਸਾਰੁ ॥੩॥"
+    }
+  ]
+}
