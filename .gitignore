@@ -25,6 +25,7 @@ audio/
 .banidb_cache.json
 corpus_cache/
 asr_cache/
+mms_cache/
 
 # Editor / OS
 .DS_Store

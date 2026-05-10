@@ -3,3 +3,7 @@ yt-dlp
 faster-whisper
 unidecode
 mlx-whisper  # Apple Silicon GPU backend (optional; faster-whisper is the default)
+# Path B (CTC + HMM) dependencies
+transformers
+torch
+soundfile
