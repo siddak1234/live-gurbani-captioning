@@ -101,7 +101,12 @@ def score_chunk(
     blend: dict[str, float] | None = None,
     tfidf: TfidfScorer | None = None,
 ) -> list[float]:
-    """Return a per-line score in the same order as `lines`. Empty lines score 0."""
+    """Return a per-line score in the same order as `lines`. Empty lines score 0.
+
+    Line 0 (the shabad's heading/title — e.g. "saarag mahalaa panjavaa") always
+    scores 0. It's never sung and never in GT, so allowing it to win on noisy
+    chunks just costs real-segment frames.
+    """
     chunk_norm = normalize(chunk_text)
     if not chunk_norm:
         return [0.0] * len(lines)
@@ -111,6 +116,9 @@ def score_chunk(
 
     out: list[float] = []
     for i, line in enumerate(lines):
+        if int(line.get("line_idx", -1)) == 0:
+            out.append(0.0)
+            continue
         cand = normalize(line.get("transliteration_english", ""))
         if not cand:
             out.append(0.0)
@@ -158,6 +166,8 @@ def match_chunk(
     best_score: float = 0.0
     second_score: float = 0.0
     for i, line in enumerate(lines):
+        if int(line.get("line_idx", -1)) == 0:
+            continue
         cand = normalize(line.get("transliteration_english", ""))
         if not cand:
             continue

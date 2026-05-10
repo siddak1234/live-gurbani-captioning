@@ -1,0 +1,53 @@
+{
+  "video_id": "IZOsmkdmmcg",
+  "segments": [
+    {
+      "start": 315.0,
+      "end": 323.48,
+      "line_idx": 1,
+      "shabad_id": 4377,
+      "verse_id": 52522,
+      "banidb_gurmukhi": "ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ॥"
+    },
+    {
+      "start": 323.48,
+      "end": 344.52,
+      "line_idx": 2,
+      "shabad_id": 4377,
+      "verse_id": 52523,
+      "banidb_gurmukhi": "ਸਾਧਸੰਗਿ ਗਾਵਹਿ ਗੁਣ ਗੋਬਿੰਦ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨੁ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 344.52,
+      "end": 348.79999999999995,
+      "line_idx": 2,
+      "shabad_id": 4377,
+      "verse_id": 52523,
+      "banidb_gurmukhi": "ਸਾਧਸੰਗਿ ਗਾਵਹਿ ਗੁਣ ਗੋਬਿੰਦ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨੁ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 348.79999999999995,
+      "end": 357.35999999999996,
+      "line_idx": 1,
+      "shabad_id": 4377,
+      "verse_id": 52522,
+      "banidb_gurmukhi": "ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ॥"
+    },
+    {
+      "start": 357.36,
+      "end": 386.40000000000003,
+      "line_idx": 2,
+      "shabad_id": 4377,
+      "verse_id": 52523,
+      "banidb_gurmukhi": "ਸਾਧਸੰਗਿ ਗਾਵਹਿ ਗੁਣ ਗੋਬਿੰਦ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨੁ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 387.36,
+      "end": 448.86,
+      "line_idx": 1,
+      "shabad_id": 4377,
+      "verse_id": 52522,
+      "banidb_gurmukhi": "ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ॥"
+    }
+  ]
+}

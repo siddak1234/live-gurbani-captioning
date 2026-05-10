@@ -1,0 +1,37 @@
+{
+  "video_id": "zOtIpxMT9hU",
+  "segments": [
+    {
+      "start": 198.5,
+      "end": 205.5,
+      "line_idx": 4,
+      "shabad_id": 3712,
+      "verse_id": 42920,
+      "banidb_gurmukhi": "ਆਵੈ ਨ ਜਾਵੈ ਸੰਗੇ ਸਮਾਵੈ ਪੂਰਨ ਜਾ ਕਾ ਕਾਮੁ ਹੇ ॥੪॥"
+    },
+    {
+      "start": 205.5,
+      "end": 221.5,
+      "line_idx": 6,
+      "shabad_id": 3712,
+      "verse_id": 42922,
+      "banidb_gurmukhi": "ਸੰਤ ਜੀਵਹਿ ਜਪਿ ਪ੍ਰਾਨ ਅਧਾਰਾ ॥"
+    },
+    {
+      "start": 221.5,
+      "end": 228.5,
+      "line_idx": 4,
+      "shabad_id": 3712,
+      "verse_id": 42920,
+      "banidb_gurmukhi": "ਆਵੈ ਨ ਜਾਵੈ ਸੰਗੇ ਸਮਾਵੈ ਪੂਰਨ ਜਾ ਕਾ ਕਾਮੁ ਹੇ ॥੪॥"
+    },
+    {
+      "start": 228.5,
+      "end": 288.5,
+      "line_idx": 2,
+      "shabad_id": 1821,
+      "verse_id": 21977,
+      "banidb_gurmukhi": "ਤਾ ਕੋ ਅੰਤੁ ਨ ਜਾਈ ਲਖਣਾ ਆਵਤ ਜਾਤ ਰਹੈ ਗੁਬਾਰਿ ॥੧॥"
+    }
+  ]
+}

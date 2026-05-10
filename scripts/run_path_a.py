@@ -50,6 +50,7 @@ def process_one(
     blind_blend: dict[str, float] | None,
     live: bool,
     tentative_emit: bool,
+    backend: str,
 ) -> bool:
     gt = json.loads(gt_path.read_text())
     video_id = gt["video_id"]
@@ -60,7 +61,7 @@ def process_one(
         print(f"  error: audio missing {audio_path}", file=sys.stderr)
         return False
 
-    chunks = transcribe(audio_path, model_size=model_size, cache_dir=asr_cache_dir)
+    chunks = transcribe(audio_path, backend=backend, model_size=model_size, cache_dir=asr_cache_dir)
 
     uem_start = float(gt.get("uem", {}).get("start", 0.0))
     commit_time = uem_start + blind_lookback
@@ -178,6 +179,9 @@ def main() -> int:
     parser.add_argument("--corpus-dir", type=pathlib.Path, default=DEFAULT_CORPUS_DIR)
     parser.add_argument("--asr-cache-dir", type=pathlib.Path, default=DEFAULT_ASR_CACHE)
     parser.add_argument("--out-dir", type=pathlib.Path, default=DEFAULT_OUT_DIR)
+    parser.add_argument("--backend", default="faster_whisper",
+                        choices=["faster_whisper", "mlx_whisper"],
+                        help="ASR backend; default reproduces v3.2 (Path A canonical)")
     parser.add_argument("--model", default="medium")
     parser.add_argument("--threshold", type=float, default=55.0)
     parser.add_argument("--margin", type=float, default=0.0,
@@ -255,6 +259,7 @@ def main() -> int:
             blind_blend=blind_blend,
             live=args.live,
             tentative_emit=args.tentative_emit,
+            backend=args.backend,
         ):
             failures.append(gt_file.stem)
 

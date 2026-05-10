@@ -1,0 +1,37 @@
+{
+  "video_id": "IZOsmkdmmcg",
+  "segments": [
+    {
+      "start": 159.04,
+      "end": 173.14,
+      "line_idx": 1,
+      "shabad_id": 4377,
+      "verse_id": 52522,
+      "banidb_gurmukhi": "ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ॥"
+    },
+    {
+      "start": 182.29999999999998,
+      "end": 219.02,
+      "line_idx": 2,
+      "shabad_id": 1341,
+      "verse_id": 15268,
+      "banidb_gurmukhi": "ਕਾਮ ਸੁਆਇ ਗਜ ਬਸਿ ਪਰੇ ਮਨ ਬਉਰਾ ਰੇ ਅੰਕਸੁ ਸਹਿਓ ਸੀਸ ॥੧॥"
+    },
+    {
+      "start": 219.02,
+      "end": 225.3,
+      "line_idx": 8,
+      "shabad_id": 1341,
+      "verse_id": 15274,
+      "banidb_gurmukhi": "ਜੈਸਾ ਰੰਗੁ ਕਸੁੰਭ ਕਾ ਮਨ ਬਉਰਾ ਰੇ ਤਿਉ ਪਸਰਿਓ ਪਾਸਾਰੁ ॥੩॥"
+    },
+    {
+      "start": 225.3,
+      "end": 448.86,
+      "line_idx": 5,
+      "shabad_id": 1341,
+      "verse_id": 15271,
+      "banidb_gurmukhi": "ਮਰਕਟ ਮੁਸਟੀ ਅਨਾਜ ਕੀ ਮਨ ਬਉਰਾ ਰੇ ਲੀਨੀ ਹਾਥੁ ਪਸਾਰਿ ॥"
+    }
+  ]
+}

@@ -2,3 +2,4 @@ rapidfuzz
 yt-dlp
 faster-whisper
 unidecode
+mlx-whisper  # Apple Silicon GPU backend (optional; faster-whisper is the default)

@@ -66,24 +66,71 @@ Live causality is honor-system — the scorer can't tell. The output JSON looks 
 
 ## Project stages
 
-- **Stage 0** ✅ — empty submissions, ~26% baseline (plumbing + scoring loop). Currently committed: `submissions/v0_empty/`.
-- **Stage 1** ⏳ next — audio download (`yt-dlp` + `ffmpeg` to 16kHz mono WAV under `audio/`) + BaniDB corpus cache for the four shabads.
-- **Stage 2** — first real engine: Whisper ASR + fuzzy match (rapidfuzz) against the cached corpus. Run in offline + oracle mode first.
-- **Stage 3** — drop oracle: blind shabad ID from audio.
-- **Stage 4** — drop offline: live causal streaming.
+- **Stage 0** ✅ — empty-submission baseline. 26.0%. `submissions/v0_empty/`.
+- **Stage 1** ✅ — audio download + BaniDB corpus cache. `scripts/fetch_audio.py`, `scripts/build_corpus.py`.
+- **Stage 2** ✅ — Path A engine (Whisper + rapidfuzz + smoother). Iterated v1.0 → v1.5; **88.2%** oracle+offline with `0.5*token_sort_ratio + 0.5*WRatio` blend + stay-bias=6.
+- **Stage 3** ✅ — blind shabad ID via per-chunk voting. **88.2%** blind+offline (zero drop from oracle, 12/12 IDs). `submissions/v2_pathA_blind/`.
+- **Stage 4** ✅ — live causal mode + tentative emission during ID buffer. **86.0%** blind+live (strictly causal). `submissions/v3_1_pathA_live_tentative/`.
+- **Stage 5** ⏳ — close the gap to 95%+. Path A's matcher/smoother are tapped out around 86-88%. Cheap probes (model size, mlx-whisper, ratio sweeps, TF-IDF) all fail to push past. Path A is now **frozen** at v3.2 = 86.5% live blind; Path B (CTC phoneme scoring + loop-aware HMM, in `src/path_b/`) is the principled next move with a realistic 95%+ ceiling.
 
-## Repo layout (planned)
+### Current leaderboard
+
+| Submission | Mode | Score |
+|---|---|---|
+| `v0_empty` | — | 26.0% |
+| `v1_pathA_oracle` | oracle + offline | 68.4% |
+| `v1_4_pathA_blend` | oracle + offline | 84.8% |
+| `v1_5_pathA_staybias` | oracle + offline | **88.2%** |
+| `v2_pathA_blind` | blind + offline | **88.2%** |
+| `v3_pathA_live` | blind + live (strict causal) | 78.4% |
+| `v3_1_pathA_live_tentative` | blind + live (causal + tentative) | 86.0% |
+| `v3_2_pathA_no_title` | + skip line 0 (Path A canonical) | **86.5%** |
+| `v4_mlx_medium` | mlx backend, medium model | 70.6% (regression) |
+| `v4_mlx_large_v3` | mlx backend, large-v3, lookback=45 | 83.8% |
+
+What didn't work (don't re-try without new info): score-threshold > 0 (nulls correct-but-low chunks), top-1/top-2 margin gate (correlated with confidence but not causally), TF-IDF (exact-token match breaks under unidecode schwa-drop).
+
+## Repo layout
+
+The repo holds **two engine implementations side-by-side** (Path A and Path B). They share infrastructure (audio fetcher, corpus cache, scoring) but their engines live in separate folders so changes to one never affect the other.
 
 ```
-src/                  engine code (matchers, decoders, snap-to-canonical logic)
-scripts/              entry points (run_benchmark.py, fetch_audio, build_corpus)
-submissions/          one folder per experiment: v<N>_<name>/ + notes.md
-audio/                downloaded WAVs (gitignored)
-corpus_cache/         BaniDB lookups (gitignored)
-requirements.txt      Python deps
+src/                        Path A engine (FROZEN at v3.2 = 86.5% live blind)
+  asr.py                    Dual-backend ASR wrapper:
+                              - faster_whisper (default): CPU, Silero VAD, produces v3.2
+                              - mlx_whisper: Apple Silicon GPU, faster but different chunking
+  matcher.py                rapidfuzz scoring + TfidfScorer + score_chunk()
+  smoother.py               smooth() and smooth_with_stay_bias() — causal
+  shabad_id.py              identify_shabad() (chunk_vote) + per_chunk_global_match
+  path_b/                   Path B engine (in development)
+    __init__.py             Scaffold; CTC scorer + loop-aware HMM go here
+scripts/
+  run_benchmark.py          Stage 0 empty submitter
+  fetch_audio.py            yt-dlp + ffmpeg → audio/*.wav
+  build_corpus.py           BaniDB API → corpus_cache/<id>.json
+  run_path_a.py             Path A runner (--backend flag selects fw or mlx)
+  run_path_b.py             (future) Path B runner
+submissions/v<N>_<name>/    one folder per experiment + notes.md + tiles.html
+audio/                      16kHz mono WAVs (gitignored)
+corpus_cache/               BaniDB shabad lines (gitignored)
+asr_cache/                  cached transcripts, key includes backend (gitignored)
 ```
 
-`audio/` and `corpus_cache/` are gitignored — they're derived artifacts.
+### Reproducing Path A v3.2 (86.5% blind + live)
+
+```bash
+python scripts/run_path_a.py \
+  --blend "token_sort_ratio:0.5,WRatio:0.5" --threshold 0 \
+  --stay-bias 6 --blind --blind-aggregate chunk_vote \
+  --blind-lookback 30 --live --tentative-emit \
+  --out-dir submissions/v3_2_pathA_no_title
+```
+
+Default `--backend faster_whisper` is the canonical Path A backend. `--backend mlx_whisper` is available but produces different chunk granularity that requires retuning (see v4_mlx_* notes).
+
+### Path B status
+
+Empty scaffold. Will use the same audio/, corpus_cache/, and scoring as Path A.
 
 ## External references
 
