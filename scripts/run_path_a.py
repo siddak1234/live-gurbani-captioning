@@ -51,6 +51,7 @@ def process_one(
     live: bool,
     tentative_emit: bool,
     backend: str,
+    adapter_dir: str | None,
 ) -> bool:
     gt = json.loads(gt_path.read_text())
     video_id = gt["video_id"]
@@ -61,7 +62,8 @@ def process_one(
         print(f"  error: audio missing {audio_path}", file=sys.stderr)
         return False
 
-    chunks = transcribe(audio_path, backend=backend, model_size=model_size, cache_dir=asr_cache_dir)
+    chunks = transcribe(audio_path, backend=backend, model_size=model_size,
+                        cache_dir=asr_cache_dir, adapter_dir=adapter_dir)
 
     uem_start = float(gt.get("uem", {}).get("start", 0.0))
     commit_time = uem_start + blind_lookback
@@ -208,6 +210,8 @@ def main() -> int:
                         help="Causal: matcher only processes chunks after shabad-ID commit time")
     parser.add_argument("--tentative-emit", action="store_true",
                         help="In live mode, emit per-chunk global-best (shabad, line) during ID buffer")
+    parser.add_argument("--adapter-dir", default=None,
+                        help="Path to a LoRA/PEFT adapter (only used with huggingface_whisper backend)")
     args = parser.parse_args()
     def _parse_blend(spec: str) -> dict[str, float] | None:
         if not spec.strip():
@@ -262,6 +266,7 @@ def main() -> int:
             live=args.live,
             tentative_emit=args.tentative_emit,
             backend=args.backend,
+            adapter_dir=args.adapter_dir,
         ):
             failures.append(gt_file.stem)
 

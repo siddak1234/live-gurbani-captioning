@@ -83,6 +83,7 @@ def transcribe(
     cache_dir: pathlib.Path | str | None = None,
     word_timestamps: bool = False,
     no_speech_threshold: float | None = None,
+    adapter_dir: str | None = None,
 ) -> list[AsrChunk]:
     """Transcribe audio with the selected backend, returning timestamped chunks."""
     # HF repo paths like "surindersinghssj/surt-small-v3" force the HF backend,
@@ -98,6 +99,10 @@ def transcribe(
         extra_tag += "_word"
     if no_speech_threshold is not None:
         extra_tag += f"_nst{no_speech_threshold}"
+    if adapter_dir:
+        # Sanitize adapter path for cache key
+        adapter_tag = pathlib.Path(adapter_dir).name.replace("/", "_")
+        extra_tag += f"_lora-{adapter_tag}"
 
     cache_path = _cache_path(audio_path, cache_dir, backend, model_size, language, extra_tag)
     if cache_path is not None and cache_path.exists():
@@ -110,7 +115,8 @@ def transcribe(
         chunks = _transcribe_mlx(audio_path, model_size, language, word_timestamps, no_speech_threshold)
     elif backend == "huggingface_whisper":
         chunks = _transcribe_hf(audio_path, model_size, language,
-                                window_seconds=_HF_WINDOW_SECONDS)
+                                window_seconds=_HF_WINDOW_SECONDS,
+                                adapter_dir=adapter_dir)
     else:
         raise ValueError(f"unknown backend: {backend}")
 
@@ -139,7 +145,9 @@ def _transcribe_fw(audio_path, model_size, language, word_timestamps, no_speech_
     ]
 
 
-def _transcribe_hf(audio_path, model_size, language, *, window_seconds: float = 30.0):
+def _transcribe_hf(audio_path, model_size, language, *,
+                   window_seconds: float = 30.0,
+                   adapter_dir: str | None = None):
     """Transcribe via Hugging Face transformers, manually windowed.
 
     Used for fine-tuned Whisper models that ship only as HF repos (not CT2 or
@@ -158,6 +166,9 @@ def _transcribe_hf(audio_path, model_size, language, *, window_seconds: float = 
 
     processor = WhisperProcessor.from_pretrained(model_size, language=whisper_lang, task="transcribe")
     model = WhisperForConditionalGeneration.from_pretrained(model_size)
+    if adapter_dir is not None:
+        from peft import PeftModel
+        model = PeftModel.from_pretrained(model, adapter_dir)
     model.generation_config.language = whisper_lang
     model.generation_config.task = "transcribe"
     device = "mps" if torch.backends.mps.is_available() else "cpu"
