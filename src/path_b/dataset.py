@@ -39,24 +39,31 @@ def load_manifest(manifest_path: pathlib.Path | str) -> list[dict]:
     return out
 
 
-def to_hf_dataset(records: list[dict], tokenizer, feature_extractor):
-    """Wrap a list of records into a HF Dataset with model-ready features."""
-    from datasets import Dataset
+def _load_audio_16k_mono(audio_path: str) -> np.ndarray:
+    """Load any audio file, downmix to mono, resample to 16kHz, return float32."""
     import soundfile as sf
+    audio, sr = sf.read(audio_path, dtype="float32")
+    if audio.ndim > 1:
+        audio = audio.mean(axis=1)
+    if sr != 16000:
+        import scipy.signal
+        audio = scipy.signal.resample(audio, int(len(audio) * 16000 / sr)).astype(np.float32)
+    return audio
 
-    # Feature extractors use different output keys depending on architecture:
-    # wav2vec2/MMS use "input_values" (raw waveform passthrough), while
-    # SeamlessM4T-based ones like w2v-bert use "input_features" (mel-spectrogram).
-    # Detect which the extractor produces and emit dataset rows matching the
-    # model's forward signature.
+
+def to_hf_dataset(records: list[dict], tokenizer, feature_extractor):
+    """Wrap CTC training records into a HF Dataset.
+
+    Used by the CTC fine-tune path (w2v-bert, MMS, wav2vec2). Feature extractors
+    produce either ``input_values`` (raw waveform) or ``input_features``
+    (mel-spectrogram) depending on architecture — we emit rows matching the
+    model's forward signature.
+    """
+    from datasets import Dataset
+
     def gen():
         for r in records:
-            audio, sr = sf.read(r["audio_path"], dtype="float32")
-            if audio.ndim > 1:
-                audio = audio.mean(axis=1)
-            if sr != 16000:
-                import scipy.signal
-                audio = scipy.signal.resample(audio, int(len(audio) * 16000 / sr)).astype(np.float32)
+            audio = _load_audio_16k_mono(r["audio_path"])
             features = feature_extractor(audio, sampling_rate=16000, return_tensors="np")
             row: dict = {"labels": tokenizer(r["text"], return_tensors="np").input_ids[0].astype(np.int64)}
             if "input_features" in features:
@@ -68,5 +75,32 @@ def to_hf_dataset(records: list[dict], tokenizer, feature_extractor):
                 row["input_values"] = arr
                 row["input_length"] = len(arr)
             yield row
+
+    return Dataset.from_generator(gen)
+
+
+def to_hf_dataset_whisper(records: list[dict], processor):
+    """Wrap Whisper training records into a HF Dataset.
+
+    Used by the Whisper / Seq2Seq fine-tune path (surt-small-v3, openai/whisper-*).
+    The combined :class:`AutoProcessor` handles both audio preprocessing
+    (80-mel filterbank at 16 kHz, 30-second pad/truncate → shape (80, 3000))
+    and text tokenization (BPE → token ids).
+    """
+    from datasets import Dataset
+
+    def gen():
+        for r in records:
+            audio = _load_audio_16k_mono(r["audio_path"])
+            # Whisper feature extractor returns input_features shape (1, 80, 3000)
+            features = processor.feature_extractor(
+                audio, sampling_rate=16000, return_tensors="np"
+            )
+            labels = processor.tokenizer(r["text"], return_tensors="np").input_ids[0].astype(np.int64)
+            yield {
+                "input_features": features["input_features"][0].astype(np.float32),
+                "labels": labels,
+                "input_length": features["input_features"][0].shape[-1],
+            }
 
     return Dataset.from_generator(gen)

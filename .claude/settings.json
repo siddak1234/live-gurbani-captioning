@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": "Team-shared Claude Code settings for live-gurbani-captioning. Personal overrides go in settings.local.json (gitignored).",
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git stash *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(find . -type f *)",
+      "Bash(find . -name *)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(python3 -c *)",
+      "Bash(python3 scripts/run_path_a.py *)",
+      "Bash(python3 scripts/run_path_b.py *)",
+      "Bash(python3 scripts/run_path_b_hmm.py *)",
+      "Bash(python3 scripts/run_benchmark.py *)",
+      "Bash(python3 scripts/build_corpus.py *)",
+      "Bash(python3 scripts/build_smoke_manifest.py *)",
+      "Bash(python3 scripts/build_training_dataset.py *)",
+      "Bash(python3 scripts/fetch_audio.py *)",
+      "Bash(python3 scripts/finetune_path_b.py *)",
+      "Bash(python3 scripts/pull_kirtan_data.py *)",
+      "Bash(python3 scripts/probe_ctc.py *)",
+      "Bash(python3 scripts/ensemble_submissions.py *)",
+      "Bash(python3 scripts/separate_vocals.py *)",
+      "Bash(python3 ../live-gurbani-captioning-benchmark-v1/eval.py *)",
+      "Bash(python3 ../live-gurbani-captioning-benchmark-v1/visualize.py *)",
+      "Bash(pip3 install -r requirements*.txt)",
+      "Bash(pip3 install --upgrade *)",
+      "Bash(pip3 show *)",
+      "Bash(pip3 list)",
+      "Bash(ffmpeg -version)",
+      "Bash(yt-dlp --version)",
+      "Bash(brew --version)",
+      "Bash(curl -s https://api.banidb.com/*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(rm -rf $HOME*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git reset --hard origin*)",
+      "Bash(dd if=*)",
+      "Bash(mkfs*)",
+      "Bash(curl * | sh)",
+      "Bash(curl * | bash)",
+      "Bash(wget * | sh)",
+      "Bash(wget * | bash)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-bash-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-write-secret-scan.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit-lint.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "HF_HUB_ENABLE_HF_TRANSFER": "1",
+    "PYTORCH_ENABLE_MPS_FALLBACK": "1"
+  }
+}

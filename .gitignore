@@ -39,3 +39,23 @@ lora_adapters/
 
 # Claude Code per-developer state
 .claude/settings.local.json
+CLAUDE.local.md
+
+# Secrets and credentials
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+oci_config
+.oci/
+.huggingface/
+.cache/huggingface/
+
+# Model artifacts (large, derived)
+*.mlpackage/
+*.mlmodelc/
+*.onnx
+checkpoints/
+runs/

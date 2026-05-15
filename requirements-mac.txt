@@ -1,0 +1,12 @@
+# Mac-specific extras. Use only on Apple Silicon.
+# Install with: pip install -r requirements-mac.txt
+# Includes the base requirements automatically.
+
+-r requirements.txt
+
+# Apple Silicon GPU inference (Whisper via MLX)
+mlx-whisper
+
+# Vocal source separation (Phase X1 experiments)
+demucs
+torchcodec  # required by recent torchaudio.save()

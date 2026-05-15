@@ -1,16 +1,22 @@
+# Base requirements — platform-independent, runs on Linux/macOS/CPU/CUDA/MPS.
+# For Mac-specific extras (mlx-whisper, demucs): pip install -r requirements-mac.txt
+# For cloud/GPU training extras: pip install -r requirements-cloud.txt
+
+# Core inference + matching
 rapidfuzz
 yt-dlp
 faster-whisper
 unidecode
-mlx-whisper  # Apple Silicon GPU backend (optional; faster-whisper is the default)
-# Path B (CTC + HMM) dependencies
+soundfile
+
+# Audio + model stack
 transformers
 torch
-soundfile
-# Phase X1 — vocal source separation
-demucs
-torchcodec  # required by recent torchaudio.save()
-# Phase B (fine-tuning) — train LoRA adapters on w2v-bert
 peft
 accelerate
 datasets
+huggingface_hub
+
+# Numeric
+numpy
+scipy

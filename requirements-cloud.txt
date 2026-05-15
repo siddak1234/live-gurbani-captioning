@@ -1,0 +1,16 @@
+# Cloud / Linux + CUDA extras for OCI Data Science / RunPod / Colab.
+# Install with: pip install -r requirements-cloud.txt
+# Includes the base requirements automatically.
+#
+# Note: torch installed via base requirements.txt picks up CUDA wheels
+# automatically on CUDA-enabled hosts. If you need a specific torch+CUDA
+# version, install it first before this file:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+
+-r requirements.txt
+
+# Fast HuggingFace dataset / model downloads (10x speedup with HF_HUB_ENABLE_HF_TRANSFER=1)
+hf_transfer
+
+# Optional: 8-bit/4-bit quantization for training larger models on smaller GPUs
+bitsandbytes

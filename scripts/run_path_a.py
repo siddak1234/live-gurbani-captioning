@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Stage 2 / Path A runner: Whisper + fuzzy match + smoothing (oracle, offline).
+"""Path A benchmark runner: thin I/O shim around ``src/engine.predict()``.
 
 For each GT case:
-  1. Transcribe audio with faster-whisper (cached).
-  2. Match each ASR chunk to a corpus line (oracle: GT shabad_id given).
-  3. Smooth chunk-level matches into segments.
-  4. Emit submission JSON with line_idx + verse_id + banidb_gurmukhi.
+  1. Load GT JSON (here)
+  2. Resolve audio path (here)
+  3. Call ``engine.predict()`` (engine library)
+  4. Serialize segments to submission JSON (here)
+
+All inference logic lives in ``src/engine.py``. This file knows about the
+benchmark layout; the engine doesn't.
 """
 
 from __future__ import annotations
@@ -18,10 +21,7 @@ import sys
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from src.asr import transcribe                                      # noqa: E402
-from src.matcher import match_chunk, score_chunk, normalize, TfidfScorer  # noqa: E402
-from src.shabad_id import identify_shabad, per_chunk_global_match    # noqa: E402
-from src.smoother import smooth, smooth_with_stay_bias               # noqa: E402
+from src.engine import predict, EngineConfig  # noqa: E402
 
 DEFAULT_GT_DIR = REPO_ROOT.parent / "live-gurbani-captioning-benchmark-v1" / "test"
 DEFAULT_AUDIO_DIR = REPO_ROOT / "audio"
@@ -35,23 +35,9 @@ def process_one(
     *,
     audio_dir: pathlib.Path,
     corpora: dict[int, list[dict]],
-    asr_cache_dir: pathlib.Path,
     out_dir: pathlib.Path,
-    model_size: str,
-    score_threshold: float,
-    margin_threshold: float,
-    ratio: str,
-    blend: dict[str, float] | None,
-    stay_bias: float,
     blind: bool,
-    blind_lookback: float,
-    blind_aggregate: str,
-    blind_ratio: str,
-    blind_blend: dict[str, float] | None,
-    live: bool,
-    tentative_emit: bool,
-    backend: str,
-    adapter_dir: str | None,
+    engine_config: EngineConfig,
 ) -> bool:
     gt = json.loads(gt_path.read_text())
     video_id = gt["video_id"]
@@ -62,116 +48,53 @@ def process_one(
         print(f"  error: audio missing {audio_path}", file=sys.stderr)
         return False
 
-    chunks = transcribe(audio_path, backend=backend, model_size=model_size,
-                        cache_dir=asr_cache_dir, adapter_dir=adapter_dir)
-
     uem_start = float(gt.get("uem", {}).get("start", 0.0))
-    commit_time = uem_start + blind_lookback
+
+    try:
+        result = predict(
+            audio_path, corpora,
+            shabad_id=None if blind else gt_shabad_id,
+            uem_start=uem_start,
+            config=engine_config,
+        )
+    except ValueError as e:
+        print(f"  error: {e}", file=sys.stderr)
+        return False
 
     if blind:
-        sid_result = identify_shabad(
-            chunks, corpora,
-            start_t=uem_start, lookback_seconds=blind_lookback,
-            ratio=blind_ratio, blend=blind_blend, aggregate=blind_aggregate,
-        )
-        shabad_id = sid_result.shabad_id
-        sid_correct = "✓" if shabad_id == gt_shabad_id else "✗"
-        print(f"  {gt_path.stem}: blind ID predicts {shabad_id} (GT {gt_shabad_id}) {sid_correct} "
-              f"top={sid_result.score:.1f} runner_up={sid_result.runner_up_score:.1f}")
-    else:
-        shabad_id = gt_shabad_id
+        sid_correct = "✓" if result.shabad_id == gt_shabad_id else "✗"
+        print(f"  {gt_path.stem}: blind ID predicts {result.shabad_id} (GT {gt_shabad_id}) {sid_correct} "
+              f"top={result.blind_id_score:.1f} runner_up={result.blind_runner_up_score:.1f}")
 
-    if shabad_id not in corpora:
-        print(f"  error: predicted shabad {shabad_id} not in corpora", file=sys.stderr)
-        return False
-    lines = corpora[shabad_id]
-
-    tfidf = None
-    if blend and "tfidf" in blend:
-        tfidf = TfidfScorer([normalize(l.get("transliteration_english", "")) for l in lines])
-
-    pre_commit_segments: list[dict] = []
-    if live:
-        # Causal: matcher only sees chunks that start at or after the commit time.
-        # Frames before commit are emitted as `null` UNLESS `tentative_emit` is set,
-        # in which case each pre-commit chunk emits a global-best (shabad, line) pair.
-        if tentative_emit and blind:
-            pre_chunks = [c for c in chunks
-                          if c.start >= uem_start and c.start < commit_time]
-            matches = per_chunk_global_match(pre_chunks, corpora, ratio=ratio, blend=blend)
-            cur_sid: int | None = None
-            cur_lidx: int | None = None
-            cur_start: float = 0.0
-            cur_end: float = 0.0
-            for c, (sid, lidx, _) in zip(pre_chunks, matches):
-                if sid is None or lidx is None:
-                    continue
-                if (sid, lidx) == (cur_sid, cur_lidx):
-                    cur_end = c.end
-                else:
-                    if cur_sid is not None and cur_lidx is not None:
-                        ln = next(l for l in corpora[cur_sid] if l["line_idx"] == cur_lidx)
-                        pre_commit_segments.append({
-                            "start": cur_start, "end": cur_end,
-                            "line_idx": cur_lidx, "shabad_id": cur_sid,
-                            "verse_id": ln["verse_id"],
-                            "banidb_gurmukhi": ln["banidb_gurmukhi"],
-                        })
-                    cur_sid, cur_lidx = sid, lidx
-                    cur_start, cur_end = c.start, c.end
-            if cur_sid is not None and cur_lidx is not None:
-                ln = next(l for l in corpora[cur_sid] if l["line_idx"] == cur_lidx)
-                pre_commit_segments.append({
-                    "start": cur_start, "end": cur_end,
-                    "line_idx": cur_lidx, "shabad_id": cur_sid,
-                    "verse_id": ln["verse_id"],
-                    "banidb_gurmukhi": ln["banidb_gurmukhi"],
-                })
-        chunks = [c for c in chunks if c.start >= commit_time]
-
-    if stay_bias > 0.0:
-        scored = [
-            (c.start, c.end,
-             score_chunk(c.text, lines, ratio=ratio, blend=blend, tfidf=tfidf))
-            for c in chunks
-        ]
-        segments = smooth_with_stay_bias(scored, stay_margin=stay_bias,
-                                         score_threshold=score_threshold)
-    else:
-        raw = [
-            (c.start, c.end,
-             match_chunk(c.text, lines,
-                         score_threshold=score_threshold,
-                         margin_threshold=margin_threshold,
-                         ratio=ratio,
-                         blend=blend,
-                         tfidf=tfidf).line_idx)
-            for c in chunks
-        ]
-        segments = smooth(raw)
-
-    by_idx = {l["line_idx"]: l for l in lines}
     submission_segments = [
         {
             "start": s.start,
             "end": s.end,
             "line_idx": s.line_idx,
-            "shabad_id": shabad_id,
-            "verse_id": by_idx[s.line_idx]["verse_id"],
-            "banidb_gurmukhi": by_idx[s.line_idx]["banidb_gurmukhi"],
+            "shabad_id": s.shabad_id,
+            "verse_id": s.verse_id,
+            "banidb_gurmukhi": s.banidb_gurmukhi,
         }
-        for s in segments
+        for s in result.segments
     ]
-
-    submission_segments = pre_commit_segments + submission_segments
 
     out_path = out_dir / gt_path.name
     out_path.write_text(json.dumps(
         {"video_id": video_id, "segments": submission_segments},
         ensure_ascii=False, indent=2,
     ))
-    print(f"  {gt_path.stem}: {len(chunks)} chunks → {len(segments)} segments")
+    print(f"  {gt_path.stem}: {result.n_chunks} chunks → {len(result.segments)} segments")
     return True
+
+
+def _parse_blend(spec: str) -> dict[str, float] | None:
+    if not spec.strip():
+        return None
+    out: dict[str, float] = {}
+    for part in spec.split(","):
+        name, w = part.split(":")
+        out[name.strip()] = float(w)
+    return out
 
 
 def main() -> int:
@@ -213,16 +136,24 @@ def main() -> int:
     parser.add_argument("--adapter-dir", default=None,
                         help="Path to a LoRA/PEFT adapter (only used with huggingface_whisper backend)")
     args = parser.parse_args()
-    def _parse_blend(spec: str) -> dict[str, float] | None:
-        if not spec.strip():
-            return None
-        out: dict[str, float] = {}
-        for part in spec.split(","):
-            name, w = part.split(":")
-            out[name.strip()] = float(w)
-        return out
-    blend = _parse_blend(args.blend)
-    blind_blend = _parse_blend(args.blind_blend)
+
+    engine_config = EngineConfig(
+        backend=args.backend,
+        model_size=args.model,
+        adapter_dir=args.adapter_dir,
+        asr_cache_dir=args.asr_cache_dir.resolve(),
+        ratio=args.ratio,
+        blend=_parse_blend(args.blend),
+        score_threshold=args.threshold,
+        margin_threshold=args.margin,
+        stay_bias=args.stay_bias,
+        blind_lookback=args.blind_lookback,
+        blind_aggregate=args.blind_aggregate,
+        blind_ratio=args.blind_ratio,
+        blind_blend=_parse_blend(args.blind_blend),
+        live=args.live,
+        tentative_emit=args.tentative_emit,
+    )
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     gt_files = sorted(args.gt_dir.glob("*.json"))
@@ -236,7 +167,7 @@ def main() -> int:
         print(f"error: no corpus files in {corpus_dir}", file=sys.stderr)
         return 1
 
-    label = f"blend={blend}" if blend else f"ratio={args.ratio}"
+    label = f"blend={engine_config.blend}" if engine_config.blend else f"ratio={engine_config.ratio}"
     mode_parts = []
     mode_parts.append("BLIND" if args.blind else "ORACLE")
     mode_parts.append("LIVE" if args.live else "OFFLINE")
@@ -250,23 +181,9 @@ def main() -> int:
             gt_file,
             audio_dir=args.audio_dir.resolve(),
             corpora=corpora,
-            asr_cache_dir=args.asr_cache_dir.resolve(),
             out_dir=args.out_dir.resolve(),
-            model_size=args.model,
-            score_threshold=args.threshold,
-            margin_threshold=args.margin,
-            ratio=args.ratio,
-            blend=blend,
-            stay_bias=args.stay_bias,
             blind=args.blind,
-            blind_lookback=args.blind_lookback,
-            blind_aggregate=args.blind_aggregate,
-            blind_ratio=args.blind_ratio,
-            blind_blend=blind_blend,
-            live=args.live,
-            tentative_emit=args.tentative_emit,
-            backend=args.backend,
-            adapter_dir=args.adapter_dir,
+            engine_config=engine_config,
         ):
             failures.append(gt_file.stem)
 

@@ -231,7 +231,7 @@ python ../live-gurbani-captioning-benchmark-v1/eval.py \
    - [`surindersinghssj/indicconformer-pa-v3-kirtan`](https://huggingface.co/surindersinghssj/indicconformer-pa-v3-kirtan) — IndicConformer fine-tune for kirtan (needs NeMo lib).
    - Phase X4 (committed) confirmed: pure surt substitution hits 74.0% overall but wins +10-17 points on kchMJPK9Axs vs Path A v3.2. Oracle ensemble of {v3.2, X4} per case ≈ 90.3%.
 2. **YouTube kirtan with shabad-level metadata** — fallback if surindersinghssj isn't enough. `scripts/build_training_dataset.py` is built and ready.
-3. **SikhiToTheMax / Khalis Foundation archives** — outreach to bod@khalisfoundation.org for ground-truth line-timed broadcast recordings.
+3. **SikhiToTheMax / Khalis Foundation archives** — potential source of ground-truth line-timed broadcast recordings.
 4. **AI4Bharat IndicVoices Punjabi subset** — general Punjabi speech foundation.
 
 **Compute reality:**
