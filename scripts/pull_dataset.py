@@ -279,6 +279,31 @@ def _check_diversity_floors(
     return counts, failures
 
 
+def _pull_target_met(
+    manifest: list[dict],
+    *,
+    num_samples: int,
+    min_unique_videos: int = 0,
+    min_unique_shabads: int = 0,
+) -> bool:
+    """True when the pull has enough samples AND diversity floors pass.
+
+    If any diversity floor is active, ``num_samples`` is a minimum, not a hard
+    cap. This matters for Phase 2.5: the first failed `data-v5b` attempt hit
+    1000 clips before reaching the required source-video/shabad diversity.
+    Stopping there produced exactly the low-diversity failure we were trying
+    to prevent.
+    """
+    if len(manifest) < num_samples:
+        return False
+    _, failures = _check_diversity_floors(
+        manifest,
+        min_unique_videos=min_unique_videos,
+        min_unique_shabads=min_unique_shabads,
+    )
+    return not failures
+
+
 def _is_held_out(shabad_id, video_id: str, *, shabads: set, videos: set) -> tuple[bool, str]:
     """Check holdout against per-source sets resolved from configs/datasets.yaml.
 
@@ -490,7 +515,12 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
         if n_scanned > args.max_scan:
             print(f"  hit --max-scan limit ({args.max_scan}); stopping")
             break
-        if len(manifest) >= args.num_samples:
+        if _pull_target_met(
+            manifest,
+            num_samples=args.num_samples,
+            min_unique_videos=getattr(args, "min_unique_videos", 0),
+            min_unique_shabads=getattr(args, "min_unique_shabads", 0),
+        ):
             break
 
         shabad_id = row.get("canonical_shabad_id")

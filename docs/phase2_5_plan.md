@@ -48,7 +48,7 @@ or the Makefile shortcut:
 make data-v5b
 ```
 
-The manifest is written even when a floor fails, and the command exits non-zero. That is intentional: failed pulls are diagnostic artifacts. Inspect `training_data/v5b_mac_diverse/data_card.md`, then widen shards / scan budget or lower a floor only with an explicit note.
+When diversity floors are active, `--num-samples` is a minimum, not a hard cap: the pull continues until both the sample target and diversity floors pass, or until `--max-scan` is exhausted. The manifest is written even when a floor fails, and the command exits non-zero. That is intentional: failed pulls are diagnostic artifacts. Inspect `training_data/v5b_mac_diverse/data_card.md`, then widen shards / scan budget or lower a floor only with an explicit note.
 
 ## Execution order
 
