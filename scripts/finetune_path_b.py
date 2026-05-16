@@ -42,6 +42,7 @@ import argparse
 import os
 import pathlib
 import sys
+import time
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
@@ -321,6 +322,7 @@ def _run_ctc_train(args, target_modules: list[str]) -> int:
     from peft import LoraConfig, get_peft_model
 
     from src.path_b.dataset import load_manifest, to_hf_dataset
+    from src.run_card import peak_memory_gb, write_run_card
 
     print(f"Loading {args.model_id} (CTC)...")
     tokenizer = AutoTokenizer.from_pretrained(args.model_id)
@@ -344,6 +346,7 @@ def _run_ctc_train(args, target_modules: list[str]) -> int:
     train_ds = to_hf_dataset(train_records, tokenizer, feature_extractor)
 
     eval_ds = None
+    eval_records: list[dict] | None = None
     if args.eval_manifest:
         eval_records = load_manifest(args.eval_manifest)
         print(f"  {len(eval_records)} eval records")
@@ -438,7 +441,31 @@ def _run_ctc_train(args, target_modules: list[str]) -> int:
 
     device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
     print(f"\nStarting CTC training (device={device})...")
-    trainer.train()
+
+    # Wrap train() so crashes still emit a run_card. A failed run with a card
+    # is forensically more useful than a successful run with no lineage.
+    status = "completed"
+    started_at = time.monotonic()
+    try:
+        trainer.train()
+    except KeyboardInterrupt:
+        status = "interrupted"
+        raise
+    except Exception:
+        status = "crashed"
+        raise
+    finally:
+        write_run_card(
+            args.output_dir,
+            args=args,
+            train_records=train_records,
+            eval_records=eval_records,
+            trainer_state=getattr(trainer, "state", None),
+            wall_clock_s=time.monotonic() - started_at,
+            peak_mem=peak_memory_gb(),
+            status=status,
+            device=device,
+        )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(str(args.output_dir))
@@ -466,6 +493,7 @@ def _run_whisper_train(args, target_modules: list[str]) -> int:
     from peft import LoraConfig, get_peft_model
 
     from src.path_b.dataset import load_manifest, to_hf_dataset_whisper
+    from src.run_card import peak_memory_gb, write_run_card
 
     print(f"Loading {args.model_id} (Whisper Seq2Seq)...")
     processor = AutoProcessor.from_pretrained(args.model_id, language=args.language, task="transcribe")
@@ -494,6 +522,7 @@ def _run_whisper_train(args, target_modules: list[str]) -> int:
     train_ds = to_hf_dataset_whisper(train_records, processor)
 
     eval_ds = None
+    eval_records: list[dict] | None = None
     if args.eval_manifest:
         eval_records = load_manifest(args.eval_manifest)
         print(f"  {len(eval_records)} eval records")
@@ -574,7 +603,29 @@ def _run_whisper_train(args, target_modules: list[str]) -> int:
 
     device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
     print(f"\nStarting Whisper Seq2Seq training (device={device})...")
-    trainer.train()
+
+    status = "completed"
+    started_at = time.monotonic()
+    try:
+        trainer.train()
+    except KeyboardInterrupt:
+        status = "interrupted"
+        raise
+    except Exception:
+        status = "crashed"
+        raise
+    finally:
+        write_run_card(
+            args.output_dir,
+            args=args,
+            train_records=train_records,
+            eval_records=eval_records,
+            trainer_state=getattr(trainer, "state", None),
+            wall_clock_s=time.monotonic() - started_at,
+            peak_mem=peak_memory_gb(),
+            status=status,
+            device=device,
+        )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(str(args.output_dir))
