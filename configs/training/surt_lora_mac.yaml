@@ -47,8 +47,61 @@ max_steps: 0                     # 0 means "use epochs"; set >0 for smoke tests
 bf16: null                        # auto: True on CUDA, False on MPS/CPU
 fp16: null                        # auto: True on MPS, False otherwise
 
-# -- Reproducibility hint ----------------------------------------------------
-# When you set up your shell:
-#   export PYTORCH_ENABLE_MPS_FALLBACK=1   # falls back for unimplemented ops
-#   export HF_HUB_ENABLE_HF_TRANSFER=1     # faster HF downloads
-# The .claude/settings.json env block sets these automatically inside Claude Code.
+# -- Reproducibility ---------------------------------------------------------
+# seed feeds torch/numpy/random + HF Trainer's dataloader generator. On MPS,
+# many ops aren't bit-deterministic so two same-seed runs match approximately
+# (~2% val loss tolerance), not exactly. On CPU expect ~0.5%. We do NOT call
+# torch.use_deterministic_algorithms(True) — too many MPS ops would fail.
+#
+# Shell setup (the .claude/settings.json env block sets these automatically):
+#   export PYTORCH_ENABLE_MPS_FALLBACK=1
+#   export HF_HUB_ENABLE_HF_TRANSFER=1
+
+seed: 42
+
+# -- Regularization ----------------------------------------------------------
+# weight_decay=0.01 follows the Whisper FT literature for PEFT/LoRA.
+# max_grad_norm=1.0 matches the HF Trainer default; declared here for visibility.
+
+weight_decay: 0.01
+max_grad_norm: 1.0
+
+# -- LR schedule -------------------------------------------------------------
+# cosine annealing is the standard for Whisper-family fine-tunes — flat HF
+# default is "linear". warmup_ratio (if > 0) supersedes warmup_steps; it
+# scales naturally with dataset size, unlike a fixed step count.
+
+lr_scheduler_type: cosine
+warmup_ratio: 0.1                 # 10% of total steps; 0 disables (falls back to warmup_steps)
+
+# -- Memory ------------------------------------------------------------------
+# gradient_checkpointing trades ~20% throughput for ~30% memory headroom on
+# the activations, useful when scaling batch size or sequence length. Kept
+# OFF for v0 — PEFT + GC has historical quirks (requires_grad propagation on
+# the adapter graph) and Phase 0 doesn't change runtime behavior. Phase 3
+# flips this on after isolated verification.
+
+gradient_checkpointing: false
+
+# -- Evaluation + early stopping --------------------------------------------
+# Kept at "no" until Phase 1 produces a val manifest via --split-by shabad.
+# Phase 3's config will set eval_strategy=steps, eval_steps=250,
+# early_stopping_patience=2, load_best_model_at_end=true once a real
+# manifest_val.json exists at training_data/<run>/manifest_val.json.
+#
+# Constraint: if load_best_model_at_end is true, save_steps must be a
+# multiple of eval_steps (HF Trainer enforces this; the script also pre-validates).
+
+eval_strategy: "no"               # "no" | "steps"  (epoch unused here)
+eval_steps: 250
+early_stopping_patience: 0        # 0 disables; auto-active when > 0 and an eval manifest is provided
+load_best_model_at_end: false
+
+# -- Experiment tracking -----------------------------------------------------
+# report_to=auto resolves at runtime: wandb if WANDB_API_KEY is set (and
+# WANDB_MODE != disabled), else tensorboard, else none. Smoke target passes
+# --report-to none to keep validation cheap and air-gapped.
+
+report_to: auto                   # auto | wandb | tensorboard | none | comma-list
+wandb_project: kirtan-asr
+run_name: null                    # null -> auto: <config_hash[:8]>-<timestamp>
