@@ -13,7 +13,12 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from scripts.fetch_audio import collect_video_ids, fetch_one_url, parse_url_specs  # noqa: E402
+from scripts.fetch_audio import (  # noqa: E402
+    collect_video_ids,
+    fetch_one_url,
+    parse_clip_specs,
+    parse_url_specs,
+)
 
 
 class TestParseUrlSpecs(unittest.TestCase):
@@ -46,6 +51,35 @@ class TestParseUrlSpecs(unittest.TestCase):
     def test_rejects_path_separator_in_case_id(self):
         with self.assertRaises(ValueError):
             parse_url_specs(["../case=https://youtube.com/watch?v=abc123"])
+
+
+class TestParseClipSpecs(unittest.TestCase):
+    def test_parses_case_clip_windows(self):
+        clips = parse_clip_specs(["case_a=30-210", "case_b=0.5-60.25"])
+        self.assertEqual(clips, {
+            "case_a": (30.0, 210.0),
+            "case_b": (0.5, 60.25),
+        })
+
+    def test_rejects_missing_equals(self):
+        with self.assertRaises(ValueError):
+            parse_clip_specs(["case_a:30-210"])
+
+    def test_rejects_non_numeric_window(self):
+        with self.assertRaises(ValueError):
+            parse_clip_specs(["case_a=start-end"])
+
+    def test_rejects_empty_or_path_case_id(self):
+        with self.assertRaises(ValueError):
+            parse_clip_specs(["=30-210"])
+        with self.assertRaises(ValueError):
+            parse_clip_specs(["../case=30-210"])
+
+    def test_rejects_non_positive_duration(self):
+        with self.assertRaises(ValueError):
+            parse_clip_specs(["case_a=30-30"])
+        with self.assertRaises(ValueError):
+            parse_clip_specs(["case_a=30-20"])
 
 
 class TestCollectVideoIds(unittest.TestCase):
@@ -86,6 +120,29 @@ class TestFetchOneUrl(unittest.TestCase):
             self.assertEqual(run.call_count, 2)
             self.assertFalse(raw.exists())
             self.assertTrue((audio_dir / "case_a_16k.wav").exists())
+
+    def test_download_and_convert_with_clip_window(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            audio_dir = Path(tmp)
+            raw = audio_dir / ".case_a.wav"
+
+            def fake_run(cmd, check, capture_output, text):
+                if cmd[0] == "yt-dlp":
+                    raw.write_bytes(b"raw wav")
+                elif cmd[0] == "ffmpeg":
+                    Path(cmd[-1]).write_bytes(b"converted wav")
+                return mock.Mock(returncode=0)
+
+            with mock.patch("scripts.fetch_audio.subprocess.run", side_effect=fake_run) as run:
+                self.assertTrue(
+                    fetch_one_url("case_a", "https://example.com/audio", audio_dir, (30.0, 210.0))
+                )
+
+            ffmpeg_cmd = run.call_args_list[1].args[0]
+            self.assertIn("-ss", ffmpeg_cmd)
+            self.assertIn("30.000", ffmpeg_cmd)
+            self.assertIn("-t", ffmpeg_cmd)
+            self.assertIn("180.000", ffmpeg_cmd)
 
 
 if __name__ == "__main__":

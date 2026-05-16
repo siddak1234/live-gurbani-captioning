@@ -1,10 +1,10 @@
 """Holdout regression guard for scripts/pull_dataset.py.
 
-After PR 1.A, the benchmark holdout (4 shabads + 4 videos) is loaded from
+After PR 1.A, the holdout (4 benchmark shabads + benchmark/OOS videos) is loaded from
 configs/datasets.yaml rather than hardcoded. These tests are the safety net:
 
-1. Today's YAML produces EXACTLY the holdout the old hardcoded constants
-   used to express. If someone edits the YAML wrong, this test catches it.
+1. Today's YAML produces EXACTLY the expected shabad + recording holdout.
+   If someone edits the YAML wrong, this test catches it.
 2. _is_held_out behaves correctly for both str and int shabad_id forms
    (HF parquet's canonical_shabad_id can come back as either type).
 3. enforce=False sources (general Punjabi data) don't apply holdout.
@@ -43,12 +43,17 @@ if _HAS_YAML:
     )
 
 
-# Authoritative reference — these four IDs are the benchmark's shabads.
+# Authoritative reference — these four IDs are the paired benchmark's shabads.
 # If the benchmark ever changes them, this constant changes too AND the
 # YAML must change to match. Keeping the truth in two places (here + YAML)
 # is the regression guard: a one-sided edit breaks the test.
 EXPECTED_BENCHMARK_SHABADS_STR = {"4377", "1821", "1341", "3712"}
-EXPECTED_BENCHMARK_VIDEOS = {"IZOsmkdmmcg", "kZhIA8P6xWI", "kchMJPK9Axs", "zOtIpxMT9hU"}
+EXPECTED_HOLDOUT_VIDEOS = {
+    # Paired benchmark recordings.
+    "IZOsmkdmmcg", "kZhIA8P6xWI", "kchMJPK9Axs", "zOtIpxMT9hU",
+    # OOS v1 source recordings selected 2026-05-16.
+    "hhpYbZ9_jH4", "ZdZ5sBLcjr0", "9SNXYPEVE60", "kZnV63eQOeM", "yr6Y3gzjAu4",
+}
 
 
 @unittest.skipUnless(_HAS_YAML, "PyYAML not installed; install via requirements*.txt")
@@ -71,7 +76,7 @@ class TestDatasetConfigLoading(unittest.TestCase):
 class TestGetHoldout(unittest.TestCase):
     def test_kirtan_holdout_matches_benchmark(self):
         """REGRESSION GUARD: kirtan's holdout must exactly equal the
-        benchmark's 4 shabads and 4 videos. If the YAML drifts, this
+        benchmark's 4 shabads plus every locked eval recording. If the YAML drifts, this
         test fails loudly — much better than discovering the model
         was trained on benchmark data three weeks later."""
         shabads, videos, enforce = get_holdout("kirtan")
@@ -82,7 +87,7 @@ class TestGetHoldout(unittest.TestCase):
             self.assertIn(sid_str, shabads, f"missing str form: {sid_str}")
             self.assertIn(int(sid_str), shabads, f"missing int form: {sid_str}")
 
-        self.assertEqual(videos, EXPECTED_BENCHMARK_VIDEOS)
+        self.assertEqual(videos, EXPECTED_HOLDOUT_VIDEOS)
 
     def test_sehaj_and_sehajpath_match_kirtan(self):
         """All Gurbani sources currently share the same holdout. If we
@@ -168,6 +173,14 @@ class TestIsHeldOut(unittest.TestCase):
         — same recording, different snippet would still leak audio
         signature into training."""
         held, reason = _is_held_out(9999, "IZOsmkdmmcg",
+                                    shabads=self.shabads, videos=self.videos)
+        self.assertTrue(held)
+        self.assertEqual(reason, "video")
+
+    def test_oos_video_blocks_even_with_non_benchmark_shabad(self):
+        """Once a recording becomes OOS eval material, it must also be
+        excluded from all future training pulls."""
+        held, reason = _is_held_out(9999, "hhpYbZ9_jH4",
                                     shabads=self.shabads, videos=self.videos)
         self.assertTrue(held)
         self.assertEqual(reason, "video")

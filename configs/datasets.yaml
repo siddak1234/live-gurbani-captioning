@@ -7,7 +7,7 @@
 #
 # Holdout discipline (applies to every Gurbani-specific source):
 #   - shabad_ids: 4377, 1821, 1341, 3712  (the benchmark's 4 shabads)
-#   - video_ids:  IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU
+#   - video_ids:  paired-benchmark recordings + OOS v1 recordings
 # Sources that don't carry shabad metadata (IndicVoices, CommonVoice) set
 # `holdout.enforce: false` — general Punjabi acoustic data, no holdout needed.
 
@@ -33,7 +33,8 @@ sources:
     holdout:
       enforce: true
       shabad_ids: ["4377", "1821", "1341", "3712"]
-      video_ids: [IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU]
+      video_ids: [IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU,
+                  hhpYbZ9_jH4, ZdZ5sBLcjr0, 9SNXYPEVE60, kZnV63eQOeM, yr6Y3gzjAu4]
     pull: python scripts/pull_dataset.py kirtan --out-dir training_data/kirtan_v1
     notes: |
       Primary kirtan corpus. Labels are auto-aligned YouTube captions snapped
@@ -51,7 +52,8 @@ sources:
     holdout:
       enforce: true
       shabad_ids: ["4377", "1821", "1341", "3712"]
-      video_ids: [IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU]
+      video_ids: [IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU,
+                  hhpYbZ9_jH4, ZdZ5sBLcjr0, 9SNXYPEVE60, kZnV63eQOeM, yr6Y3gzjAu4]
     pull: python scripts/pull_dataset.py sehaj --out-dir training_data/sehaj_v1
     notes: |
       Spoken paath complements kirtan; helps the model learn phonemes without
@@ -67,7 +69,8 @@ sources:
     holdout:
       enforce: true
       shabad_ids: ["4377", "1821", "1341", "3712"]
-      video_ids: [IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU]
+      video_ids: [IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU,
+                  hhpYbZ9_jH4, ZdZ5sBLcjr0, 9SNXYPEVE60, kZnV63eQOeM, yr6Y3gzjAu4]
     pull: python scripts/pull_dataset.py sehajpath --out-dir training_data/sehajpath_v1
     notes: |
       Cleanest source. Use as anchor against catastrophic forgetting when the

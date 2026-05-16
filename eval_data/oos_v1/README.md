@@ -54,17 +54,26 @@ Required fields: `video_id`, `shabad_id`, `segments[*].{start, end, line_idx}`. 
 
 1. Pick a shabad NOT in `{4377, 1821, 1341, 3712}` and not present in any training pull.
 2. Find a clean recording (Sikhnet Radio, archive.org/details/GurbaniKirtan, well-mic'd YouTube).
-3. Convert to 16 kHz mono WAV. Preferred path:
+3. Cache the shabad corpus once the BaniDB ID is known:
    ```bash
-   make fetch-oos-audio OOS_URL='case_001=https://youtube.com/watch?v=...'
+   make corpus-oos OOS_SHABAD_ID=5621
+   ```
+4. Convert to 16 kHz mono WAV. Preferred path:
+   ```bash
+   make fetch-oos-audio \
+     OOS_URL='case_001=https://youtube.com/watch?v=...' \
+     OOS_CLIP='case_001=30-210'
    ```
    The `case_001` stem must match the eventual `test/case_001.json`.
+   `OOS_CLIP` is optional but recommended for long source recordings; v1 cases
+   should usually score a 60-180s curated window rather than an entire 10-minute
+   YouTube upload.
 
    Manual fallback:
    ```bash
-   ffmpeg -i input.mp4 -ar 16000 -ac 1 -y eval_data/oos_v1/audio/case_NNN_16k.wav
+   ffmpeg -i input.mp4 -ss 30 -t 180 -ar 16000 -ac 1 -y eval_data/oos_v1/audio/case_NNN_16k.wav
    ```
-4. Curate the GT JSON. Recommended workflow:
+5. Curate the GT JSON. Recommended workflow:
    - Run Path A v3.2 in oracle mode (shabad_id known) to bootstrap timings:
      ```bash
      python scripts/eval_oos.py \
@@ -76,7 +85,7 @@ Required fields: `video_id`, `shabad_id`, `segments[*].{start, end, line_idx}`. 
    - Open the resulting JSON in your editor.
    - Hand-correct the line boundaries against the audio. This takes ~10-15 minutes per recording.
    - Save as `eval_data/oos_v1/test/case_NNN.json`.
-5. Re-run `eval_oos.py` without `--oracle` to get the real blind+live score.
+6. Re-run `eval_oos.py` without `--oracle` to get the real blind+live score.
 
 ## Running an evaluation
 

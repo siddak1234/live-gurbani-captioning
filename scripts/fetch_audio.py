@@ -8,6 +8,8 @@ that already exist so re-runs are cheap.
 For Phase 2.5 / OOS curation, pass one or more `--url case_id=URL` specs
 and set `--audio-dir eval_data/oos_v1/audio`. Those produce
 `<case_id>_16k.wav` files matching the `eval_oos.py` directory contract.
+Optional `--clip case_id=START-END` trims long source recordings to a bounded
+curation window before resampling.
 """
 
 from __future__ import annotations
@@ -53,7 +55,37 @@ def parse_url_specs(specs: list[str]) -> list[tuple[str, str]]:
     return targets
 
 
-def fetch_one_url(case_id: str, url: str, audio_dir: pathlib.Path) -> bool:
+def parse_clip_specs(specs: list[str]) -> dict[str, tuple[float, float]]:
+    """Parse repeated `case_id=START-END` clip windows in seconds."""
+    clips: dict[str, tuple[float, float]] = {}
+    for spec in specs:
+        if "=" not in spec:
+            raise ValueError(f"--clip must be case_id=START-END, got: {spec!r}")
+        case_id, window = spec.split("=", 1)
+        case_id = case_id.strip()
+        window = window.strip()
+        if not case_id:
+            raise ValueError(f"--clip case_id is empty in: {spec!r}")
+        if "/" in case_id or "\\" in case_id:
+            raise ValueError(f"--clip case_id must be a filename stem, got: {case_id!r}")
+        if "-" not in window:
+            raise ValueError(f"--clip window must be START-END seconds, got: {window!r}")
+        start_s, end_s = window.split("-", 1)
+        try:
+            start = float(start_s)
+            end = float(end_s)
+        except ValueError as e:
+            raise ValueError(f"--clip window must be numeric seconds, got: {window!r}") from e
+        if start < 0:
+            raise ValueError(f"--clip start must be >= 0, got: {start}")
+        if end <= start:
+            raise ValueError(f"--clip end must be greater than start, got: {window!r}")
+        clips[case_id] = (start, end)
+    return clips
+
+
+def fetch_one_url(case_id: str, url: str, audio_dir: pathlib.Path,
+                  clip: tuple[float, float] | None = None) -> bool:
     out_path = audio_dir / f"{case_id}_16k.wav"
     if out_path.exists():
         print(f"skip: {out_path.name} already exists")
@@ -81,11 +113,18 @@ def fetch_one_url(case_id: str, url: str, audio_dir: pathlib.Path) -> bool:
         print(f"error: expected {raw_path} but yt-dlp produced no such file", file=sys.stderr)
         return False
 
-    print(f"converting {case_id} -> 16kHz mono...")
+    if clip:
+        start, end = clip
+        duration = end - start
+        clip_args = ["-ss", f"{start:.3f}", "-t", f"{duration:.3f}"]
+        print(f"converting {case_id} -> 16kHz mono ({start:.1f}s-{end:.1f}s clip)...")
+    else:
+        clip_args = []
+        print(f"converting {case_id} -> 16kHz mono...")
     try:
         subprocess.run(
             [
-                "ffmpeg", "-y", "-i", str(raw_path),
+                "ffmpeg", "-y", "-i", str(raw_path), *clip_args,
                 "-ar", "16000", "-ac", "1", str(out_path),
             ],
             check=True, capture_output=True, text=True,
@@ -121,6 +160,16 @@ def main() -> int:
             "Writes <CASE_ID>_16k.wav under --audio-dir."
         ),
     )
+    parser.add_argument(
+        "--clip",
+        action="append",
+        default=[],
+        metavar="CASE_ID=START-END",
+        help=(
+            "Optional OOS clip window in seconds for a --url target. Repeatable. "
+            "Example: --clip case_001=30-210"
+        ),
+    )
     args = parser.parse_args()
 
     for tool in ("yt-dlp", "ffmpeg"):
@@ -132,11 +181,20 @@ def main() -> int:
     if args.url:
         try:
             targets = parse_url_specs(args.url)
+            clips = parse_clip_specs(args.clip)
         except ValueError as e:
             print(f"error: {e}", file=sys.stderr)
             return 1
+        target_ids = {case_id for case_id, _ in targets}
+        unknown_clip_ids = sorted(set(clips) - target_ids)
+        if unknown_clip_ids:
+            print(f"error: --clip case_id(s) without matching --url: {unknown_clip_ids}", file=sys.stderr)
+            return 1
         print(f"found {len(targets)} OOS URL target(s): {', '.join(c for c, _ in targets)}\n")
-        failures = [case_id for case_id, url in targets if not fetch_one_url(case_id, url, audio_dir)]
+        failures = [
+            case_id for case_id, url in targets
+            if not fetch_one_url(case_id, url, audio_dir, clips.get(case_id))
+        ]
         total = len(targets)
     else:
         video_ids = collect_video_ids(args.gt_dir.resolve())

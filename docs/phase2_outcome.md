@@ -118,3 +118,25 @@ Implemented helpers:
 
 1. `make fetch-oos-audio OOS_URL='case_001=https://...'` for OOS audio.
 2. `make data-v5b` for a diversity-gated diagnostic pull.
+
+Checkpoint 2026-05-16:
+
+- OOS v1 now has a concrete 5-case candidate slate in
+  [`docs/oos_v1_curation.md`](oos_v1_curation.md): 3 representative SGGS
+  shabads + 2 stress cases.
+- `scripts/build_corpus.py --shabad-id ...` and `make corpus-oos` support
+  explicit OOS shabad caching; the selected OOS corpora have been fetched
+  locally.
+- `scripts/fetch_audio.py --clip case=START-END` and `make fetch-oos-audio
+  OOS_CLIP=...` support bounded OOS clips; the five source clips have been
+  downloaded locally under `eval_data/oos_v1/audio/` (gitignored).
+- `configs/datasets.yaml` holdout video IDs now include the five OOS source
+  YouTube IDs so future training pulls cannot sample these eval recordings.
+
+Current next step: hand-curate `eval_data/oos_v1/test/case_001.json` through
+`case_005.json` against the fetched audio. Do **not** claim an OOS score until
+those GT files are corrected and committed. Once they exist, run:
+
+```bash
+make eval-oos-loop-align
+```

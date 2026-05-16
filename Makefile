@@ -42,6 +42,9 @@ COREML_CFG     ?= configs/export/coreml_ane.yaml
 COREML_OUT     ?= ios/Sources/GurbaniCaptioning/Resources
 BENCHMARK_DIR  ?= ../live-gurbani-captioning-benchmark-v1
 HF_WINDOW_SECONDS ?= 10
+OOS_SHABAD_ID  ?=
+OOS_URL        ?=
+OOS_CLIP       ?=
 DATA_SHARDS_ARG := $(if $(DATA_SHARDS),--shards $(DATA_SHARDS),--shard $(DATA_SHARD))
 
 # -----------------------------------------------------------------------------
@@ -100,17 +103,25 @@ corpus: ## Build the BaniDB corpus cache + iOS bundle JSON.
 	$(PYTHON) scripts/build_corpus.py
 	$(PYTHON) scripts/build_ios_corpus.py
 
+.PHONY: corpus-oos
+corpus-oos: ## Cache one OOS shabad: make corpus-oos OOS_SHABAD_ID=5621
+	@test -n "$(OOS_SHABAD_ID)" || { \
+		echo "Usage: make corpus-oos OOS_SHABAD_ID=5621"; exit 1; }
+	$(PYTHON) scripts/build_corpus.py --shabad-id $(OOS_SHABAD_ID)
+	$(PYTHON) scripts/build_ios_corpus.py
+
 .PHONY: fetch-audio
 fetch-audio: ## Download benchmark audio via yt-dlp (idempotent — skips existing files).
 	$(PYTHON) scripts/fetch_audio.py
 
 .PHONY: fetch-oos-audio
-fetch-oos-audio: ## Download one OOS URL: make fetch-oos-audio OOS_URL='case_001=https://...'
+fetch-oos-audio: ## Download one OOS URL: make fetch-oos-audio OOS_URL='case_001=https://...' OOS_CLIP='case_001=30-210'
 	@test -n "$(OOS_URL)" || { \
 		echo "Usage: make fetch-oos-audio OOS_URL='case_001=https://...'"; exit 1; }
 	$(PYTHON) scripts/fetch_audio.py \
 		--audio-dir eval_data/oos_v1/audio \
-		--url "$(OOS_URL)"
+		--url "$(OOS_URL)" \
+		$(if $(OOS_CLIP),--clip "$(OOS_CLIP)",)
 
 # -----------------------------------------------------------------------------
 # Data
