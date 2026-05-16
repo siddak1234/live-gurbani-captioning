@@ -398,6 +398,16 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
           f"score={n_skipped_score} simran={n_skipped_simran} "
           f"dur_short={n_skipped_dur_short} dur_long={n_skipped_dur_long}")
 
+    rejections = {
+        "holdout_shabad": n_skipped_shabad,
+        "holdout_video":  n_skipped_video,
+        "score_low":      n_skipped_score,
+        "simran":         n_skipped_simran,
+        "dur_short":      n_skipped_dur_short,
+        "dur_long":       n_skipped_dur_long,
+    }
+
+    splits = None
     if getattr(args, "split_by", "none") == "shabad":
         # argparse already parsed via type=_parse_split_ratios → tuple of 3 floats.
         ratios = args.split_ratios
@@ -413,7 +423,149 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
     else:
         manifest_path = _write_manifest(out_dir, manifest)
         print(f"manifest: {manifest_path}")
+
+    # Data card lives alongside the manifest — human-readable lineage doc.
+    card_md = _build_data_card(
+        out_dir=out_dir,
+        source_key=source_key,
+        source_id=dataset_id,
+        args=args,
+        splits=splits,
+        manifest=manifest,
+        rejections=rejections,
+        holdout_shabads=holdout_shabads,
+        holdout_videos=holdout_videos,
+        apply_holdout=apply_holdout,
+    )
+    card_path = out_dir / "data_card.md"
+    card_path.write_text(card_md, encoding="utf-8")
+    print(f"data_card: {card_path}")
     return 0
+
+
+def _build_data_card(
+    *,
+    out_dir: pathlib.Path,
+    source_key: str,
+    source_id: str,
+    args,
+    splits: dict | None,
+    manifest: list[dict],
+    rejections: dict[str, int],
+    holdout_shabads: set,
+    holdout_videos: set,
+    apply_holdout: bool,
+) -> str:
+    """Generate ``data_card.md`` content for a pull. Pure: caller writes to disk.
+
+    The data card is the human-readable lineage doc for a pull — what we
+    scraped, what we kept, what we dropped, and how the splits look. It
+    lives alongside ``manifest.json`` so anyone inspecting an adapter can
+    answer "what did this train on?" without re-running the pull.
+
+    Sections:
+      * Frontmatter: source HF repo, pull config, holdout policy
+      * Split summary table (when --split-by shabad) OR single-manifest stats
+      * Rejection counts table (every reason a row could be dropped)
+      * Top shabads in train (by hours) — sanity-check class imbalance
+      * Diversity guardrail (warns when val/test has <3 unique shabads)
+    """
+    import datetime as _dt
+
+    generated = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    # --- header ---
+    lines = [
+        f"# Data card — {out_dir.name}",
+        "",
+        f"**Generated:** {generated}  ",
+        f"**Source:** `{source_id}` (`{source_key}` in configs/datasets.yaml)  ",
+        f"**Pull config:** num_samples={args.num_samples}, min_score={args.min_score}, "
+        f"min_duration_s={args.min_duration_s}, max_duration_s={args.max_duration_s}, "
+        f"split_by={getattr(args, 'split_by', 'none')}, "
+        f"split_seed={getattr(args, 'split_seed', 'n/a')}  ",
+        "",
+        "**Holdout (configs/datasets.yaml):**",
+    ]
+    if apply_holdout:
+        shabad_strs = sorted(s for s in holdout_shabads if isinstance(s, str))
+        lines.append(f"- Shabad IDs: {', '.join(shabad_strs) or '(none)'}")
+        lines.append(f"- Video IDs: {', '.join(sorted(holdout_videos)) or '(none)'}")
+    else:
+        lines.append("- Not enforced for this source (general Punjabi or unlabeled audio)")
+    lines.append("")
+
+    # --- split summary OR single-manifest summary ---
+    if splits is not None:
+        lines += [
+            "## Split summary",
+            "",
+            "| Split | Clips | Hours | Unique shabads | Unique videos |",
+            "|---|---|---|---|---|",
+        ]
+        for split_name in ("train", "val", "test"):
+            recs = splits[split_name]
+            hrs = sum(float(r.get("duration_s") or 0.0) for r in recs) / 3600.0
+            n_shabads = len({str(r["shabad_id"]) for r in recs if r.get("shabad_id")})
+            n_videos = len({r.get("video_id") for r in recs if r.get("video_id")})
+            lines.append(f"| {split_name} | {len(recs)} | {hrs:.3f} | {n_shabads} | {n_videos} |")
+        lines.append("")
+    else:
+        hrs = sum(float(r.get("duration_s") or 0.0) for r in manifest) / 3600.0
+        n_shabads = len({str(r["shabad_id"]) for r in manifest if r.get("shabad_id")})
+        n_videos = len({r.get("video_id") for r in manifest if r.get("video_id")})
+        lines += [
+            "## Manifest summary",
+            "",
+            f"- Clips: {len(manifest)}",
+            f"- Hours: {hrs:.3f}",
+            f"- Unique shabads: {n_shabads}",
+            f"- Unique videos: {n_videos}",
+            "",
+        ]
+
+    # --- rejections ---
+    lines += [
+        "## Rejection counts",
+        "",
+        "| Reason | Count |",
+        "|---|---|",
+    ]
+    for reason in ("score_low", "dur_short", "dur_long",
+                   "holdout_shabad", "holdout_video", "simran"):
+        lines.append(f"| {reason} | {rejections.get(reason, 0)} |")
+    lines.append("")
+
+    # --- top shabads (in train if split, else in manifest) ---
+    pool = splits["train"] if splits is not None else manifest
+    if pool:
+        per_shabad_hours: dict[str, float] = {}
+        per_shabad_count: dict[str, int] = {}
+        for r in pool:
+            sid = str(r.get("shabad_id") or "")
+            if not sid:
+                continue
+            per_shabad_hours[sid] = per_shabad_hours.get(sid, 0.0) + float(r.get("duration_s") or 0.0) / 3600.0
+            per_shabad_count[sid] = per_shabad_count.get(sid, 0) + 1
+        top = sorted(per_shabad_hours.items(), key=lambda kv: kv[1], reverse=True)[:10]
+        section_title = "Top shabads in train (by hours)" if splits else "Top shabads (by hours)"
+        lines += [f"## {section_title}", ""]
+        for i, (sid, hrs) in enumerate(top, 1):
+            lines.append(f"{i}. shabad `{sid}` — {hrs:.3f} h ({per_shabad_count[sid]} clips)")
+        lines.append("")
+
+    # --- diversity guardrail status ---
+    if splits is not None:
+        val_unique = len({str(r["shabad_id"]) for r in splits["val"] if r.get("shabad_id")})
+        test_unique = len({str(r["shabad_id"]) for r in splits["test"] if r.get("shabad_id")})
+        lines += ["## Diversity guardrail", ""]
+        flag = "⚠️ " if val_unique < 3 else ""
+        lines.append(f"- {flag}val unique shabads: {val_unique} (warn if < 3)")
+        flag = "⚠️ " if test_unique < 3 else ""
+        lines.append(f"- {flag}test unique shabads: {test_unique} (warn if < 3)")
+        lines.append("")
+
+    return "\n".join(lines)
 
 
 def _parse_split_ratios(s: str) -> tuple[float, float, float]:
