@@ -9,11 +9,22 @@ faster-whisper
 unidecode
 soundfile
 
-# Audio + model stack
-transformers
+# Audio + model stack.
+#
+# Version pins reflect the Phase 2.A debugging from May 2026:
+#   - transformers >= 4.41 for `eval_strategy` (renamed from `evaluation_strategy`).
+#   - transformers <  4.50 because 4.53.x breaks the surt-small-v3 tokenizer init
+#     (`AttributeError: 'list' object has no attribute 'keys'` in
+#     _set_model_specific_special_tokens).
+#   - accelerate   >= 1.1  for the `data_seed` TrainingArguments knob (PR 0.A).
+#   - accelerate   <  1.11 because 1.11+ requires torch >= 2.8 for the MPS
+#     GradScaler check — incompatible with our pinned torch 2.5 ecosystem.
+# To loosen the upper bounds, first upgrade torch to 2.8+ (which then needs
+# torchaudio/torchcodec/ctranslate2 to be revisited).
+transformers>=4.41,<4.50
 torch
 peft
-accelerate
+accelerate>=1.1,<1.11
 datasets
 huggingface_hub
 

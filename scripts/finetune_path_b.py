@@ -505,13 +505,18 @@ def _run_whisper_train(args, target_modules: list[str]) -> int:
         model.generation_config.task = "transcribe"
         model.generation_config.forced_decoder_ids = None
 
+    # NOTE: task_type intentionally omitted for Whisper.
+    # task_type="SEQ_2_SEQ_LM" makes PEFT wrap with PeftModelForSeq2SeqLM, which
+    # assumes a text-to-text task and renames `input_features` to `input_ids`
+    # before calling the base model's forward — that crashes WhisperForConditionalGeneration
+    # which expects `input_features` (mel spectrogram). Generic PeftModel (no task_type)
+    # passes args through unchanged. This matches the HF Whisper-LoRA tutorial.
     lora_config = LoraConfig(
         r=args.lora_r,
         lora_alpha=args.lora_alpha,
         target_modules=target_modules,
         lora_dropout=args.lora_dropout,
         bias="none",
-        task_type="SEQ_2_SEQ_LM",
     )
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
@@ -579,6 +584,12 @@ def _run_whisper_train(args, target_modules: list[str]) -> int:
         seed=args.seed,
         data_seed=args.seed,
         predict_with_generate=False,  # speeds up training; switch on for WER eval at large scale
+        # PEFT-wrapped Whisper has a generic *args/**kwargs forward signature that
+        # confuses HF Trainer's introspection — with remove_unused_columns=True
+        # (the default) it strips input_features and replays the row dict in a
+        # way that ends up passing input_ids to WhisperForConditionalGeneration.
+        # Disable column stripping so our data_collator's output goes through unchanged.
+        remove_unused_columns=False,
     )
 
     callbacks = []
