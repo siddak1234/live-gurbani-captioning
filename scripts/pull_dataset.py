@@ -38,6 +38,14 @@ from typing import Iterable, Iterator
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 DATASETS_CONFIG_PATH = REPO_ROOT / "configs" / "datasets.yaml"
 
+# Make `from src.matcher import normalize` work when this file is invoked
+# directly via `python scripts/pull_dataset.py` (the Makefile's pattern).
+# Without this, only the scripts/ directory is on sys.path, and src/ — at
+# the repo root — isn't importable. Other top-of-repo scripts
+# (finetune_path_b.py, build_training_dataset.py) do the same.
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 # Known parquet-shard datasets on HF, single-shard schema "data/train-NNNNN-of-NNNNN.parquet".
 SURT_DATASETS = {
     "kirtan":    "surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical",
