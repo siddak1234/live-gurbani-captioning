@@ -34,6 +34,7 @@ EVAL_OUT       ?= submissions/v5_surt_mac_v1
 COREML_CFG     ?= configs/export/coreml_ane.yaml
 COREML_OUT     ?= ios/Sources/GurbaniCaptioning/Resources
 BENCHMARK_DIR  ?= ../live-gurbani-captioning-benchmark-v1
+HF_WINDOW_SECONDS ?= 10
 
 # -----------------------------------------------------------------------------
 # Help
@@ -137,7 +138,7 @@ train: data ## Full LoRA fine-tune of surt-small-v3 on $(DATA_DIR). Auto-pulls d
 
 .PHONY: eval
 eval: ## Score $(TRAIN_OUT) adapter against the paired benchmark.
-	$(PYTHON) scripts/run_path_a.py \
+	HF_WINDOW_SECONDS=$(HF_WINDOW_SECONDS) $(PYTHON) scripts/run_path_a.py \
 		--backend huggingface_whisper \
 		--model surindersinghssj/surt-small-v3 \
 		--adapter-dir $(TRAIN_OUT) \
@@ -151,7 +152,7 @@ eval: ## Score $(TRAIN_OUT) adapter against the paired benchmark.
 
 .PHONY: eval-baseline
 eval-baseline: ## Re-score Path A v3.2 baseline (regression check; no fine-tune).
-	$(PYTHON) scripts/run_path_a.py \
+	HF_WINDOW_SECONDS=$(HF_WINDOW_SECONDS) $(PYTHON) scripts/run_path_a.py \
 		--blend "token_sort_ratio:0.5,WRatio:0.5" --threshold 0 \
 		--stay-bias 6 --blind --blind-aggregate chunk_vote \
 		--blind-lookback 30 --live --tentative-emit \

@@ -167,6 +167,13 @@ def _transcribe_hf(audio_path, model_size, language, *,
     processor = WhisperProcessor.from_pretrained(model_size, language=whisper_lang, task="transcribe")
     model = WhisperForConditionalGeneration.from_pretrained(model_size)
     if adapter_dir is not None:
+        # PEFT 0.19 checks torch.distributed.tensor.DTensor directly when
+        # loading LoRA layers. Torch 2.5 on macOS can import the module but
+        # does not attach it to torch.distributed, so provide that attribute
+        # before PEFT probes it. This is only needed on the adapter path.
+        if not hasattr(torch.distributed, "tensor"):
+            import torch.distributed.tensor as distributed_tensor
+            torch.distributed.tensor = distributed_tensor
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, adapter_dir)
     model.generation_config.language = whisper_lang
