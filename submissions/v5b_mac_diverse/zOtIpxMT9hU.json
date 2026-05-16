@@ -1,0 +1,101 @@
+{
+  "video_id": "zOtIpxMT9hU",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 10.0,
+      "line_idx": 1,
+      "shabad_id": 3712,
+      "verse_id": 42917,
+      "banidb_gurmukhi": "ਵੈਦੋ ਨ ਵਾਈ ਭੈਣੋ ਨ ਭਾਈ ਏਕੋ ਸਹਾਈ ਰਾਮੁ ਹੇ ॥੧॥"
+    },
+    {
+      "start": 10.0,
+      "end": 20.0,
+      "line_idx": 2,
+      "shabad_id": 1821,
+      "verse_id": 21977,
+      "banidb_gurmukhi": "ਤਾ ਕੋ ਅੰਤੁ ਨ ਜਾਈ ਲਖਣਾ ਆਵਤ ਜਾਤ ਰਹੈ ਗੁਬਾਰਿ ॥੧॥"
+    },
+    {
+      "start": 20.0,
+      "end": 30.0,
+      "line_idx": 4,
+      "shabad_id": 1341,
+      "verse_id": 15270,
+      "banidb_gurmukhi": "ਨਿਰਭੈ ਹੋਇ ਨ ਹਰਿ ਭਜੇ ਮਨ ਬਉਰਾ ਰੇ ਗਹਿਓ ਨ ਰਾਮ ਜਹਾਜੁ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 30.0,
+      "end": 70.0,
+      "line_idx": 1,
+      "shabad_id": 3712,
+      "verse_id": 42917,
+      "banidb_gurmukhi": "ਵੈਦੋ ਨ ਵਾਈ ਭੈਣੋ ਨ ਭਾਈ ਏਕੋ ਸਹਾਈ ਰਾਮੁ ਹੇ ॥੧॥"
+    },
+    {
+      "start": 70.0,
+      "end": 110.0,
+      "line_idx": 2,
+      "shabad_id": 3712,
+      "verse_id": 42918,
+      "banidb_gurmukhi": "ਕੀਤਾ ਜਿਸੋ ਹੋਵੈ ਪਾਪਾਂ ਮਲੋ ਧੋਵੈ ਸੋ ਸਿਮਰਹੁ ਪਰਧਾਨੁ ਹੇ ॥੨॥"
+    },
+    {
+      "start": 110.0,
+      "end": 150.0,
+      "line_idx": 3,
+      "shabad_id": 3712,
+      "verse_id": 42919,
+      "banidb_gurmukhi": "ਘਟਿ ਘਟੇ ਵਾਸੀ ਸਰਬ ਨਿਵਾਸੀ ਅਸਥਿਰੁ ਜਾ ਕਾ ਥਾਨੁ ਹੇ ॥੩॥"
+    },
+    {
+      "start": 150.0,
+      "end": 180.0,
+      "line_idx": 4,
+      "shabad_id": 3712,
+      "verse_id": 42920,
+      "banidb_gurmukhi": "ਆਵੈ ਨ ਜਾਵੈ ਸੰਗੇ ਸਮਾਵੈ ਪੂਰਨ ਜਾ ਕਾ ਕਾਮੁ ਹੇ ॥੪॥"
+    },
+    {
+      "start": 180.0,
+      "end": 210.0,
+      "line_idx": 5,
+      "shabad_id": 3712,
+      "verse_id": 42921,
+      "banidb_gurmukhi": "ਭਗਤ ਜਨਾ ਕਾ ਰਾਖਣਹਾਰਾ ॥"
+    },
+    {
+      "start": 210.0,
+      "end": 240.0,
+      "line_idx": 6,
+      "shabad_id": 3712,
+      "verse_id": 42922,
+      "banidb_gurmukhi": "ਸੰਤ ਜੀਵਹਿ ਜਪਿ ਪ੍ਰਾਨ ਅਧਾਰਾ ॥"
+    },
+    {
+      "start": 240.0,
+      "end": 270.0,
+      "line_idx": 3,
+      "shabad_id": 3712,
+      "verse_id": 42919,
+      "banidb_gurmukhi": "ਘਟਿ ਘਟੇ ਵਾਸੀ ਸਰਬ ਨਿਵਾਸੀ ਅਸਥਿਰੁ ਜਾ ਕਾ ਥਾਨੁ ਹੇ ॥੩॥"
+    },
+    {
+      "start": 270.0,
+      "end": 280.0,
+      "line_idx": 6,
+      "shabad_id": 3712,
+      "verse_id": 42922,
+      "banidb_gurmukhi": "ਸੰਤ ਜੀਵਹਿ ਜਪਿ ਪ੍ਰਾਨ ਅਧਾਰਾ ॥"
+    },
+    {
+      "start": 280.0,
+      "end": 288.9955625,
+      "line_idx": 7,
+      "shabad_id": 3712,
+      "verse_id": 42923,
+      "banidb_gurmukhi": "ਕਰਨ ਕਾਰਨ ਸਮਰਥੁ ਸੁਆਮੀ ਨਾਨਕੁ ਤਿਸੁ ਕੁਰਬਾਨੁ ਹੇ ॥੫॥੨॥੩੨॥"
+    }
+  ]
+}

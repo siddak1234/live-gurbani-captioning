@@ -1,0 +1,45 @@
+{
+  "video_id": "zOtIpxMT9hU",
+  "segments": [
+    {
+      "start": 100.0,
+      "end": 110.0,
+      "line_idx": 7,
+      "shabad_id": 1341,
+      "verse_id": 15273,
+      "banidb_gurmukhi": "ਜਿਉ ਨਲਨੀ ਸੂਅਟਾ ਗਹਿਓ ਮਨ ਬਉਰਾ ਰੇ ਮਾਯਾ ਇਹੁ ਬਿਉਹਾਰੁ ॥"
+    },
+    {
+      "start": 110.0,
+      "end": 130.0,
+      "line_idx": 3,
+      "shabad_id": 3712,
+      "verse_id": 42919,
+      "banidb_gurmukhi": "ਘਟਿ ਘਟੇ ਵਾਸੀ ਸਰਬ ਨਿਵਾਸੀ ਅਸਥਿਰੁ ਜਾ ਕਾ ਥਾਨੁ ਹੇ ॥੩॥"
+    },
+    {
+      "start": 130.0,
+      "end": 170.0,
+      "line_idx": 7,
+      "shabad_id": 1341,
+      "verse_id": 15273,
+      "banidb_gurmukhi": "ਜਿਉ ਨਲਨੀ ਸੂਅਟਾ ਗਹਿਓ ਮਨ ਬਉਰਾ ਰੇ ਮਾਯਾ ਇਹੁ ਬਿਉਹਾਰੁ ॥"
+    },
+    {
+      "start": 170.0,
+      "end": 200.0,
+      "line_idx": 5,
+      "shabad_id": 1341,
+      "verse_id": 15271,
+      "banidb_gurmukhi": "ਮਰਕਟ ਮੁਸਟੀ ਅਨਾਜ ਕੀ ਮਨ ਬਉਰਾ ਰੇ ਲੀਨੀ ਹਾਥੁ ਪਸਾਰਿ ॥"
+    },
+    {
+      "start": 200.0,
+      "end": 288.9955625,
+      "line_idx": 8,
+      "shabad_id": 1341,
+      "verse_id": 15274,
+      "banidb_gurmukhi": "ਜੈਸਾ ਰੰਗੁ ਕਸੁੰਭ ਕਾ ਮਨ ਬਉਰਾ ਰੇ ਤਿਉ ਪਸਰਿਓ ਪਾਸਾਰੁ ॥੩॥"
+    }
+  ]
+}
