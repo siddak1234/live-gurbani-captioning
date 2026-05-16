@@ -233,6 +233,8 @@ def main() -> int:
                         help="WANDB_PROJECT — used when report_to resolves to include wandb.")
     parser.add_argument("--run-name", default=None,
                         help="Trainer run_name + wandb run name. Null auto-generates from config hash + timestamp.")
+    parser.add_argument("--validate-only", action="store_true", default=False,
+                        help=argparse.SUPPRESS)
 
     # Apply YAML defaults BEFORE parse_args so CLI args still win.
     if yaml_defaults:
@@ -258,6 +260,8 @@ def main() -> int:
 
     # Validate eval/save coupling at argparse time (HF fails late and obscurely otherwise).
     _validate_eval_save_steps(args, parser)
+    if args.validate_only:
+        return 0
 
     import torch
     from transformers import set_seed

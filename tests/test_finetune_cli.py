@@ -106,7 +106,9 @@ class TestValidationGuards(unittest.TestCase):
                  "--eval-strategy", "steps",
                  "--eval-steps", "250",
                  "--save-steps", "500",
-                 "--load-best-model-at-end")
+                 "--load-best-model-at-end",
+                 "--validate-only")
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
         # Our guard's error message is the only place that uses this phrase;
         # argparse's usage line in stderr mentions --save-steps regardless,
         # so check for the guard's unique string instead.
