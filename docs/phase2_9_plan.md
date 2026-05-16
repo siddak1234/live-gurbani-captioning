@@ -55,6 +55,14 @@ Archive a machine-readable diagnostic for each benchmark case:
 Purpose: confirm whether failures are caused by missing evidence, legal loops,
 or timing gaps before building a larger decoder.
 
+**Initial result:** completed in
+[`diagnostics/phase2_9_score_lattice`](../diagnostics/phase2_9_score_lattice).
+Across 268 post-lock chunks whose midpoint overlaps a GT lyric, local best
+matches GT on 235 and stay-bias matches GT on 244 (**91.0%**). The worst
+`zOtIpxMT9hU_cold66` case has only 3 GT-overlapping post-lock chunks and local
+best is correct on all 3. This points away from "recognition is impossible" and
+toward boundary/null handling plus loop-aware alignment.
+
 ### 2.9.B — loop-aware text-score aligner
 
 Build a first aligner over matcher score vectors, not frame-level CTC:

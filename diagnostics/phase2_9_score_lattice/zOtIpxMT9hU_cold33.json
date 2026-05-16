@@ -1,0 +1,540 @@
+{
+  "case": "zOtIpxMT9hU_cold33",
+  "video_id": "zOtIpxMT9hU",
+  "shabad_id": 3712,
+  "commit_time": 126.7,
+  "config": {
+    "backend": "huggingface_whisper",
+    "model": "surindersinghssj/surt-small-v3",
+    "adapter_dir": "lora_adapters/v5b_mac_diverse",
+    "ratio": "WRatio",
+    "blend": {
+      "token_sort_ratio": 0.5,
+      "WRatio": 0.5
+    },
+    "stay_bias": 6.0,
+    "threshold": 0.0
+  },
+  "summary": {
+    "chunks": 17,
+    "chunks_with_gt": 12,
+    "best_matches_gt": 12,
+    "stay_matches_gt": 11,
+    "null_gt_chunks": 5,
+    "case": "zOtIpxMT9hU_cold33",
+    "shabad_id": 3712,
+    "commit_time": 126.7
+  },
+  "rows": [
+    {
+      "start": 120.0,
+      "end": 130.0,
+      "text": "ਨਿਵਾਸੀ ਅਸਥਿਰੁ ਅਜਾਂ ਕਾ ਥਾਨੁ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 69.417
+        },
+        {
+          "line_idx": 4,
+          "score": 65.103
+        },
+        {
+          "line_idx": 5,
+          "score": 47.188
+        },
+        {
+          "line_idx": 7,
+          "score": 46.307
+        },
+        {
+          "line_idx": 6,
+          "score": 43.548
+        }
+      ]
+    },
+    {
+      "start": 130.0,
+      "end": 140.0,
+      "text": "ਰੇ ਅਤਿਰਜਾਤਾ ਭਾਗੇ ਅਤਿਰਜਾਤਾ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 54.192
+        },
+        {
+          "line_idx": 5,
+          "score": 48.75
+        },
+        {
+          "line_idx": 7,
+          "score": 44.828
+        },
+        {
+          "line_idx": 4,
+          "score": 44.706
+        },
+        {
+          "line_idx": 6,
+          "score": 43.548
+        }
+      ]
+    },
+    {
+      "start": 140.0,
+      "end": 150.0,
+      "text": "ਸਾਚਾ ਪਾਵਣੇ ਅੰਤਰਿ ਸਾਚਾ ਪਾਵਣੇ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 50.932
+        },
+        {
+          "line_idx": 5,
+          "score": 48.75
+        },
+        {
+          "line_idx": 4,
+          "score": 46.067
+        },
+        {
+          "line_idx": 7,
+          "score": 43.956
+        },
+        {
+          "line_idx": 1,
+          "score": 43.82
+        }
+      ]
+    },
+    {
+      "start": 150.0,
+      "end": 160.0,
+      "text": "ਜਾਇ ਆਵੈ ਨ ਜਾਵੈ ਸੰਗੇ",
+      "gt_line_idx": 4,
+      "best_line_idx": 4,
+      "stay_line_idx": 4,
+      "top_scores": [
+        {
+          "line_idx": 4,
+          "score": 71.321
+        },
+        {
+          "line_idx": 6,
+          "score": 46.944
+        },
+        {
+          "line_idx": 3,
+          "score": 46.098
+        },
+        {
+          "line_idx": 7,
+          "score": 44.628
+        },
+        {
+          "line_idx": 1,
+          "score": 44.231
+        }
+      ]
+    },
+    {
+      "start": 160.0,
+      "end": 170.0,
+      "text": "ਪਾਵੈ ਆਵੈ ਨ ਜਾਵੈ ਸਚੇ ਸਮਾਵੈ ਪੂਰਨ ਜਾ ਕਾ",
+      "gt_line_idx": 4,
+      "best_line_idx": 4,
+      "stay_line_idx": 4,
+      "top_scores": [
+        {
+          "line_idx": 4,
+          "score": 77.0
+        },
+        {
+          "line_idx": 5,
+          "score": 66.801
+        },
+        {
+          "line_idx": 3,
+          "score": 51.429
+        },
+        {
+          "line_idx": 2,
+          "score": 49.541
+        },
+        {
+          "line_idx": 7,
+          "score": 49.02
+        }
+      ]
+    },
+    {
+      "start": 170.0,
+      "end": 180.0,
+      "text": "ਨਾਮੁ ਲੇ ਪੂਰਨ ਜਾਗਾ ਨਾਮੁ ਲੇ",
+      "gt_line_idx": 4,
+      "best_line_idx": 4,
+      "stay_line_idx": 4,
+      "top_scores": [
+        {
+          "line_idx": 4,
+          "score": 47.696
+        },
+        {
+          "line_idx": 3,
+          "score": 44.902
+        },
+        {
+          "line_idx": 6,
+          "score": 44.262
+        },
+        {
+          "line_idx": 5,
+          "score": 40.238
+        },
+        {
+          "line_idx": 1,
+          "score": 39.988
+        }
+      ]
+    },
+    {
+      "start": 180.0,
+      "end": 190.0,
+      "text": "ਭਗਤ ਜਨਾ ਕਾ ਰਾਖਣਹਾਰਾ ਭਗਤਿ ਜਨਾ",
+      "gt_line_idx": 5,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 74.791
+        },
+        {
+          "line_idx": 3,
+          "score": 66.961
+        },
+        {
+          "line_idx": 4,
+          "score": 47.667
+        },
+        {
+          "line_idx": 7,
+          "score": 43.478
+        },
+        {
+          "line_idx": 6,
+          "score": 41.791
+        }
+      ]
+    },
+    {
+      "start": 190.0,
+      "end": 200.0,
+      "text": "ਰਾਖਣਹਾਰਾ ਗੁਰਿ ਦਿਨੁ ਰਾਖਾ ਰਾਖਣਹਾਰਾ",
+      "gt_line_idx": 5,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 60.908
+        },
+        {
+          "line_idx": 4,
+          "score": 46.392
+        },
+        {
+          "line_idx": 6,
+          "score": 45.169
+        },
+        {
+          "line_idx": 7,
+          "score": 44.444
+        },
+        {
+          "line_idx": 3,
+          "score": 42.157
+        }
+      ]
+    },
+    {
+      "start": 200.0,
+      "end": 210.0,
+      "text": "ਜਨਾ ਕਾ ਰਾਖਨਹਾਰਾ ਸਤਿ ਜਿਨਿ ਜਪਿ ਪ੍ਰਾਣ ਅਧਾਰਾ",
+      "gt_line_idx": null,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 73.614
+        },
+        {
+          "line_idx": 6,
+          "score": 70.598
+        },
+        {
+          "line_idx": 4,
+          "score": 53.529
+        },
+        {
+          "line_idx": 7,
+          "score": 50.962
+        },
+        {
+          "line_idx": 3,
+          "score": 48.271
+        }
+      ]
+    },
+    {
+      "start": 210.0,
+      "end": 220.0,
+      "text": "ਸਦ ਜੀਵੈ ਜਪਿ ਪ੍ਰਾਣ ਅਧਾਰਾ ਸਦ ਜੀਵੈ ਜਪਿ ਪ੍ਰਾਣ ਅਧਾਰਾ ਸਦ ਜੀਵੈ ਜਪਿ ਪ੍ਰਾਣ",
+      "gt_line_idx": 6,
+      "best_line_idx": 6,
+      "stay_line_idx": 6,
+      "top_scores": [
+        {
+          "line_idx": 6,
+          "score": 62.933
+        },
+        {
+          "line_idx": 4,
+          "score": 45.312
+        },
+        {
+          "line_idx": 2,
+          "score": 44.681
+        },
+        {
+          "line_idx": 5,
+          "score": 42.695
+        },
+        {
+          "line_idx": 3,
+          "score": 39.854
+        }
+      ]
+    },
+    {
+      "start": 220.0,
+      "end": 230.0,
+      "text": "ਅਧਾਰਾ ਭਗਤ ਜਨੈ ਕਾ ਰਾਖਣਹਾਰਾ ਭਗਤ ਜਨੈ ਕਾ ਰਾਖਣਹਾਰਾ ਸਭਿ ਜੀਵੈ ਸਭ",
+      "gt_line_idx": 5,
+      "best_line_idx": 5,
+      "stay_line_idx": 6,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 67.975
+        },
+        {
+          "line_idx": 4,
+          "score": 66.992
+        },
+        {
+          "line_idx": 6,
+          "score": 62.016
+        },
+        {
+          "line_idx": 3,
+          "score": 46.018
+        },
+        {
+          "line_idx": 2,
+          "score": 45.394
+        }
+      ]
+    },
+    {
+      "start": 230.0,
+      "end": 240.0,
+      "text": "ਗੁਰੂ ਪਾਰ ਅਧਾਰ ਹਰਿ ਜੀਵੈ ਜਪਕਾਲ ਅਧਾਰ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ",
+      "gt_line_idx": 6,
+      "best_line_idx": 6,
+      "stay_line_idx": 6,
+      "top_scores": [
+        {
+          "line_idx": 6,
+          "score": 44.598
+        },
+        {
+          "line_idx": 2,
+          "score": 42.912
+        },
+        {
+          "line_idx": 4,
+          "score": 42.574
+        },
+        {
+          "line_idx": 5,
+          "score": 41.976
+        },
+        {
+          "line_idx": 3,
+          "score": 41.779
+        }
+      ]
+    },
+    {
+      "start": 240.0,
+      "end": 250.0,
+      "text": "ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ",
+      "gt_line_idx": null,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 45.286
+        },
+        {
+          "line_idx": 4,
+          "score": 38.436
+        },
+        {
+          "line_idx": 2,
+          "score": 36.486
+        },
+        {
+          "line_idx": 1,
+          "score": 35.986
+        },
+        {
+          "line_idx": 5,
+          "score": 35.797
+        }
+      ]
+    },
+    {
+      "start": 250.0,
+      "end": 260.0,
+      "text": "ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ",
+      "gt_line_idx": null,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 45.286
+        },
+        {
+          "line_idx": 4,
+          "score": 38.436
+        },
+        {
+          "line_idx": 2,
+          "score": 36.486
+        },
+        {
+          "line_idx": 1,
+          "score": 35.986
+        },
+        {
+          "line_idx": 5,
+          "score": 35.797
+        }
+      ]
+    },
+    {
+      "start": 260.0,
+      "end": 270.0,
+      "text": "ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ",
+      "gt_line_idx": null,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 45.286
+        },
+        {
+          "line_idx": 4,
+          "score": 38.436
+        },
+        {
+          "line_idx": 2,
+          "score": 36.486
+        },
+        {
+          "line_idx": 1,
+          "score": 35.986
+        },
+        {
+          "line_idx": 5,
+          "score": 35.797
+        }
+      ]
+    },
+    {
+      "start": 270.0,
+      "end": 280.0,
+      "text": "ਪਿਆਰਾ ਸੰਤ ਜੀਵੈ ਜਪਿ ਪ੍ਰਾਣ ਪਧਾਰਾ ਕਰਣ ਕਾਰਣ",
+      "gt_line_idx": null,
+      "best_line_idx": 6,
+      "stay_line_idx": 6,
+      "top_scores": [
+        {
+          "line_idx": 6,
+          "score": 56.637
+        },
+        {
+          "line_idx": 2,
+          "score": 50.946
+        },
+        {
+          "line_idx": 7,
+          "score": 48.75
+        },
+        {
+          "line_idx": 4,
+          "score": 48.039
+        },
+        {
+          "line_idx": 5,
+          "score": 46.914
+        }
+      ]
+    },
+    {
+      "start": 280.0,
+      "end": 288.9955625,
+      "text": "ਸੁਆਮੀ ਨਾਨਕ ਤਿਸੁ ਗੁਰਬਾਣੀ",
+      "gt_line_idx": 7,
+      "best_line_idx": 7,
+      "stay_line_idx": 7,
+      "top_scores": [
+        {
+          "line_idx": 7,
+          "score": 60.644
+        },
+        {
+          "line_idx": 1,
+          "score": 41.365
+        },
+        {
+          "line_idx": 4,
+          "score": 38.973
+        },
+        {
+          "line_idx": 5,
+          "score": 38.333
+        },
+        {
+          "line_idx": 6,
+          "score": 37.931
+        }
+      ]
+    }
+  ]
+}

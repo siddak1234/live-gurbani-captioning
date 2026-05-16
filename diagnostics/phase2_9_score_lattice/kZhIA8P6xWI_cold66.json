@@ -1,0 +1,270 @@
+{
+  "case": "kZhIA8P6xWI_cold66",
+  "video_id": "kZhIA8P6xWI",
+  "shabad_id": 1821,
+  "commit_time": 233.5,
+  "config": {
+    "backend": "huggingface_whisper",
+    "model": "surindersinghssj/surt-small-v3",
+    "adapter_dir": "lora_adapters/v5b_mac_diverse",
+    "ratio": "WRatio",
+    "blend": {
+      "token_sort_ratio": 0.5,
+      "WRatio": 0.5
+    },
+    "stay_bias": 6.0,
+    "threshold": 0.0
+  },
+  "summary": {
+    "chunks": 8,
+    "chunks_with_gt": 7,
+    "best_matches_gt": 6,
+    "stay_matches_gt": 6,
+    "null_gt_chunks": 1,
+    "case": "kZhIA8P6xWI_cold66",
+    "shabad_id": 1821,
+    "commit_time": 233.5
+  },
+  "rows": [
+    {
+      "start": 230.0,
+      "end": 240.0,
+      "text": "ਰਾਮ ਸੁਰਤਾਨ ਨਾਥ ਬਿਹੰਤ ਅਜੋਨੀ",
+      "gt_line_idx": 9,
+      "best_line_idx": 9,
+      "stay_line_idx": 9,
+      "top_scores": [
+        {
+          "line_idx": 9,
+          "score": 51.835
+        },
+        {
+          "line_idx": 2,
+          "score": 43.8
+        },
+        {
+          "line_idx": 10,
+          "score": 42.484
+        },
+        {
+          "line_idx": 3,
+          "score": 41.786
+        },
+        {
+          "line_idx": 8,
+          "score": 41.179
+        }
+      ]
+    },
+    {
+      "start": 240.0,
+      "end": 250.0,
+      "text": "ਸਾਚੇ ਮਹਲਿ ਉਪਾਰਾ",
+      "gt_line_idx": 9,
+      "best_line_idx": 9,
+      "stay_line_idx": 9,
+      "top_scores": [
+        {
+          "line_idx": 9,
+          "score": 47.524
+        },
+        {
+          "line_idx": 3,
+          "score": 46.491
+        },
+        {
+          "line_idx": 2,
+          "score": 41.429
+        },
+        {
+          "line_idx": 5,
+          "score": 40.147
+        },
+        {
+          "line_idx": 7,
+          "score": 38.753
+        }
+      ]
+    },
+    {
+      "start": 250.0,
+      "end": 260.0,
+      "text": "ਜ ਨਾਨਕ ਸਹਜਿ ਮਿਲੈ ਜਗਜੀਵਨੁ ਨਦਰਿ",
+      "gt_line_idx": 10,
+      "best_line_idx": 10,
+      "stay_line_idx": 10,
+      "top_scores": [
+        {
+          "line_idx": 10,
+          "score": 60.823
+        },
+        {
+          "line_idx": 8,
+          "score": 41.463
+        },
+        {
+          "line_idx": 6,
+          "score": 40.753
+        },
+        {
+          "line_idx": 9,
+          "score": 39.494
+        },
+        {
+          "line_idx": 2,
+          "score": 38.276
+        }
+      ]
+    },
+    {
+      "start": 260.0,
+      "end": 270.0,
+      "text": "ਤੇਰੀ ਨਿਸਤਾਰਾ ਪ੍ਰੀਤਮ ਕਿਉ",
+      "gt_line_idx": null,
+      "best_line_idx": 10,
+      "stay_line_idx": 10,
+      "top_scores": [
+        {
+          "line_idx": 10,
+          "score": 40.604
+        },
+        {
+          "line_idx": 7,
+          "score": 39.753
+        },
+        {
+          "line_idx": 3,
+          "score": 39.0
+        },
+        {
+          "line_idx": 6,
+          "score": 38.005
+        },
+        {
+          "line_idx": 9,
+          "score": 37.324
+        }
+      ]
+    },
+    {
+      "start": 270.0,
+      "end": 280.0,
+      "text": "ਹਰਿ ਮੇਰੇ ਪ੍ਰਾਨ ਅਧਾਰ ਜਾ ਕੇ ਭਗਤਿ ਕਰਹਿ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 63.312
+        },
+        {
+          "line_idx": 4,
+          "score": 50.242
+        },
+        {
+          "line_idx": 2,
+          "score": 46.129
+        },
+        {
+          "line_idx": 6,
+          "score": 45.0
+        },
+        {
+          "line_idx": 5,
+          "score": 44.945
+        }
+      ]
+    },
+    {
+      "start": 280.0,
+      "end": 290.0,
+      "text": "ਜਨ ਪੂਰੈ ਜਾ ਕੀ ਭਗਤਿ ਕਰਹਿ ਜਨ ਪੂਰੈ ਮੁਨਿ ਜਨ",
+      "gt_line_idx": 4,
+      "best_line_idx": 4,
+      "stay_line_idx": 4,
+      "top_scores": [
+        {
+          "line_idx": 4,
+          "score": 50.485
+        },
+        {
+          "line_idx": 2,
+          "score": 42.216
+        },
+        {
+          "line_idx": 6,
+          "score": 41.906
+        },
+        {
+          "line_idx": 3,
+          "score": 41.667
+        },
+        {
+          "line_idx": 8,
+          "score": 40.625
+        }
+      ]
+    },
+    {
+      "start": 290.0,
+      "end": 300.0,
+      "text": "ਬਿਸਰੈ ਗੁਰ ਵੀਚਾਰੁ ਪ੍ਰੀਤਮ ਕਿਉ ਬਿਸਰੈ",
+      "gt_line_idx": 3,
+      "best_line_idx": 4,
+      "stay_line_idx": 4,
+      "top_scores": [
+        {
+          "line_idx": 4,
+          "score": 62.963
+        },
+        {
+          "line_idx": 3,
+          "score": 44.2
+        },
+        {
+          "line_idx": 6,
+          "score": 43.081
+        },
+        {
+          "line_idx": 7,
+          "score": 39.56
+        },
+        {
+          "line_idx": 8,
+          "score": 37.931
+        }
+      ]
+    },
+    {
+      "start": 300.0,
+      "end": 306.027375,
+      "text": "ਮਿਲੈ ਮੇਰੇ ਪ੍ਰਾਨ ਅਧਾਰੁ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 62.5
+        },
+        {
+          "line_idx": 6,
+          "score": 49.333
+        },
+        {
+          "line_idx": 10,
+          "score": 44.48
+        },
+        {
+          "line_idx": 7,
+          "score": 42.8
+        },
+        {
+          "line_idx": 9,
+          "score": 42.75
+        }
+      ]
+    }
+  ]
+}
