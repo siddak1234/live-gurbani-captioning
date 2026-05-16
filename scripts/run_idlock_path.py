@@ -136,6 +136,18 @@ def main() -> int:
     parser.add_argument("--ratio", default="WRatio")
     parser.add_argument("--blend", default="token_sort_ratio:0.5,WRatio:0.5")
     parser.add_argument("--stay-bias", type=float, default=6.0)
+    parser.add_argument("--smoother", default="auto",
+                        choices=["auto", "basic", "stay_bias", "viterbi"],
+                        help="Post/pre smoother implementation. auto preserves historical behavior: "
+                             "stay_bias when --stay-bias > 0, otherwise basic.")
+    parser.add_argument("--viterbi-jump-penalty", type=float, default=4.0,
+                        help="Penalty per line-distance for the Viterbi sequence smoother.")
+    parser.add_argument("--viterbi-backtrack-penalty", type=float, default=8.0,
+                        help="Extra penalty per backward line-distance for Viterbi smoothing.")
+    parser.add_argument("--viterbi-null-score", type=float, default=None,
+                        help="Enable Viterbi no-line state with this constant local score.")
+    parser.add_argument("--viterbi-null-switch-penalty", type=float, default=0.0,
+                        help="Penalty for entering/exiting Viterbi no-line state.")
     parser.add_argument("--blind-lookback", type=float, default=30.0)
     parser.add_argument("--blind-aggregate", default="chunk_vote")
     parser.add_argument("--blind-ratio", default="WRatio")
@@ -169,6 +181,11 @@ def main() -> int:
         blend=_parse_blend(args.blend),
         score_threshold=args.threshold,
         stay_bias=args.stay_bias,
+        smoother=args.smoother,
+        viterbi_jump_penalty=args.viterbi_jump_penalty,
+        viterbi_backtrack_penalty=args.viterbi_backtrack_penalty,
+        viterbi_null_score=args.viterbi_null_score,
+        viterbi_null_switch_penalty=args.viterbi_null_switch_penalty,
         blind_lookback=args.blind_lookback,
         blind_aggregate=args.blind_aggregate,
         blind_ratio=args.blind_ratio,
@@ -185,6 +202,11 @@ def main() -> int:
         blend=_parse_blend(args.blend),
         score_threshold=args.threshold,
         stay_bias=args.stay_bias,
+        smoother=args.smoother,
+        viterbi_jump_penalty=args.viterbi_jump_penalty,
+        viterbi_backtrack_penalty=args.viterbi_backtrack_penalty,
+        viterbi_null_score=args.viterbi_null_score,
+        viterbi_null_switch_penalty=args.viterbi_null_switch_penalty,
         blind_lookback=args.blind_lookback,
         live=False,
         tentative_emit=False,
@@ -203,7 +225,7 @@ def main() -> int:
         f"(pre={args.pre_backend}:{args.pre_model}, "
         f"post={args.post_backend}:{args.post_model}, "
         f"adapter={args.post_adapter_dir}, post_context={args.post_context}, "
-        f"lookback={args.blind_lookback}s)",
+        f"lookback={args.blind_lookback}s, smoother={args.smoother})",
         flush=True,
     )
     failures: list[str] = []
