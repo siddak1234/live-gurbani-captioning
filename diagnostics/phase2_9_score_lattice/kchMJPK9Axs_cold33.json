@@ -1,0 +1,1260 @@
+{
+  "case": "kchMJPK9Axs_cold33",
+  "video_id": "kchMJPK9Axs",
+  "shabad_id": 1341,
+  "commit_time": 246.0,
+  "config": {
+    "backend": "huggingface_whisper",
+    "model": "surindersinghssj/surt-small-v3",
+    "adapter_dir": "lora_adapters/v5b_mac_diverse",
+    "ratio": "WRatio",
+    "blend": {
+      "token_sort_ratio": 0.5,
+      "WRatio": 0.5
+    },
+    "stay_bias": 6.0,
+    "threshold": 0.0
+  },
+  "summary": {
+    "chunks": 41,
+    "chunks_with_gt": 32,
+    "best_matches_gt": 29,
+    "stay_matches_gt": 31,
+    "null_gt_chunks": 9,
+    "case": "kchMJPK9Axs_cold33",
+    "shabad_id": 1341,
+    "commit_time": 246.0
+  },
+  "rows": [
+    {
+      "start": 240.0,
+      "end": 250.0,
+      "text": "ਤਜਿ ਮਨੁ ਬਉਰਾ ਰੇ ਬਿਖੈ ਬਾਜੁ ਹਰਿ ਰਾਜੁ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 66.807
+        },
+        {
+          "line_idx": 4,
+          "score": 51.052
+        },
+        {
+          "line_idx": 8,
+          "score": 51.042
+        },
+        {
+          "line_idx": 6,
+          "score": 50.301
+        },
+        {
+          "line_idx": 7,
+          "score": 48.485
+        }
+      ]
+    },
+    {
+      "start": 250.0,
+      "end": 260.0,
+      "text": "ਸਾਜਨੁ ਬਉਰਾ ਸਮਝੁ ਮਨਿ ਬਉਰਾ ਰੇ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 58.667
+        },
+        {
+          "line_idx": 2,
+          "score": 52.831
+        },
+        {
+          "line_idx": 8,
+          "score": 51.122
+        },
+        {
+          "line_idx": 5,
+          "score": 50.103
+        },
+        {
+          "line_idx": 7,
+          "score": 49.796
+        }
+      ]
+    },
+    {
+      "start": 260.0,
+      "end": 270.0,
+      "text": "ਜ ਜ",
+      "gt_line_idx": null,
+      "best_line_idx": 4,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 4,
+          "score": 33.262
+        },
+        {
+          "line_idx": 3,
+          "score": 32.848
+        },
+        {
+          "line_idx": 2,
+          "score": 32.071
+        },
+        {
+          "line_idx": 8,
+          "score": 31.89
+        },
+        {
+          "line_idx": 5,
+          "score": 31.726
+        }
+      ]
+    },
+    {
+      "start": 270.0,
+      "end": 280.0,
+      "text": "ਮਰਿ ਕਟਿ ਮੁਸਟੀ ਅਰਾਧ",
+      "gt_line_idx": null,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 45.502
+        },
+        {
+          "line_idx": 3,
+          "score": 38.627
+        },
+        {
+          "line_idx": 8,
+          "score": 37.977
+        },
+        {
+          "line_idx": 1,
+          "score": 36.232
+        },
+        {
+          "line_idx": 9,
+          "score": 35.66
+        }
+      ]
+    },
+    {
+      "start": 280.0,
+      "end": 290.0,
+      "text": "ਜੀ ਮਨ ਬਉਰਾ ਰੇ",
+      "gt_line_idx": null,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 60.291
+        },
+        {
+          "line_idx": 4,
+          "score": 56.299
+        },
+        {
+          "line_idx": 7,
+          "score": 55.229
+        },
+        {
+          "line_idx": 2,
+          "score": 54.04
+        },
+        {
+          "line_idx": 8,
+          "score": 53.194
+        }
+      ]
+    },
+    {
+      "start": 290.0,
+      "end": 300.0,
+      "text": "ਮਰਣ ਕਟ ਮੁਸਟੀ ਅਨਾਦ ਕੀ ਮਨਿ ਬਉਰਾ",
+      "gt_line_idx": 5,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 56.513
+        },
+        {
+          "line_idx": 3,
+          "score": 46.899
+        },
+        {
+          "line_idx": 2,
+          "score": 46.011
+        },
+        {
+          "line_idx": 9,
+          "score": 45.137
+        },
+        {
+          "line_idx": 7,
+          "score": 44.605
+        }
+      ]
+    },
+    {
+      "start": 300.0,
+      "end": 310.0,
+      "text": "ਧਾਰੇ ਲੀਨੑੀ ਹਾਥ ਪਸਾਰ",
+      "gt_line_idx": 5,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 63.926
+        },
+        {
+          "line_idx": 8,
+          "score": 43.035
+        },
+        {
+          "line_idx": 4,
+          "score": 41.105
+        },
+        {
+          "line_idx": 6,
+          "score": 41.054
+        },
+        {
+          "line_idx": 3,
+          "score": 40.269
+        }
+      ]
+    },
+    {
+      "start": 310.0,
+      "end": 320.0,
+      "text": "ਜੀ ਹਾਥ ਪਸਾਰ ਛੂਟਨ ਕੋ",
+      "gt_line_idx": null,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 61.355
+        },
+        {
+          "line_idx": 3,
+          "score": 41.971
+        },
+        {
+          "line_idx": 1,
+          "score": 40.455
+        },
+        {
+          "line_idx": 6,
+          "score": 39.472
+        },
+        {
+          "line_idx": 10,
+          "score": 37.829
+        }
+      ]
+    },
+    {
+      "start": 320.0,
+      "end": 330.0,
+      "text": "ਤਾ ਪਰਿਆ ਮਨਿ ਬਉਰਾ ਰੇ ਨਾਚਿਓ ਕਰਿ ਕਰਿ",
+      "gt_line_idx": 6,
+      "best_line_idx": 6,
+      "stay_line_idx": 6,
+      "top_scores": [
+        {
+          "line_idx": 6,
+          "score": 65.008
+        },
+        {
+          "line_idx": 3,
+          "score": 54.695
+        },
+        {
+          "line_idx": 8,
+          "score": 53.684
+        },
+        {
+          "line_idx": 7,
+          "score": 53.203
+        },
+        {
+          "line_idx": 4,
+          "score": 51.791
+        }
+      ]
+    },
+    {
+      "start": 330.0,
+      "end": 340.0,
+      "text": "ਆ ਨਾਚਓ ਘਰਿ ਘਰਿ ਬਾਰ",
+      "gt_line_idx": 6,
+      "best_line_idx": 6,
+      "stay_line_idx": 6,
+      "top_scores": [
+        {
+          "line_idx": 6,
+          "score": 65.739
+        },
+        {
+          "line_idx": 7,
+          "score": 51.096
+        },
+        {
+          "line_idx": 3,
+          "score": 50.311
+        },
+        {
+          "line_idx": 2,
+          "score": 46.214
+        },
+        {
+          "line_idx": 4,
+          "score": 45.176
+        }
+      ]
+    },
+    {
+      "start": 340.0,
+      "end": 350.0,
+      "text": "ਸਾਚਿਓ ਘਰਿ ਘਰਿ ਬਾਰ ਸਮਝਿ ਮਨੁ ਬਉਰਾ ਸਮਝਿ ਮਨੁ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 6,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 60.769
+        },
+        {
+          "line_idx": 6,
+          "score": 57.973
+        },
+        {
+          "line_idx": 2,
+          "score": 49.505
+        },
+        {
+          "line_idx": 4,
+          "score": 49.074
+        },
+        {
+          "line_idx": 7,
+          "score": 47.383
+        }
+      ]
+    },
+    {
+      "start": 350.0,
+      "end": 360.0,
+      "text": "ਬਉਰਾ ਰੇ ਬਿਖੈ ਬਾਜੁ ਹਰਿ ਰਾਜੁ ਸਮਝੁ ਮਨਿ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 72.118
+        },
+        {
+          "line_idx": 2,
+          "score": 49.263
+        },
+        {
+          "line_idx": 6,
+          "score": 48.822
+        },
+        {
+          "line_idx": 9,
+          "score": 47.268
+        },
+        {
+          "line_idx": 4,
+          "score": 46.56
+        }
+      ]
+    },
+    {
+      "start": 360.0,
+      "end": 370.0,
+      "text": "ਬਉਰਾ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ਬਿਖੈ ਬਾਜ ਹਰਿ ਰਾਜੇ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 72.897
+        },
+        {
+          "line_idx": 2,
+          "score": 54.0
+        },
+        {
+          "line_idx": 7,
+          "score": 51.887
+        },
+        {
+          "line_idx": 8,
+          "score": 51.456
+        },
+        {
+          "line_idx": 6,
+          "score": 51.409
+        }
+      ]
+    },
+    {
+      "start": 370.0,
+      "end": 380.0,
+      "text": "ਰੇ ਸਮਝ ਮਨ ਬਉਰਾ ਸਮਝ ਮਨ ਬਉਰਾ ਰੇ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 60.256
+        },
+        {
+          "line_idx": 2,
+          "score": 55.366
+        },
+        {
+          "line_idx": 7,
+          "score": 51.246
+        },
+        {
+          "line_idx": 5,
+          "score": 48.055
+        },
+        {
+          "line_idx": 6,
+          "score": 47.898
+        }
+      ]
+    },
+    {
+      "start": 380.0,
+      "end": 390.0,
+      "text": "ਜ ਜ",
+      "gt_line_idx": null,
+      "best_line_idx": 4,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 4,
+          "score": 33.262
+        },
+        {
+          "line_idx": 3,
+          "score": 32.848
+        },
+        {
+          "line_idx": 2,
+          "score": 32.071
+        },
+        {
+          "line_idx": 8,
+          "score": 31.89
+        },
+        {
+          "line_idx": 5,
+          "score": 31.726
+        }
+      ]
+    },
+    {
+      "start": 390.0,
+      "end": 400.0,
+      "text": "ਜਿਉ ਨਰਨੀ",
+      "gt_line_idx": null,
+      "best_line_idx": 7,
+      "stay_line_idx": 7,
+      "top_scores": [
+        {
+          "line_idx": 7,
+          "score": 38.824
+        },
+        {
+          "line_idx": 8,
+          "score": 33.484
+        },
+        {
+          "line_idx": 4,
+          "score": 30.145
+        },
+        {
+          "line_idx": 6,
+          "score": 29.722
+        },
+        {
+          "line_idx": 3,
+          "score": 26.692
+        }
+      ]
+    },
+    {
+      "start": 400.0,
+      "end": 410.0,
+      "text": "ਤੇਰੀ ਸੂਠਾ ਕਹਿਓ ਮਨ ਬਉਰਾ ਰੇ ਮਾਇਆ",
+      "gt_line_idx": 7,
+      "best_line_idx": 7,
+      "stay_line_idx": 7,
+      "top_scores": [
+        {
+          "line_idx": 7,
+          "score": 56.0
+        },
+        {
+          "line_idx": 8,
+          "score": 49.485
+        },
+        {
+          "line_idx": 6,
+          "score": 49.418
+        },
+        {
+          "line_idx": 5,
+          "score": 49.0
+        },
+        {
+          "line_idx": 3,
+          "score": 48.81
+        }
+      ]
+    },
+    {
+      "start": 410.0,
+      "end": 420.0,
+      "text": "ਇਹ ਬਿਉਹਾ ਮਾਇਆ ਇਹ ਬਿਉਹਾਰ",
+      "gt_line_idx": 7,
+      "best_line_idx": 7,
+      "stay_line_idx": 7,
+      "top_scores": [
+        {
+          "line_idx": 7,
+          "score": 69.494
+        },
+        {
+          "line_idx": 3,
+          "score": 54.06
+        },
+        {
+          "line_idx": 4,
+          "score": 49.138
+        },
+        {
+          "line_idx": 6,
+          "score": 47.222
+        },
+        {
+          "line_idx": 8,
+          "score": 46.687
+        }
+      ]
+    },
+    {
+      "start": 420.0,
+      "end": 430.0,
+      "text": "ਜੈਸਾ ਰੰਗੁ ਕਸੁੰਭ ਕਾ ਮਨਿ ਬਉਰਾ",
+      "gt_line_idx": 8,
+      "best_line_idx": 8,
+      "stay_line_idx": 8,
+      "top_scores": [
+        {
+          "line_idx": 8,
+          "score": 75.705
+        },
+        {
+          "line_idx": 4,
+          "score": 46.732
+        },
+        {
+          "line_idx": 2,
+          "score": 46.719
+        },
+        {
+          "line_idx": 3,
+          "score": 46.667
+        },
+        {
+          "line_idx": 1,
+          "score": 46.156
+        }
+      ]
+    },
+    {
+      "start": 430.0,
+      "end": 440.0,
+      "text": "ਧਾਰੇ ਤਿਉ ਬਸਰਿਓ ਬਾਸਾ ਤਿਉ",
+      "gt_line_idx": 8,
+      "best_line_idx": 8,
+      "stay_line_idx": 8,
+      "top_scores": [
+        {
+          "line_idx": 8,
+          "score": 54.62
+        },
+        {
+          "line_idx": 7,
+          "score": 45.479
+        },
+        {
+          "line_idx": 3,
+          "score": 41.789
+        },
+        {
+          "line_idx": 2,
+          "score": 41.585
+        },
+        {
+          "line_idx": 5,
+          "score": 41.338
+        }
+      ]
+    },
+    {
+      "start": 440.0,
+      "end": 450.0,
+      "text": "ਬਸਰਿਓ ਪਾਸਾ ਤਿਉ ਬਸਰਿਓ ਪਾਸਾ",
+      "gt_line_idx": 8,
+      "best_line_idx": 8,
+      "stay_line_idx": 8,
+      "top_scores": [
+        {
+          "line_idx": 8,
+          "score": 54.796
+        },
+        {
+          "line_idx": 7,
+          "score": 44.231
+        },
+        {
+          "line_idx": 2,
+          "score": 43.203
+        },
+        {
+          "line_idx": 6,
+          "score": 42.845
+        },
+        {
+          "line_idx": 4,
+          "score": 40.659
+        }
+      ]
+    },
+    {
+      "start": 450.0,
+      "end": 460.0,
+      "text": "ਰੇ ਬਿਖੈ ਮਨੁ ਬਉਰਾ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ਬਿਖੈ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 60.88
+        },
+        {
+          "line_idx": 2,
+          "score": 55.152
+        },
+        {
+          "line_idx": 7,
+          "score": 49.524
+        },
+        {
+          "line_idx": 4,
+          "score": 47.17
+        },
+        {
+          "line_idx": 5,
+          "score": 46.667
+        }
+      ]
+    },
+    {
+      "start": 460.0,
+      "end": 470.0,
+      "text": "ਬਾਜ ਹਰਿ ਰਾਜ ਸਮਝਿ ਮਨ ਬਉਰਾ ਸਮਝਿ ਮਨ ਬਉਰਾ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 64.671
+        },
+        {
+          "line_idx": 2,
+          "score": 52.812
+        },
+        {
+          "line_idx": 4,
+          "score": 52.427
+        },
+        {
+          "line_idx": 6,
+          "score": 51.509
+        },
+        {
+          "line_idx": 7,
+          "score": 50.0
+        }
+      ]
+    },
+    {
+      "start": 470.0,
+      "end": 480.0,
+      "text": "ਾਰੇ ਬਿਖੈ ਬਾਝੁ ਹਰਿ ਰਾਜੁ ਸਮਝੁ ਮਨਿ ਬਉਰਾ ਸਮਝ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 66.667
+        },
+        {
+          "line_idx": 6,
+          "score": 46.593
+        },
+        {
+          "line_idx": 2,
+          "score": 45.631
+        },
+        {
+          "line_idx": 4,
+          "score": 45.455
+        },
+        {
+          "line_idx": 7,
+          "score": 43.119
+        }
+      ]
+    },
+    {
+      "start": 480.0,
+      "end": 490.0,
+      "text": "ਤਜਿ ਮਨੁ ਬਉਰਾ ਜ",
+      "gt_line_idx": null,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 51.966
+        },
+        {
+          "line_idx": 7,
+          "score": 49.216
+        },
+        {
+          "line_idx": 4,
+          "score": 49.0
+        },
+        {
+          "line_idx": 8,
+          "score": 48.31
+        },
+        {
+          "line_idx": 2,
+          "score": 47.647
+        }
+      ]
+    },
+    {
+      "start": 490.0,
+      "end": 500.0,
+      "text": "ਜ ਜ",
+      "gt_line_idx": null,
+      "best_line_idx": 4,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 4,
+          "score": 33.262
+        },
+        {
+          "line_idx": 3,
+          "score": 32.848
+        },
+        {
+          "line_idx": 2,
+          "score": 32.071
+        },
+        {
+          "line_idx": 8,
+          "score": 31.89
+        },
+        {
+          "line_idx": 5,
+          "score": 31.726
+        }
+      ]
+    },
+    {
+      "start": 500.0,
+      "end": 510.0,
+      "text": "ਨਾਮ ਕੋ ਤੀਰਥ ਘਣੇ",
+      "gt_line_idx": 9,
+      "best_line_idx": 9,
+      "stay_line_idx": 9,
+      "top_scores": [
+        {
+          "line_idx": 9,
+          "score": 47.155
+        },
+        {
+          "line_idx": 1,
+          "score": 36.593
+        },
+        {
+          "line_idx": 4,
+          "score": 35.854
+        },
+        {
+          "line_idx": 6,
+          "score": 34.726
+        },
+        {
+          "line_idx": 10,
+          "score": 34.091
+        }
+      ]
+    },
+    {
+      "start": 510.0,
+      "end": 520.0,
+      "text": "ਤਨ ਕਉ ਗਾਰੇ ਨਾਮ",
+      "gt_line_idx": 9,
+      "best_line_idx": 6,
+      "stay_line_idx": 9,
+      "top_scores": [
+        {
+          "line_idx": 6,
+          "score": 44.118
+        },
+        {
+          "line_idx": 9,
+          "score": 43.568
+        },
+        {
+          "line_idx": 5,
+          "score": 42.26
+        },
+        {
+          "line_idx": 7,
+          "score": 40.944
+        },
+        {
+          "line_idx": 2,
+          "score": 40.756
+        }
+      ]
+    },
+    {
+      "start": 520.0,
+      "end": 530.0,
+      "text": "ਾ ਨਾਮ ਨਿਕੋ",
+      "gt_line_idx": 9,
+      "best_line_idx": 6,
+      "stay_line_idx": 9,
+      "top_scores": [
+        {
+          "line_idx": 6,
+          "score": 42.166
+        },
+        {
+          "line_idx": 9,
+          "score": 41.585
+        },
+        {
+          "line_idx": 4,
+          "score": 38.636
+        },
+        {
+          "line_idx": 2,
+          "score": 38.63
+        },
+        {
+          "line_idx": 7,
+          "score": 38.12
+        }
+      ]
+    },
+    {
+      "start": 530.0,
+      "end": 540.0,
+      "text": "ਕੋ ਤੀਰਥ ਘਣੇ ਨਾਵਨ",
+      "gt_line_idx": 9,
+      "best_line_idx": 9,
+      "stay_line_idx": 9,
+      "top_scores": [
+        {
+          "line_idx": 9,
+          "score": 48.123
+        },
+        {
+          "line_idx": 1,
+          "score": 39.167
+        },
+        {
+          "line_idx": 6,
+          "score": 35.886
+        },
+        {
+          "line_idx": 4,
+          "score": 35.419
+        },
+        {
+          "line_idx": 10,
+          "score": 35.005
+        }
+      ]
+    },
+    {
+      "start": 540.0,
+      "end": 550.0,
+      "text": "ਤੀਰਥ ਘਨੇ ਮਨ ਬਉਰਾ ਰੇ ਪੂਰਨ",
+      "gt_line_idx": 9,
+      "best_line_idx": 9,
+      "stay_line_idx": 9,
+      "top_scores": [
+        {
+          "line_idx": 9,
+          "score": 60.054
+        },
+        {
+          "line_idx": 5,
+          "score": 48.351
+        },
+        {
+          "line_idx": 2,
+          "score": 47.442
+        },
+        {
+          "line_idx": 3,
+          "score": 47.297
+        },
+        {
+          "line_idx": 10,
+          "score": 47.168
+        }
+      ]
+    },
+    {
+      "start": 550.0,
+      "end": 560.0,
+      "text": "ਕੋ ਬਹੁਦੇਵ ਪੂਰਨ ਕੋ ਬਹੁਦੇਵ",
+      "gt_line_idx": 9,
+      "best_line_idx": 9,
+      "stay_line_idx": 9,
+      "top_scores": [
+        {
+          "line_idx": 9,
+          "score": 43.092
+        },
+        {
+          "line_idx": 1,
+          "score": 39.007
+        },
+        {
+          "line_idx": 10,
+          "score": 34.957
+        },
+        {
+          "line_idx": 5,
+          "score": 33.393
+        },
+        {
+          "line_idx": 6,
+          "score": 32.286
+        }
+      ]
+    },
+    {
+      "start": 560.0,
+      "end": 570.0,
+      "text": "ਕਹੁ ਕਬੀਰ ਛੂਟਨੁ ਨਹੀ ਮਨ ਬਉਰਾ",
+      "gt_line_idx": 10,
+      "best_line_idx": 10,
+      "stay_line_idx": 10,
+      "top_scores": [
+        {
+          "line_idx": 10,
+          "score": 53.635
+        },
+        {
+          "line_idx": 6,
+          "score": 49.877
+        },
+        {
+          "line_idx": 3,
+          "score": 48.0
+        },
+        {
+          "line_idx": 9,
+          "score": 44.926
+        },
+        {
+          "line_idx": 1,
+          "score": 44.75
+        }
+      ]
+    },
+    {
+      "start": 570.0,
+      "end": 580.0,
+      "text": "ਰੇ",
+      "gt_line_idx": null,
+      "best_line_idx": 3,
+      "stay_line_idx": 10,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 28.348
+        },
+        {
+          "line_idx": 5,
+          "score": 27.639
+        },
+        {
+          "line_idx": 4,
+          "score": 27.562
+        },
+        {
+          "line_idx": 1,
+          "score": 27.488
+        },
+        {
+          "line_idx": 2,
+          "score": 25.357
+        }
+      ]
+    },
+    {
+      "start": 580.0,
+      "end": 590.0,
+      "text": "ਕਹੁ ਕਬੀਰ ਛੂਟਨੁ ਨਹੀ ਮਨ ਬਉਰਾ",
+      "gt_line_idx": 10,
+      "best_line_idx": 10,
+      "stay_line_idx": 10,
+      "top_scores": [
+        {
+          "line_idx": 10,
+          "score": 53.635
+        },
+        {
+          "line_idx": 6,
+          "score": 49.877
+        },
+        {
+          "line_idx": 3,
+          "score": 48.0
+        },
+        {
+          "line_idx": 9,
+          "score": 44.926
+        },
+        {
+          "line_idx": 1,
+          "score": 44.75
+        }
+      ]
+    },
+    {
+      "start": 590.0,
+      "end": 600.0,
+      "text": "ਰੇ ਛੂਟੁ ਹਰਿ ਕੀ ਸੇਵ ਛੂਟਿ",
+      "gt_line_idx": 10,
+      "best_line_idx": 10,
+      "stay_line_idx": 10,
+      "top_scores": [
+        {
+          "line_idx": 10,
+          "score": 43.388
+        },
+        {
+          "line_idx": 3,
+          "score": 36.4
+        },
+        {
+          "line_idx": 6,
+          "score": 35.311
+        },
+        {
+          "line_idx": 1,
+          "score": 34.75
+        },
+        {
+          "line_idx": 2,
+          "score": 33.575
+        }
+      ]
+    },
+    {
+      "start": 600.0,
+      "end": 610.0,
+      "text": "ਨ ਹਰਿ ਕੀ ਸੇਵ ਛੂਟਿ ਹਰਿ ਕੀ ਸੇਵ",
+      "gt_line_idx": 10,
+      "best_line_idx": 10,
+      "stay_line_idx": 10,
+      "top_scores": [
+        {
+          "line_idx": 10,
+          "score": 44.925
+        },
+        {
+          "line_idx": 6,
+          "score": 39.742
+        },
+        {
+          "line_idx": 3,
+          "score": 37.5
+        },
+        {
+          "line_idx": 7,
+          "score": 37.47
+        },
+        {
+          "line_idx": 9,
+          "score": 37.149
+        }
+      ]
+    },
+    {
+      "start": 610.0,
+      "end": 620.0,
+      "text": "ਸਮਝੁ ਮਨ ਬਉਰਾ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ਬਿਖੈ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 61.048
+        },
+        {
+          "line_idx": 2,
+          "score": 54.516
+        },
+        {
+          "line_idx": 7,
+          "score": 49.495
+        },
+        {
+          "line_idx": 4,
+          "score": 48.73
+        },
+        {
+          "line_idx": 6,
+          "score": 47.08
+        }
+      ]
+    },
+    {
+      "start": 620.0,
+      "end": 630.0,
+      "text": "ਬਾਜ ਹਰਿ ਰਾਜ ਸਮਝਿ ਮਨਿ ਬਉਰਾ ਸਮਝਿ ਮਨਿ ਬਉਰਾ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 63.485
+        },
+        {
+          "line_idx": 6,
+          "score": 52.361
+        },
+        {
+          "line_idx": 2,
+          "score": 51.735
+        },
+        {
+          "line_idx": 4,
+          "score": 51.429
+        },
+        {
+          "line_idx": 7,
+          "score": 50.0
+        }
+      ]
+    },
+    {
+      "start": 630.0,
+      "end": 640.0,
+      "text": "ਰੇ ਬਿਖੈ ਪਾਛੁ ਹਰਿ ਰਾਜੁ ਸਮਝੁ ਮਨਿ ਬਉਰਾ ਸਮਝ",
+      "gt_line_idx": 3,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 65.934
+        },
+        {
+          "line_idx": 6,
+          "score": 53.914
+        },
+        {
+          "line_idx": 2,
+          "score": 48.267
+        },
+        {
+          "line_idx": 4,
+          "score": 46.296
+        },
+        {
+          "line_idx": 9,
+          "score": 45.561
+        }
+      ]
+    },
+    {
+      "start": 640.0,
+      "end": 650.0,
+      "text": "ਜੇ ਮਨ ਕਉ ਵਾਰੇ ਵਾਹਿਗੁਰੂ",
+      "gt_line_idx": 3,
+      "best_line_idx": 4,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 4,
+          "score": 45.057
+        },
+        {
+          "line_idx": 5,
+          "score": 43.605
+        },
+        {
+          "line_idx": 9,
+          "score": 43.517
+        },
+        {
+          "line_idx": 6,
+          "score": 43.333
+        },
+        {
+          "line_idx": 2,
+          "score": 42.5
+        }
+      ]
+    }
+  ]
+}

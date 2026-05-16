@@ -1,0 +1,240 @@
+{
+  "case": "zOtIpxMT9hU_cold66",
+  "video_id": "zOtIpxMT9hU",
+  "shabad_id": 3712,
+  "commit_time": 223.3,
+  "config": {
+    "backend": "huggingface_whisper",
+    "model": "surindersinghssj/surt-small-v3",
+    "adapter_dir": "lora_adapters/v5b_mac_diverse",
+    "ratio": "WRatio",
+    "blend": {
+      "token_sort_ratio": 0.5,
+      "WRatio": 0.5
+    },
+    "stay_bias": 6.0,
+    "threshold": 0.0
+  },
+  "summary": {
+    "chunks": 7,
+    "chunks_with_gt": 3,
+    "best_matches_gt": 3,
+    "stay_matches_gt": 2,
+    "null_gt_chunks": 4,
+    "case": "zOtIpxMT9hU_cold66",
+    "shabad_id": 3712,
+    "commit_time": 223.3
+  },
+  "rows": [
+    {
+      "start": 220.0,
+      "end": 230.0,
+      "text": "ਅਧਾਰਾ ਭਗਤ ਜਨੈ ਕਾ ਰਾਖਣਹਾਰਾ ਭਗਤ ਜਨੈ ਕਾ ਰਾਖਣਹਾਰਾ ਸਭਿ ਜੀਵੈ ਸਭ",
+      "gt_line_idx": 5,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 67.975
+        },
+        {
+          "line_idx": 4,
+          "score": 66.992
+        },
+        {
+          "line_idx": 6,
+          "score": 62.016
+        },
+        {
+          "line_idx": 3,
+          "score": 46.018
+        },
+        {
+          "line_idx": 2,
+          "score": 45.394
+        }
+      ]
+    },
+    {
+      "start": 230.0,
+      "end": 240.0,
+      "text": "ਗੁਰੂ ਪਾਰ ਅਧਾਰ ਹਰਿ ਜੀਵੈ ਜਪਕਾਲ ਅਧਾਰ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ",
+      "gt_line_idx": 6,
+      "best_line_idx": 6,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 6,
+          "score": 44.598
+        },
+        {
+          "line_idx": 2,
+          "score": 42.912
+        },
+        {
+          "line_idx": 4,
+          "score": 42.574
+        },
+        {
+          "line_idx": 5,
+          "score": 41.976
+        },
+        {
+          "line_idx": 3,
+          "score": 41.779
+        }
+      ]
+    },
+    {
+      "start": 240.0,
+      "end": 250.0,
+      "text": "ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ",
+      "gt_line_idx": null,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 45.286
+        },
+        {
+          "line_idx": 4,
+          "score": 38.436
+        },
+        {
+          "line_idx": 2,
+          "score": 36.486
+        },
+        {
+          "line_idx": 1,
+          "score": 35.986
+        },
+        {
+          "line_idx": 5,
+          "score": 35.797
+        }
+      ]
+    },
+    {
+      "start": 250.0,
+      "end": 260.0,
+      "text": "ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ",
+      "gt_line_idx": null,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 45.286
+        },
+        {
+          "line_idx": 4,
+          "score": 38.436
+        },
+        {
+          "line_idx": 2,
+          "score": 36.486
+        },
+        {
+          "line_idx": 1,
+          "score": 35.986
+        },
+        {
+          "line_idx": 5,
+          "score": 35.797
+        }
+      ]
+    },
+    {
+      "start": 260.0,
+      "end": 270.0,
+      "text": "ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ",
+      "gt_line_idx": null,
+      "best_line_idx": 3,
+      "stay_line_idx": 3,
+      "top_scores": [
+        {
+          "line_idx": 3,
+          "score": 45.286
+        },
+        {
+          "line_idx": 4,
+          "score": 38.436
+        },
+        {
+          "line_idx": 2,
+          "score": 36.486
+        },
+        {
+          "line_idx": 1,
+          "score": 35.986
+        },
+        {
+          "line_idx": 5,
+          "score": 35.797
+        }
+      ]
+    },
+    {
+      "start": 270.0,
+      "end": 280.0,
+      "text": "ਪਿਆਰਾ ਸੰਤ ਜੀਵੈ ਜਪਿ ਪ੍ਰਾਣ ਪਧਾਰਾ ਕਰਣ ਕਾਰਣ",
+      "gt_line_idx": null,
+      "best_line_idx": 6,
+      "stay_line_idx": 6,
+      "top_scores": [
+        {
+          "line_idx": 6,
+          "score": 56.637
+        },
+        {
+          "line_idx": 2,
+          "score": 50.946
+        },
+        {
+          "line_idx": 7,
+          "score": 48.75
+        },
+        {
+          "line_idx": 4,
+          "score": 48.039
+        },
+        {
+          "line_idx": 5,
+          "score": 46.914
+        }
+      ]
+    },
+    {
+      "start": 280.0,
+      "end": 288.9955625,
+      "text": "ਸੁਆਮੀ ਨਾਨਕ ਤਿਸੁ ਗੁਰਬਾਣੀ",
+      "gt_line_idx": 7,
+      "best_line_idx": 7,
+      "stay_line_idx": 7,
+      "top_scores": [
+        {
+          "line_idx": 7,
+          "score": 60.644
+        },
+        {
+          "line_idx": 1,
+          "score": 41.365
+        },
+        {
+          "line_idx": 4,
+          "score": 38.973
+        },
+        {
+          "line_idx": 5,
+          "score": 38.333
+        },
+        {
+          "line_idx": 6,
+          "score": 37.931
+        }
+      ]
+    }
+  ]
+}

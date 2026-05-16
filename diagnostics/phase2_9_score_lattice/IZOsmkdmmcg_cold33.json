@@ -1,0 +1,870 @@
+{
+  "case": "IZOsmkdmmcg_cold33",
+  "video_id": "IZOsmkdmmcg",
+  "shabad_id": 4377,
+  "commit_time": 182.1,
+  "config": {
+    "backend": "huggingface_whisper",
+    "model": "surindersinghssj/surt-small-v3",
+    "adapter_dir": "lora_adapters/v5b_mac_diverse",
+    "ratio": "WRatio",
+    "blend": {
+      "token_sort_ratio": 0.5,
+      "WRatio": 0.5
+    },
+    "stay_bias": 6.0,
+    "threshold": 0.0
+  },
+  "summary": {
+    "chunks": 28,
+    "chunks_with_gt": 27,
+    "best_matches_gt": 23,
+    "stay_matches_gt": 24,
+    "null_gt_chunks": 1,
+    "case": "IZOsmkdmmcg_cold33",
+    "shabad_id": 4377,
+    "commit_time": 182.1
+  },
+  "rows": [
+    {
+      "start": 180.0,
+      "end": 190.0,
+      "text": "ਏਕਾ ਥਾਨੁ ਸਾਧਸੰਗਿ ਗਾਵੈ ਗੁਣ ਗੋਬਿੰਦ ਸਾਧਸੰਗਿ ਗਾਵੈ",
+      "gt_line_idx": 2,
+      "best_line_idx": 2,
+      "stay_line_idx": 2,
+      "top_scores": [
+        {
+          "line_idx": 2,
+          "score": 59.009
+        },
+        {
+          "line_idx": 3,
+          "score": 50.092
+        },
+        {
+          "line_idx": 1,
+          "score": 45.58
+        },
+        {
+          "line_idx": 5,
+          "score": 45.217
+        },
+        {
+          "line_idx": 4,
+          "score": 42.727
+        }
+      ]
+    },
+    {
+      "start": 190.0,
+      "end": 200.0,
+      "text": "ਗੁਣ ਗੋਬਿੰਦ ਸਾਧਸੰਗਿ ਗਾਵੈ ਗੁਣ ਗੋਬਿੰਦ ਸਾਧਸੰਗਿ ਗਾਵੈ ਗੁਣ ਗੋਬਿੰਦ",
+      "gt_line_idx": 2,
+      "best_line_idx": 2,
+      "stay_line_idx": 2,
+      "top_scores": [
+        {
+          "line_idx": 2,
+          "score": 56.374
+        },
+        {
+          "line_idx": 3,
+          "score": 42.957
+        },
+        {
+          "line_idx": 5,
+          "score": 39.844
+        },
+        {
+          "line_idx": 6,
+          "score": 36.923
+        },
+        {
+          "line_idx": 4,
+          "score": 33.333
+        }
+      ]
+    },
+    {
+      "start": 200.0,
+      "end": 210.0,
+      "text": "ਪੂਰਨ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨੁ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨੁ",
+      "gt_line_idx": 2,
+      "best_line_idx": 2,
+      "stay_line_idx": 2,
+      "top_scores": [
+        {
+          "line_idx": 2,
+          "score": 50.966
+        },
+        {
+          "line_idx": 6,
+          "score": 39.394
+        },
+        {
+          "line_idx": 4,
+          "score": 38.152
+        },
+        {
+          "line_idx": 3,
+          "score": 36.264
+        },
+        {
+          "line_idx": 1,
+          "score": 34.328
+        }
+      ]
+    },
+    {
+      "start": 210.0,
+      "end": 220.0,
+      "text": "ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ਪਰਮੇਸਰ ਕਾ",
+      "gt_line_idx": 1,
+      "best_line_idx": 1,
+      "stay_line_idx": 1,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 66.846
+        },
+        {
+          "line_idx": 4,
+          "score": 47.222
+        },
+        {
+          "line_idx": 6,
+          "score": 42.609
+        },
+        {
+          "line_idx": 2,
+          "score": 41.346
+        },
+        {
+          "line_idx": 3,
+          "score": 39.252
+        }
+      ]
+    },
+    {
+      "start": 220.0,
+      "end": 230.0,
+      "text": "ਥਾਨ ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ",
+      "gt_line_idx": 1,
+      "best_line_idx": 1,
+      "stay_line_idx": 1,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 68.966
+        },
+        {
+          "line_idx": 4,
+          "score": 43.067
+        },
+        {
+          "line_idx": 6,
+          "score": 42.711
+        },
+        {
+          "line_idx": 5,
+          "score": 40.991
+        },
+        {
+          "line_idx": 2,
+          "score": 40.506
+        }
+      ]
+    },
+    {
+      "start": 230.0,
+      "end": 240.0,
+      "text": "ਜ ਜ",
+      "gt_line_idx": null,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 33.585
+        },
+        {
+          "line_idx": 4,
+          "score": 32.204
+        },
+        {
+          "line_idx": 1,
+          "score": 13.448
+        },
+        {
+          "line_idx": 2,
+          "score": 12.0
+        },
+        {
+          "line_idx": 3,
+          "score": 11.887
+        }
+      ]
+    },
+    {
+      "start": 240.0,
+      "end": 250.0,
+      "text": "ਜਾ ਕੈ ਰਿਦੈ ਵਸੈ ਭੈ ਭੰਜਨੁ ਜਾ ਕੈ ਰਿਦੈ",
+      "gt_line_idx": 5,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 69.0
+        },
+        {
+          "line_idx": 4,
+          "score": 44.211
+        },
+        {
+          "line_idx": 3,
+          "score": 41.489
+        },
+        {
+          "line_idx": 6,
+          "score": 41.176
+        },
+        {
+          "line_idx": 2,
+          "score": 40.714
+        }
+      ]
+    },
+    {
+      "start": 250.0,
+      "end": 260.0,
+      "text": "ਵਸੈ ਭੈ ਭੰਜਨ ਜਾ ਕੈ ਰਿਦੈ ਵਸੈ ਭੈ ਭੰਜਨ ਜਾ ਕੈ ਰਿਦੈ ਵਸੈ",
+      "gt_line_idx": 5,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 63.375
+        },
+        {
+          "line_idx": 4,
+          "score": 41.739
+        },
+        {
+          "line_idx": 6,
+          "score": 40.984
+        },
+        {
+          "line_idx": 3,
+          "score": 40.351
+        },
+        {
+          "line_idx": 2,
+          "score": 37.838
+        }
+      ]
+    },
+    {
+      "start": 260.0,
+      "end": 270.0,
+      "text": "ਦੇਵੈ ਭੰਜਨੁ ਤਿਸੁ ਜਾਨੈ ਸਗਲ ਜਹਾਨੁ ਤਿਸੁ ਜਾਨੈ ਸਗਲ ਜਹਾਨੁ",
+      "gt_line_idx": 5,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 60.0
+        },
+        {
+          "line_idx": 3,
+          "score": 44.725
+        },
+        {
+          "line_idx": 6,
+          "score": 41.026
+        },
+        {
+          "line_idx": 4,
+          "score": 39.091
+        },
+        {
+          "line_idx": 2,
+          "score": 37.736
+        }
+      ]
+    },
+    {
+      "start": 270.0,
+      "end": 280.0,
+      "text": "ਤਿਸੁ ਜਾਨੈ ਸਗਲ ਜਹਾਨ ਤਿਸੁ ਜਾਨੈ ਸਗਲ ਜਹਾਨ",
+      "gt_line_idx": 5,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 63.636
+        },
+        {
+          "line_idx": 3,
+          "score": 46.237
+        },
+        {
+          "line_idx": 4,
+          "score": 42.553
+        },
+        {
+          "line_idx": 2,
+          "score": 42.222
+        },
+        {
+          "line_idx": 6,
+          "score": 41.584
+        }
+      ]
+    },
+    {
+      "start": 280.0,
+      "end": 290.0,
+      "text": "ਖਿਨੁ ਪਲੁ ਬਿਸਰੁ ਨਾਹੀ ਮੇਰੇ ਘਰ ਤੇ ਖਿਨੁ ਪਲੁ ਬਿਸਰੁ ਨਾਹੀ ਮੇਰੇ ਘਰ ਤੇ ਖਿਨੁ",
+      "gt_line_idx": 6,
+      "best_line_idx": 6,
+      "stay_line_idx": 6,
+      "top_scores": [
+        {
+          "line_idx": 6,
+          "score": 51.079
+        },
+        {
+          "line_idx": 4,
+          "score": 40.299
+        },
+        {
+          "line_idx": 3,
+          "score": 37.405
+        },
+        {
+          "line_idx": 5,
+          "score": 36.496
+        },
+        {
+          "line_idx": 2,
+          "score": 33.64
+        }
+      ]
+    },
+    {
+      "start": 290.0,
+      "end": 300.0,
+      "text": "ਕਲਿ ਬਿਸਰੁ ਨਾਹੀ ਮੇਰੇ ਘਰ ਤੇ ਕਲਿ ਬਿਸਰੁ ਨਾਹੀ ਮੇਰੇ ਘਰ ਤੇ ਇਹ ਨਾਨਕ ਮਾਂਗੈ",
+      "gt_line_idx": 6,
+      "best_line_idx": 6,
+      "stay_line_idx": 6,
+      "top_scores": [
+        {
+          "line_idx": 6,
+          "score": 59.629
+        },
+        {
+          "line_idx": 4,
+          "score": 45.038
+        },
+        {
+          "line_idx": 3,
+          "score": 43.509
+        },
+        {
+          "line_idx": 5,
+          "score": 38.479
+        },
+        {
+          "line_idx": 2,
+          "score": 37.396
+        }
+      ]
+    },
+    {
+      "start": 300.0,
+      "end": 310.0,
+      "text": "ਦਾਨੁ ਇਹੁ ਨਾਨਕੁ ਮਾਗੈ ਦਾਨੁ ਪਰਮੇਸਰ ਕਾ",
+      "gt_line_idx": 6,
+      "best_line_idx": 1,
+      "stay_line_idx": 6,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 59.168
+        },
+        {
+          "line_idx": 6,
+          "score": 57.121
+        },
+        {
+          "line_idx": 5,
+          "score": 44.33
+        },
+        {
+          "line_idx": 4,
+          "score": 43.832
+        },
+        {
+          "line_idx": 3,
+          "score": 42.857
+        }
+      ]
+    },
+    {
+      "start": 310.0,
+      "end": 320.0,
+      "text": "ਥਾਨੁ ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ਪੋਥੀ",
+      "gt_line_idx": 1,
+      "best_line_idx": 1,
+      "stay_line_idx": 1,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 66.006
+        },
+        {
+          "line_idx": 4,
+          "score": 45.946
+        },
+        {
+          "line_idx": 6,
+          "score": 44.068
+        },
+        {
+          "line_idx": 2,
+          "score": 40.093
+        },
+        {
+          "line_idx": 5,
+          "score": 38.793
+        }
+      ]
+    },
+    {
+      "start": 320.0,
+      "end": 330.0,
+      "text": "ਪ੍ਰੀ ਪਰਮੇਸਰ ਕਾ ਦਾਨੁ ਸਾਧਸੰਗਿ ਗਾਵੈ ਗੁਣ ਗੋਬਿੰਦ",
+      "gt_line_idx": 2,
+      "best_line_idx": 1,
+      "stay_line_idx": 1,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 61.981
+        },
+        {
+          "line_idx": 2,
+          "score": 57.121
+        },
+        {
+          "line_idx": 3,
+          "score": 45.882
+        },
+        {
+          "line_idx": 5,
+          "score": 43.519
+        },
+        {
+          "line_idx": 6,
+          "score": 42.727
+        }
+      ]
+    },
+    {
+      "start": 330.0,
+      "end": 340.0,
+      "text": "ਸੰਗਿ ਗਾਵੈ ਗੁਣ ਗੋਬਿੰਦ ਸਾਧਸੰਗਿ ਗਾਵੈ ਗੁਣ ਗੋਬਿੰਦ ਸਾਧਸੰਗਿ ਗਾਵੈ",
+      "gt_line_idx": 2,
+      "best_line_idx": 2,
+      "stay_line_idx": 2,
+      "top_scores": [
+        {
+          "line_idx": 2,
+          "score": 56.998
+        },
+        {
+          "line_idx": 3,
+          "score": 45.76
+        },
+        {
+          "line_idx": 5,
+          "score": 43.307
+        },
+        {
+          "line_idx": 6,
+          "score": 37.984
+        },
+        {
+          "line_idx": 4,
+          "score": 36.885
+        }
+      ]
+    },
+    {
+      "start": 340.0,
+      "end": 350.0,
+      "text": "ਗੁਣ ਗੋਬਿੰਦ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨ",
+      "gt_line_idx": 2,
+      "best_line_idx": 2,
+      "stay_line_idx": 2,
+      "top_scores": [
+        {
+          "line_idx": 2,
+          "score": 61.183
+        },
+        {
+          "line_idx": 6,
+          "score": 41.346
+        },
+        {
+          "line_idx": 3,
+          "score": 38.542
+        },
+        {
+          "line_idx": 5,
+          "score": 38.235
+        },
+        {
+          "line_idx": 4,
+          "score": 38.196
+        }
+      ]
+    },
+    {
+      "start": 350.0,
+      "end": 360.0,
+      "text": "ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ਪਰਮੇਸਰ",
+      "gt_line_idx": 1,
+      "best_line_idx": 1,
+      "stay_line_idx": 1,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 68.066
+        },
+        {
+          "line_idx": 4,
+          "score": 45.0
+        },
+        {
+          "line_idx": 6,
+          "score": 42.342
+        },
+        {
+          "line_idx": 2,
+          "score": 39.0
+        },
+        {
+          "line_idx": 3,
+          "score": 38.835
+        }
+      ]
+    },
+    {
+      "start": 360.0,
+      "end": 370.0,
+      "text": "ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ਕੋਠੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ਸਾਧਸੰਗਿ ਗਾਵੈ ਗੁਣ",
+      "gt_line_idx": 1,
+      "best_line_idx": 1,
+      "stay_line_idx": 1,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 64.027
+        },
+        {
+          "line_idx": 4,
+          "score": 47.521
+        },
+        {
+          "line_idx": 6,
+          "score": 43.651
+        },
+        {
+          "line_idx": 3,
+          "score": 43.22
+        },
+        {
+          "line_idx": 5,
+          "score": 42.742
+        }
+      ]
+    },
+    {
+      "start": 370.0,
+      "end": 380.0,
+      "text": "ਗੋਬਿੰਦ ਸਾਧਸੰਗਿ ਗਾਵੈ ਗੁਰ ਗੋਬਿੰਦ ਸਾਧਸੰਗਿ ਗਾਵੈ ਗੁਰ ਗੋਬਿੰਦ",
+      "gt_line_idx": 2,
+      "best_line_idx": 2,
+      "stay_line_idx": 2,
+      "top_scores": [
+        {
+          "line_idx": 2,
+          "score": 57.705
+        },
+        {
+          "line_idx": 3,
+          "score": 43.478
+        },
+        {
+          "line_idx": 5,
+          "score": 41.322
+        },
+        {
+          "line_idx": 6,
+          "score": 36.585
+        },
+        {
+          "line_idx": 4,
+          "score": 35.345
+        }
+      ]
+    },
+    {
+      "start": 380.0,
+      "end": 390.0,
+      "text": "ਸਾਧਸੰਗਿ ਗਾਵੈ ਗੁਰ ਗੋਬਿੰਦ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨ",
+      "gt_line_idx": 2,
+      "best_line_idx": 2,
+      "stay_line_idx": 2,
+      "top_scores": [
+        {
+          "line_idx": 2,
+          "score": 71.119
+        },
+        {
+          "line_idx": 3,
+          "score": 47.214
+        },
+        {
+          "line_idx": 5,
+          "score": 44.068
+        },
+        {
+          "line_idx": 4,
+          "score": 41.416
+        },
+        {
+          "line_idx": 6,
+          "score": 40.0
+        }
+      ]
+    },
+    {
+      "start": 390.0,
+      "end": 400.0,
+      "text": "ਦਾਨੁ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ਕੋਟੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ",
+      "gt_line_idx": 1,
+      "best_line_idx": 1,
+      "stay_line_idx": 1,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 68.724
+        },
+        {
+          "line_idx": 4,
+          "score": 47.794
+        },
+        {
+          "line_idx": 6,
+          "score": 46.789
+        },
+        {
+          "line_idx": 5,
+          "score": 43.925
+        },
+        {
+          "line_idx": 2,
+          "score": 42.857
+        }
+      ]
+    },
+    {
+      "start": 400.0,
+      "end": 410.0,
+      "text": "ਪਰਮੇਸਰੁ ਦਾਤਾਨੁ ਪੋਥੀ ਪਰਮੇਸਰੁ ਦਾਤਾਨੁ ਪਰਮੇਸਰ",
+      "gt_line_idx": 1,
+      "best_line_idx": 1,
+      "stay_line_idx": 1,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 49.336
+        },
+        {
+          "line_idx": 4,
+          "score": 39.216
+        },
+        {
+          "line_idx": 6,
+          "score": 37.615
+        },
+        {
+          "line_idx": 2,
+          "score": 36.735
+        },
+        {
+          "line_idx": 5,
+          "score": 36.449
+        }
+      ]
+    },
+    {
+      "start": 410.0,
+      "end": 420.0,
+      "text": "ਦਾਤਾਰੁ ਕੋ ਥੀਆ ਪ੍ਰਭ ਤੇ ਸਰਧਾ",
+      "gt_line_idx": 1,
+      "best_line_idx": 1,
+      "stay_line_idx": 1,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 51.148
+        },
+        {
+          "line_idx": 4,
+          "score": 45.349
+        },
+        {
+          "line_idx": 2,
+          "score": 40.244
+        },
+        {
+          "line_idx": 5,
+          "score": 39.56
+        },
+        {
+          "line_idx": 6,
+          "score": 38.397
+        }
+      ]
+    },
+    {
+      "start": 420.0,
+      "end": 430.0,
+      "text": "ਤੋਂ ਕੀ ਬਲਿ ਜੀਵਾ ਤੋਂ ਕੀ ਬਲਿ ਜੀਵਾ",
+      "gt_line_idx": 1,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 45.158
+        },
+        {
+          "line_idx": 4,
+          "score": 41.167
+        },
+        {
+          "line_idx": 6,
+          "score": 38.196
+        },
+        {
+          "line_idx": 2,
+          "score": 36.279
+        },
+        {
+          "line_idx": 3,
+          "score": 35.955
+        }
+      ]
+    },
+    {
+      "start": 430.0,
+      "end": 440.0,
+      "text": "ਦਾਸਰ ਦਾਤਾ ਪਰਮੇਸਰਿ ਦਾਤਾ ਖਾਲੁ ਬੋਲੀ ਪਰਮੇਸਰਿ ਦਾਤਾ",
+      "gt_line_idx": 1,
+      "best_line_idx": 5,
+      "stay_line_idx": 5,
+      "top_scores": [
+        {
+          "line_idx": 5,
+          "score": 46.184
+        },
+        {
+          "line_idx": 1,
+          "score": 44.524
+        },
+        {
+          "line_idx": 4,
+          "score": 43.194
+        },
+        {
+          "line_idx": 6,
+          "score": 42.241
+        },
+        {
+          "line_idx": 3,
+          "score": 39.815
+        }
+      ]
+    },
+    {
+      "start": 440.0,
+      "end": 450.0,
+      "text": "ਥਾਨੁ ਪਰਮੇਸਰੁ ਦਾਤਾਰੁ ਪੋਥੀ ਪਰਮੇਸਰੁ ਦਾਤਾਰੁ",
+      "gt_line_idx": 1,
+      "best_line_idx": 1,
+      "stay_line_idx": 1,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 56.316
+        },
+        {
+          "line_idx": 4,
+          "score": 42.574
+        },
+        {
+          "line_idx": 2,
+          "score": 39.175
+        },
+        {
+          "line_idx": 6,
+          "score": 37.963
+        },
+        {
+          "line_idx": 3,
+          "score": 37.0
+        }
+      ]
+    },
+    {
+      "start": 450.0,
+      "end": 458.02525,
+      "text": "ਪਰਮੇਸਰੁ ਕਾ ਦਾਨੁ ਪਰਮੇਸਰੁ ਕਾ ਦਾਨੁ",
+      "gt_line_idx": 1,
+      "best_line_idx": 1,
+      "stay_line_idx": 1,
+      "top_scores": [
+        {
+          "line_idx": 1,
+          "score": 50.794
+        },
+        {
+          "line_idx": 6,
+          "score": 46.43
+        },
+        {
+          "line_idx": 4,
+          "score": 43.182
+        },
+        {
+          "line_idx": 5,
+          "score": 40.73
+        },
+        {
+          "line_idx": 3,
+          "score": 40.23
+        }
+      ]
+    }
+  ]
+}

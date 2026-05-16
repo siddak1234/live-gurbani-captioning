@@ -1,0 +1,132 @@
+{
+  "total": {
+    "cases": 12,
+    "chunks": 314,
+    "chunks_with_gt": 268,
+    "best_matches_gt": 235,
+    "stay_matches_gt": 244,
+    "null_gt_chunks": 46
+  },
+  "cases": [
+    {
+      "chunks": 44,
+      "chunks_with_gt": 41,
+      "best_matches_gt": 37,
+      "stay_matches_gt": 38,
+      "null_gt_chunks": 3,
+      "case": "IZOsmkdmmcg",
+      "shabad_id": 4377,
+      "commit_time": 30.0
+    },
+    {
+      "chunks": 28,
+      "chunks_with_gt": 27,
+      "best_matches_gt": 23,
+      "stay_matches_gt": 24,
+      "null_gt_chunks": 1,
+      "case": "IZOsmkdmmcg_cold33",
+      "shabad_id": 4377,
+      "commit_time": 182.1
+    },
+    {
+      "chunks": 13,
+      "chunks_with_gt": 13,
+      "best_matches_gt": 11,
+      "stay_matches_gt": 11,
+      "null_gt_chunks": 0,
+      "case": "IZOsmkdmmcg_cold66",
+      "shabad_id": 4377,
+      "commit_time": 334.2
+    },
+    {
+      "chunks": 29,
+      "chunks_with_gt": 28,
+      "best_matches_gt": 21,
+      "stay_matches_gt": 23,
+      "null_gt_chunks": 1,
+      "case": "kZhIA8P6xWI",
+      "shabad_id": 1821,
+      "commit_time": 30.0
+    },
+    {
+      "chunks": 18,
+      "chunks_with_gt": 17,
+      "best_matches_gt": 12,
+      "stay_matches_gt": 14,
+      "null_gt_chunks": 1,
+      "case": "kZhIA8P6xWI_cold33",
+      "shabad_id": 1821,
+      "commit_time": 131.7
+    },
+    {
+      "chunks": 8,
+      "chunks_with_gt": 7,
+      "best_matches_gt": 6,
+      "stay_matches_gt": 6,
+      "null_gt_chunks": 1,
+      "case": "kZhIA8P6xWI_cold66",
+      "shabad_id": 1821,
+      "commit_time": 233.5
+    },
+    {
+      "chunks": 63,
+      "chunks_with_gt": 50,
+      "best_matches_gt": 46,
+      "stay_matches_gt": 47,
+      "null_gt_chunks": 13,
+      "case": "kchMJPK9Axs",
+      "shabad_id": 1341,
+      "commit_time": 30.0
+    },
+    {
+      "chunks": 41,
+      "chunks_with_gt": 32,
+      "best_matches_gt": 29,
+      "stay_matches_gt": 31,
+      "null_gt_chunks": 9,
+      "case": "kchMJPK9Axs_cold33",
+      "shabad_id": 1341,
+      "commit_time": 246.0
+    },
+    {
+      "chunks": 19,
+      "chunks_with_gt": 16,
+      "best_matches_gt": 13,
+      "stay_matches_gt": 16,
+      "null_gt_chunks": 3,
+      "case": "kchMJPK9Axs_cold66",
+      "shabad_id": 1341,
+      "commit_time": 462.0
+    },
+    {
+      "chunks": 27,
+      "chunks_with_gt": 22,
+      "best_matches_gt": 22,
+      "stay_matches_gt": 21,
+      "null_gt_chunks": 5,
+      "case": "zOtIpxMT9hU",
+      "shabad_id": 3712,
+      "commit_time": 30.0
+    },
+    {
+      "chunks": 17,
+      "chunks_with_gt": 12,
+      "best_matches_gt": 12,
+      "stay_matches_gt": 11,
+      "null_gt_chunks": 5,
+      "case": "zOtIpxMT9hU_cold33",
+      "shabad_id": 3712,
+      "commit_time": 126.7
+    },
+    {
+      "chunks": 7,
+      "chunks_with_gt": 3,
+      "best_matches_gt": 3,
+      "stay_matches_gt": 2,
+      "null_gt_chunks": 4,
+      "case": "zOtIpxMT9hU_cold66",
+      "shabad_id": 3712,
+      "commit_time": 223.3
+    }
+  ]
+}
