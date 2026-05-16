@@ -93,6 +93,8 @@ The script invokes the paired benchmark's `eval.py` as a subprocess — same sco
 
 Below 5 cases the numbers are too noisy. Above 10 the curation cost outweighs the marginal signal.
 
+For the selection rule (3 representative + 2 stress), candidate pool, labor estimate, and audit-style failure modes, see the curation playbook: [`docs/oos_v1_curation.md`](../../docs/oos_v1_curation.md).
+
 ## Holdout discipline
 
 When any of these recordings is used in a training pull, that case must be **removed from this set** for honest evaluation. The training pipeline's holdout (`configs/datasets.yaml` → `holdout.video_ids`) should grow whenever this set does.
