@@ -4,6 +4,12 @@
 
 -r requirements.txt
 
+# Fast HF Hub downloads (Rust-based). When HF_HUB_ENABLE_HF_TRANSFER=1 is set
+# (the .claude/settings.json env block sets it automatically), huggingface_hub
+# refuses to download without hf_transfer present — so it's a hard requirement
+# even though strictly speaking it's a download accelerator.
+hf_transfer
+
 # Apple Silicon GPU inference (Whisper via MLX)
 mlx-whisper
 

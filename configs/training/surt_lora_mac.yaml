@@ -40,12 +40,19 @@ save_steps: 500
 max_steps: 0                     # 0 means "use epochs"; set >0 for smoke tests
 
 # -- Precision ---------------------------------------------------------------
-# bf16 is CUDA-only. On MPS, fp16 gives ~30% throughput lift and fits
-# comfortably in 48 GB unified memory. Auto-detect respects this when bf16
-# is unset by the caller.
+# bf16 is CUDA-only. fp16 on MPS would give ~30% throughput lift, BUT it
+# requires torch >= 2.8 (for accelerate's MPS GradScaler check) — and our
+# current pinned torch 2.5 ecosystem doesn't support that. Until torch is
+# upgraded (which requires revisiting torchaudio/torchcodec/ctranslate2),
+# fp16 is forced off on MPS and we run fp32. This costs ~30% throughput.
+#
+# To re-enable fp16 on MPS:
+#   1. Bump torch to 2.8+ (verify torchcodec/torchaudio/ctranslate2 compat).
+#   2. Bump accelerate to >= 1.11.0 in requirements.txt.
+#   3. Restore fp16: null below to get the auto-detect behavior back.
 
 bf16: null                        # auto: True on CUDA, False on MPS/CPU
-fp16: null                        # auto: True on MPS, False otherwise
+fp16: false                       # forced off — see comment above for upgrade path
 
 # -- Reproducibility ---------------------------------------------------------
 # seed feeds torch/numpy/random + HF Trainer's dataloader generator. On MPS,
