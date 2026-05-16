@@ -96,6 +96,14 @@ corpus: ## Build the BaniDB corpus cache + iOS bundle JSON.
 fetch-audio: ## Download benchmark audio via yt-dlp (idempotent — skips existing files).
 	$(PYTHON) scripts/fetch_audio.py
 
+.PHONY: fetch-oos-audio
+fetch-oos-audio: ## Download one OOS URL: make fetch-oos-audio OOS_URL='case_001=https://...'
+	@test -n "$(OOS_URL)" || { \
+		echo "Usage: make fetch-oos-audio OOS_URL='case_001=https://...'"; exit 1; }
+	$(PYTHON) scripts/fetch_audio.py \
+		--audio-dir eval_data/oos_v1/audio \
+		--url "$(OOS_URL)"
+
 # -----------------------------------------------------------------------------
 # Data
 # -----------------------------------------------------------------------------

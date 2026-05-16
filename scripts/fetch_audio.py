@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Stage 1a: download benchmark audio.
+"""Stage 1a: download benchmark or OOS audio.
 
 Reads unique `video_id`s from the paired benchmark's test/*.json, downloads
 each via yt-dlp, and converts to 16kHz mono WAV under audio/. Skips files
 that already exist so re-runs are cheap.
+
+For Phase 2.5 / OOS curation, pass one or more `--url case_id=URL` specs
+and set `--audio-dir eval_data/oos_v1/audio`. Those produce
+`<case_id>_16k.wav` files matching the `eval_oos.py` directory contract.
 """
 
 from __future__ import annotations
@@ -27,35 +31,57 @@ def collect_video_ids(gt_dir: pathlib.Path) -> list[str]:
     return sorted(ids)
 
 
-def fetch_one(video_id: str, audio_dir: pathlib.Path) -> bool:
-    out_path = audio_dir / f"{video_id}_16k.wav"
+def parse_url_specs(specs: list[str]) -> list[tuple[str, str]]:
+    """Parse repeated `case_id=URL` CLI specs for OOS audio.
+
+    URLs themselves often contain `=` query params, so split only once.
+    """
+    targets: list[tuple[str, str]] = []
+    for spec in specs:
+        if "=" not in spec:
+            raise ValueError(f"--url must be case_id=URL, got: {spec!r}")
+        case_id, url = spec.split("=", 1)
+        case_id = case_id.strip()
+        url = url.strip()
+        if not case_id:
+            raise ValueError(f"--url case_id is empty in: {spec!r}")
+        if not url:
+            raise ValueError(f"--url URL is empty in: {spec!r}")
+        if "/" in case_id or "\\" in case_id:
+            raise ValueError(f"--url case_id must be a filename stem, got: {case_id!r}")
+        targets.append((case_id, url))
+    return targets
+
+
+def fetch_one_url(case_id: str, url: str, audio_dir: pathlib.Path) -> bool:
+    out_path = audio_dir / f"{case_id}_16k.wav"
     if out_path.exists():
         print(f"skip: {out_path.name} already exists")
         return True
 
     audio_dir.mkdir(parents=True, exist_ok=True)
-    raw_path = audio_dir / f"{video_id}.wav"
-    url = f"https://youtube.com/watch?v={video_id}"
+    raw_template = audio_dir / f".{case_id}.%(ext)s"
+    raw_path = audio_dir / f".{case_id}.wav"
 
-    print(f"downloading {video_id}...")
+    print(f"downloading {case_id}...")
     try:
         subprocess.run(
             [
                 "yt-dlp", "-x", "--audio-format", "wav",
-                "-o", str(audio_dir / "%(id)s.%(ext)s"),
+                "-o", str(raw_template),
                 url,
             ],
             check=True, capture_output=True, text=True,
         )
     except subprocess.CalledProcessError as e:
-        print(f"error downloading {video_id}:\n{e.stderr}", file=sys.stderr)
+        print(f"error downloading {case_id}:\n{e.stderr}", file=sys.stderr)
         return False
 
     if not raw_path.exists():
         print(f"error: expected {raw_path} but yt-dlp produced no such file", file=sys.stderr)
         return False
 
-    print(f"converting {video_id} → 16kHz mono...")
+    print(f"converting {case_id} -> 16kHz mono...")
     try:
         subprocess.run(
             [
@@ -65,18 +91,36 @@ def fetch_one(video_id: str, audio_dir: pathlib.Path) -> bool:
             check=True, capture_output=True, text=True,
         )
     except subprocess.CalledProcessError as e:
-        print(f"error converting {video_id}:\n{e.stderr}", file=sys.stderr)
+        print(f"error converting {case_id}:\n{e.stderr}", file=sys.stderr)
         return False
 
     raw_path.unlink()
-    print(f"done: {out_path.relative_to(REPO_ROOT)}")
+    try:
+        display_path = out_path.relative_to(REPO_ROOT)
+    except ValueError:
+        display_path = out_path
+    print(f"done: {display_path}")
     return True
+
+
+def fetch_one(video_id: str, audio_dir: pathlib.Path) -> bool:
+    return fetch_one_url(video_id, f"https://youtube.com/watch?v={video_id}", audio_dir)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--gt-dir", type=pathlib.Path, default=DEFAULT_GT_DIR)
     parser.add_argument("--audio-dir", type=pathlib.Path, default=DEFAULT_AUDIO_DIR)
+    parser.add_argument(
+        "--url",
+        action="append",
+        default=[],
+        metavar="CASE_ID=URL",
+        help=(
+            "Fetch an arbitrary source URL for OOS curation. Repeatable. "
+            "Writes <CASE_ID>_16k.wav under --audio-dir."
+        ),
+    )
     args = parser.parse_args()
 
     for tool in ("yt-dlp", "ffmpeg"):
@@ -84,19 +128,30 @@ def main() -> int:
             print(f"error: {tool} not on PATH (install via brew or pip)", file=sys.stderr)
             return 1
 
-    video_ids = collect_video_ids(args.gt_dir.resolve())
-    if not video_ids:
-        print(f"error: no GT files in {args.gt_dir}", file=sys.stderr)
-        return 1
-
-    print(f"found {len(video_ids)} unique video_id(s): {', '.join(video_ids)}\n")
     audio_dir = args.audio_dir.resolve()
-    failures = [v for v in video_ids if not fetch_one(v, audio_dir)]
+    if args.url:
+        try:
+            targets = parse_url_specs(args.url)
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
+        print(f"found {len(targets)} OOS URL target(s): {', '.join(c for c, _ in targets)}\n")
+        failures = [case_id for case_id, url in targets if not fetch_one_url(case_id, url, audio_dir)]
+        total = len(targets)
+    else:
+        video_ids = collect_video_ids(args.gt_dir.resolve())
+        if not video_ids:
+            print(f"error: no GT files in {args.gt_dir}", file=sys.stderr)
+            return 1
+
+        print(f"found {len(video_ids)} unique video_id(s): {', '.join(video_ids)}\n")
+        failures = [v for v in video_ids if not fetch_one(v, audio_dir)]
+        total = len(video_ids)
 
     if failures:
         print(f"\n{len(failures)} failure(s): {failures}", file=sys.stderr)
         return 1
-    print(f"\nall {len(video_ids)} audio file(s) ready in {audio_dir}")
+    print(f"\nall {total} audio file(s) ready in {audio_dir}")
     return 0
 
 

@@ -54,7 +54,13 @@ Required fields: `video_id`, `shabad_id`, `segments[*].{start, end, line_idx}`. 
 
 1. Pick a shabad NOT in `{4377, 1821, 1341, 3712}` and not present in any training pull.
 2. Find a clean recording (Sikhnet Radio, archive.org/details/GurbaniKirtan, well-mic'd YouTube).
-3. Convert to 16 kHz mono WAV:
+3. Convert to 16 kHz mono WAV. Preferred path:
+   ```bash
+   make fetch-oos-audio OOS_URL='case_001=https://youtube.com/watch?v=...'
+   ```
+   The `case_001` stem must match the eventual `test/case_001.json`.
+
+   Manual fallback:
    ```bash
    ffmpeg -i input.mp4 -ar 16000 -ac 1 -y eval_data/oos_v1/audio/case_NNN_16k.wav
    ```
