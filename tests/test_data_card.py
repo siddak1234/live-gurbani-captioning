@@ -119,7 +119,7 @@ class TestBuildDataCardWithSplits(unittest.TestCase):
     def test_rejections_table_lists_all_reasons(self):
         self.assertIn("## Rejection counts", self.card)
         for reason in ("score_low", "dur_short", "dur_long",
-                       "holdout_shabad", "holdout_video", "simran"):
+                       "holdout_shabad", "holdout_video", "holdout_content", "simran"):
             self.assertIn(f"| {reason} |", self.card)
         # Counts surface
         self.assertIn("| score_low | 12 |", self.card)
