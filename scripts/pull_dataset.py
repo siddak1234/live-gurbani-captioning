@@ -75,6 +75,56 @@ def load_dataset_config(path: pathlib.Path | None = None) -> dict:
     return _DATASETS_CONFIG_CACHE
 
 
+def load_benchmark_lines(benchmark_dir: pathlib.Path | None = None) -> set:
+    """Load normalized canonical Gurmukhi lines from the paired benchmark.
+
+    Why this exists: the kirtan dataset uses its own ``canonical_shabad_id``
+    scheme (3-char tokens like ``"79E"``) that doesn't map to BaniDB's
+    integer IDs (``4377``, ``1821``, ...). The shabad-ID holdout in
+    ``configs/datasets.yaml`` is therefore a no-op for content-level
+    contamination — a clip from one of the 4 benchmark shabads could
+    slip through under a different ``canonical_shabad_id`` and different
+    ``video_id``. The only reliable filter at the row level is to check
+    the line text against the canonical Gurmukhi strings the benchmark
+    publishes per segment.
+
+    Returns a set of normalized line texts (normalize() from src.matcher
+    — same canonicalization used by the inference matcher). Empty set if
+    the benchmark dir is unavailable; the puller prints a warning rather
+    than blocking, so the training-machine workflow (no benchmark repo
+    required, per CLAUDE.md) still functions — at the cost of losing
+    the content-level holdout signal for that run.
+    """
+    if benchmark_dir is None:
+        benchmark_dir = REPO_ROOT.parent / "live-gurbani-captioning-benchmark-v1" / "test"
+    if not benchmark_dir.exists():
+        print(
+            f"  warning: benchmark dir {benchmark_dir} not found — content-level holdout "
+            f"is a no-op for this pull (video-id + shabad-id holdout still applied if configured)",
+            file=sys.stderr,
+        )
+        return set()
+
+    # Lazy-import normalize so the puller's startup cost doesn't bake in
+    # rapidfuzz/unidecode unless content holdout is actually requested.
+    from src.matcher import normalize
+
+    lines: set = set()
+    for gt_path in sorted(benchmark_dir.glob("*.json")):
+        try:
+            gt = json.loads(gt_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        for seg in gt.get("segments", []) or []:
+            text = seg.get("banidb_gurmukhi") or seg.get("text") or ""
+            if not text:
+                continue
+            norm = normalize(text)
+            if norm:
+                lines.add(norm)
+    return lines
+
+
 def get_holdout(source_key: str, cfg: dict | None = None) -> tuple[set, set, bool]:
     """Resolve (shabad_set, video_set, enforce) for one source from the registry.
 
@@ -326,10 +376,21 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
           f"(shabads={sorted(s for s in holdout_shabads if isinstance(s, str))}, "
           f"videos={sorted(holdout_videos)})")
 
+    # Content-level holdout: the kirtan dataset's canonical_shabad_id namespace
+    # doesn't align with BaniDB's integer IDs, so the shabad-ID filter is a
+    # no-op in practice. The only reliable contamination check at the row level
+    # is to test the line text against the benchmark's canonical Gurmukhi lines.
+    # Loads once per pull; empty set when benchmark dir is unavailable (training
+    # machine workflow keeps functioning, with a warning).
+    benchmark_lines: set = load_benchmark_lines() if apply_holdout else set()
+    if apply_holdout:
+        print(f"  content-holdout: {len(benchmark_lines)} canonical benchmark lines loaded")
+
     manifest: list[dict] = []
     n_scanned = n_kept = 0
     n_skipped_shabad = n_skipped_video = n_skipped_score = n_skipped_simran = 0
     n_skipped_dur_short = n_skipped_dur_long = 0
+    n_skipped_content = 0
 
     for row in _iter_first_parquet_shard(dataset_id, shard_idx=args.shard):
         n_scanned += 1
@@ -363,6 +424,15 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
         if not text:
             continue
 
+        # Content-level holdout: drop the row if its canonical line text
+        # exactly matches any line from one of the 4 benchmark shabads.
+        # See load_benchmark_lines() for why this is the only correct holdout.
+        if benchmark_lines:
+            from src.matcher import normalize
+            if normalize(text) in benchmark_lines:
+                n_skipped_content += 1
+                continue
+
         # Decode → duration filter → write. The split avoids orphaned wav
         # files when duration bounds reject a clip.
         arr, sr, duration = _decode_audio(row.get("audio"))
@@ -394,17 +464,18 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
 
     print(f"\nscanned: {n_scanned}")
     print(f"kept:    {n_kept}")
-    print(f"skipped: shabad={n_skipped_shabad} video={n_skipped_video} "
+    print(f"skipped: shabad={n_skipped_shabad} video={n_skipped_video} content={n_skipped_content} "
           f"score={n_skipped_score} simran={n_skipped_simran} "
           f"dur_short={n_skipped_dur_short} dur_long={n_skipped_dur_long}")
 
     rejections = {
-        "holdout_shabad": n_skipped_shabad,
-        "holdout_video":  n_skipped_video,
-        "score_low":      n_skipped_score,
-        "simran":         n_skipped_simran,
-        "dur_short":      n_skipped_dur_short,
-        "dur_long":       n_skipped_dur_long,
+        "holdout_shabad":  n_skipped_shabad,
+        "holdout_video":   n_skipped_video,
+        "holdout_content": n_skipped_content,
+        "score_low":       n_skipped_score,
+        "simran":          n_skipped_simran,
+        "dur_short":       n_skipped_dur_short,
+        "dur_long":        n_skipped_dur_long,
     }
 
     splits = None
@@ -532,7 +603,7 @@ def _build_data_card(
         "|---|---|",
     ]
     for reason in ("score_low", "dur_short", "dur_long",
-                   "holdout_shabad", "holdout_video", "simran"):
+                   "holdout_shabad", "holdout_video", "holdout_content", "simran"):
         lines.append(f"| {reason} | {rejections.get(reason, 0)} |")
     lines.append("")
 
