@@ -153,24 +153,34 @@ def _is_held_out(shabad_id, video_id: str, *, shabads: set, videos: set) -> tupl
     return False, ""
 
 
-def _write_audio_clip(audio_field, clip_id: str, clips_dir: pathlib.Path) -> tuple[pathlib.Path | None, float]:
-    """Write the audio dict (HF Audio feature format: {bytes, path}) to a wav file.
+def _decode_audio(audio_field) -> tuple:
+    """Decode an HF Audio dict to (array, sample_rate, duration_s).
 
-    Returns (path, duration_s) or (None, 0.0) on failure.
+    Splitting decode from write lets us cheaply filter on duration BEFORE
+    paying for the wav file write — avoids orphaned files in clips/ when
+    duration bounds reject a clip. Returns ``(None, 0, 0.0)`` on any
+    decode failure so the caller drops the row uniformly.
     """
     import soundfile as sf
     audio_bytes = audio_field.get("bytes") if isinstance(audio_field, dict) else None
     if not audio_bytes:
-        return None, 0.0
+        return None, 0, 0.0
     try:
         arr, sr = sf.read(io.BytesIO(audio_bytes), dtype="float32")
     except Exception:
-        return None, 0.0
+        return None, 0, 0.0
+    duration = float(len(arr)) / float(sr) if sr else 0.0
+    return arr, int(sr), duration
+
+
+def _write_audio_clip(arr, sr: int, clip_id: str, clips_dir: pathlib.Path) -> pathlib.Path:
+    """Write a decoded audio array to ``clips_dir/<sanitized_id>.wav`` and
+    return the path. Caller has already validated duration."""
+    import soundfile as sf
     safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in str(clip_id))
     clip_path = clips_dir / f"{safe}.wav"
-    sf.write(str(clip_path), arr, int(sr))
-    duration = float(len(arr)) / float(sr) if sr else 0.0
-    return clip_path, duration
+    sf.write(str(clip_path), arr, sr)
+    return clip_path
 
 
 def _write_manifest(out_dir: pathlib.Path, manifest: list[dict]) -> pathlib.Path:
@@ -319,6 +329,7 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
     manifest: list[dict] = []
     n_scanned = n_kept = 0
     n_skipped_shabad = n_skipped_video = n_skipped_score = n_skipped_simran = 0
+    n_skipped_dur_short = n_skipped_dur_long = 0
 
     for row in _iter_first_parquet_shard(dataset_id, shard_idx=args.shard):
         n_scanned += 1
@@ -352,10 +363,20 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
         if not text:
             continue
 
-        clip_id = row.get("clip_id") or f"{source_key}_{len(manifest):06d}"
-        clip_path, duration = _write_audio_clip(row.get("audio"), clip_id, clips_dir)
-        if not clip_path:
+        # Decode → duration filter → write. The split avoids orphaned wav
+        # files when duration bounds reject a clip.
+        arr, sr, duration = _decode_audio(row.get("audio"))
+        if arr is None:
             continue
+        if duration < args.min_duration_s:
+            n_skipped_dur_short += 1
+            continue
+        if duration > args.max_duration_s:
+            n_skipped_dur_long += 1
+            continue
+
+        clip_id = row.get("clip_id") or f"{source_key}_{len(manifest):06d}"
+        clip_path = _write_audio_clip(arr, sr, clip_id, clips_dir)
 
         record = {
             "audio": f"clips/{clip_path.name}",
@@ -374,7 +395,8 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
     print(f"\nscanned: {n_scanned}")
     print(f"kept:    {n_kept}")
     print(f"skipped: shabad={n_skipped_shabad} video={n_skipped_video} "
-          f"score={n_skipped_score} simran={n_skipped_simran}")
+          f"score={n_skipped_score} simran={n_skipped_simran} "
+          f"dur_short={n_skipped_dur_short} dur_long={n_skipped_dur_long}")
 
     if getattr(args, "split_by", "none") == "shabad":
         # argparse already parsed via type=_parse_split_ratios → tuple of 3 floats.
@@ -472,6 +494,13 @@ def _add_surt_args(p: argparse.ArgumentParser) -> None:
                    help="Stop scanning the stream after this many rows (default 5000)")
     p.add_argument("--shard", type=int, default=0,
                    help="Which parquet shard to pull (default 0 = first)")
+    # -- Duration filter (Phase 1.C) --
+    # Whisper's encoder is fixed at 30s; longer clips get truncated, which
+    # corrupts the trailing label. Floor at 1s drops near-silent fragments.
+    p.add_argument("--min-duration-s", type=float, default=1.0,
+                   help="Drop clips shorter than this (default 1.0s).")
+    p.add_argument("--max-duration-s", type=float, default=30.0,
+                   help="Drop clips longer than this (default 30.0s — Whisper's encoder ceiling).")
     # -- Split (Phase 1.B) --
     # Default is "none" for back-compat: existing Makefile train target reads
     # manifest.json directly. Switch to "shabad" for zero-leakage train/val/test.
