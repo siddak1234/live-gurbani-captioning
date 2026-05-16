@@ -2,13 +2,15 @@
 
 Companion to the high-level Phase 2 entry in [`CLAUDE.md`](../CLAUDE.md#phase-2--mac-smoke-baseline). This is the operational detail — pre-flight, exact `make` invocations, expected outputs at each step, success gate, failure modes, decision branches.
 
+**Status:** Completed on 2026-05-16. Phase 2 validated the training/eval pipeline but did **not** promote as a model improvement. `v5_mac_baseline` scored `74.0%`, equal to `x4_pathA_surt` and below the `>= 75.0%` gate. The current go-forward plan is [`docs/phase2_outcome.md`](phase2_outcome.md): run Phase 2.5 before Phase 3.
+
 **Role:** ML Scientist.
 
-**Hypothesis:** A clean 200-sample, 1-epoch fine-tune of `surt-small-v3` on curated kirtan should reproducibly move:
+**Original hypothesis:** A clean 200-sample fine-tune of `surt-small-v3` on curated kirtan should reproducibly move:
 - **Paired benchmark frame accuracy:** `+1 to +3 pts` above the `x4_pathA_surt` baseline of 74.0%
 - **OOS frame accuracy (if `oos_v1` is curated):** `+1 to +2 pts` above v3.2's OOS baseline (TBD, run on v3.2 first)
 
-If neither metric moves by at least +1 pt, the data pipeline or the training loop is the bottleneck, not the model. Phase 3 has nothing to scale.
+**Actual result:** the loop is sound, but the 200-clip run was neutral. Training loss decreased, reproducibility was bit-identical on the smoke gate, and PEFT inference loaded the adapter. The more likely bottleneck is data scale/diversity plus blind-ID/cold-window behavior, so Phase 3 now requires the Phase 2.5 diagnostic bridge.
 
 ## Pre-flight (one-time, ~30 min)
 
@@ -23,7 +25,7 @@ These steps must complete before any Phase 2 step runs. They're system-level set
 | Install Python deps | `make install` (or `pip install -r requirements-mac.txt`) | `python3 -c "import torch, transformers, peft, soundfile, yaml"` works | 5–10 min (torch is large) |
 | Fetch benchmark audio | `make fetch-audio` | 4 WAVs exist in `audio/` | 5–15 min depending on connection |
 | Build the smoke manifest | `make smoke-manifest` | `training_data/smoke/manifest.json` exists with 4 entries | <1 min |
-| Verify full test suite passes WITH deps | `make test` | 75/75 pass, **0 skipped** (currently 0 skipped on yaml+unidecode+rapidfuzz Mac; should remain 0) | <5 sec |
+| Verify full test suite passes WITH deps | `make test` | 83/83 pass, **0 skipped** on the current Python 3.12 venv | <20 sec |
 
 **Gate before proceeding:** if any pre-flight step fails, fix before continuing. Phase 2.A failing on missing deps is wasted wall-clock.
 
@@ -95,12 +97,13 @@ This runs `scripts/pull_dataset.py kirtan --out-dir training_data/v5_mac_baselin
 **Success criteria:**
 1. `training_data/v5_mac_baseline/manifest.json` exists with ~200 records
 2. `training_data/v5_mac_baseline/data_card.md` exists (Phase 1.D output) with rejection counts, top shabads, holdout enforcement confirmed
-3. Inspect data_card: holdout shows the 4 benchmark shabads listed, `holdout_shabad` rejection count > 0 (proves the filter is actively excluding them)
-4. No rows with `shabad_id` ∈ `{4377, 1821, 1341, 3712}` in the manifest (verify with `python -c "import json; m=json.load(open('training_data/v5_mac_baseline/manifest.json')); print(set(r['shabad_id'] for r in m) & {'4377','1821','1341','3712'})"` — should print `set()`)
+3. Inspect data_card: holdout shows the 4 benchmark shabads and 4 benchmark videos listed.
+4. Confirm all three holdout layers are active: `holdout_shabad`, `holdout_video`, and `holdout_content`.
+5. Confirm no rows overlap benchmark canonical lines. The kirtan dataset uses 3-character `canonical_shabad_id` tokens, not BaniDB integer IDs, so content-based holdout is the reliable shabad-level guard.
 
 **Note on split:** for Phase 2 we use the default `--split-by none` (single manifest). The shabad-level split (Phase 1.B) is for Phase 3 where we want a real val set. Phase 2's signal is from benchmark + OOS eval, not from per-step val loss.
 
-## Phase 2.D — Real fine-tune (~3–4 h wall-clock on M4 Pro)
+## Phase 2.D — Real fine-tune (~20–45 min train wall-clock on M4 Pro)
 
 ```bash
 make train \
@@ -112,7 +115,7 @@ This is `scripts/finetune_path_b.py --config configs/training/surt_lora_mac.yaml
 
 **Expected throughput on M4 Pro 48GB:** roughly 1.5–3.0 train steps/sec. 200 samples × 3 epochs / (batch 4 × grad_accum 2) ≈ 75 optimizer steps, ~5–15 minutes per epoch. **Wall-clock estimate: 20–45 minutes for the train itself, +overhead.**
 
-(Note: the high-level CLAUDE.md entry says "~3–4 h" which is a conservative envelope including data pull + eval + tile generation + iteration. The training-only segment is the smaller window above.)
+(The full Phase 2 loop took longer because it included data pull, dependency debugging, evaluation, and documentation. The training-only segment for `v5_mac_baseline` was 232 s.)
 
 **Run in background; monitor via:**
 - Stream tensorboard from `lora_adapters/v5_mac_baseline/runs/*` (Phase 0.A default when no `WANDB_API_KEY` is set)
@@ -140,7 +143,7 @@ make eval \
   EVAL_OUT=submissions/v5_mac_baseline
 ```
 
-This invokes `scripts/run_path_a.py --backend huggingface_whisper --model surindersinghssj/surt-small-v3 --adapter-dir lora_adapters/v5_mac_baseline ...` followed by the benchmark's `eval.py`.
+This invokes `scripts/run_path_a.py --backend huggingface_whisper --model surindersinghssj/surt-small-v3 --adapter-dir lora_adapters/v5_mac_baseline ...` followed by the benchmark's `eval.py`. The fair comparison to `x4_pathA_surt` uses `HF_WINDOW_SECONDS=10`; 30-second windows reproduce the known-bad X4 regime and scored 46.2% during the v5 audit.
 
 **Success criteria (TWO-ARM gate):**
 
@@ -180,7 +183,7 @@ submissions/v5_mac_baseline/
 - Base model: surindersinghssj/surt-small-v3
 - Data: training_data/v5_mac_baseline (200 samples, min_score 0.8, no split)
 - Hyperparameters: see configs/training/surt_lora_mac.yaml
-- Hardware: M4 Pro 48 GB, MPS, fp16
+- Hardware: M4 Pro 48 GB, MPS, fp32 (current torch 2.5 / accelerate window cannot use MPS fp16 safely)
 - Wall-clock: <X> minutes train + <Y> minutes eval
 
 ## Scores
@@ -200,16 +203,17 @@ Generalizes? Yes / No / Conditional — explain.
 ## Decision gate after Phase 2
 
 **If Arm 1 ≥ 75 % AND (Arm 2 ≥ +1 pt OR Arm 2 owed):**
-→ Phase 2 promotes. Proceed to **Phase 3** (50 h data, LoRA r=32, SpecAugment, gradient_checkpointing). The pipeline is validated; scale is the next bet.
+→ Phase 2 would promote. This did not happen for `v5_mac_baseline`.
 
 **If Arm 1 < 75 %:**
-→ Phase 2 does NOT promote. The data pipeline or training loop is broken — not the model. Diagnose before scaling. Common causes:
-- Holdout filter not actually working (verify with explicit unit test against the data_card)
-- LR / schedule mismatch (try +1 pt LR sweep before declaring failure)
-- Data quality below expected (raise `--min-score` from 0.8 to 0.9, re-pull, retry)
+→ Phase 2 does NOT promote. For `v5_mac_baseline`, the loop was validated and the adapter path was active, so the next diagnosis is not "fix training from scratch." Run Phase 2.5:
+- curate OOS v1 and establish v3.2/x4/v5 baselines,
+- pull a larger, more diverse `v5b_mac_diverse` slice,
+- keep the same config for the first retry,
+- compare benchmark, OOS, and transcript deltas.
 
 **If Arm 1 ≥ 75 % but Arm 2 catastrophically regresses on a specific case:**
-→ Phase 2 promotes provisionally. Document the per-case failure in `notes.md`. Phase 5 (generalization audit) will revisit. Do NOT change the engine to "fix" a single case — that's overfitting in disguise.
+→ Do not promote as a model improvement. Document the per-case failure in `notes.md`, then diagnose with Phase 2.5 / OOS before scaling. Do NOT change the engine to "fix" a single case — that's overfitting in disguise.
 
 ## What Phase 2 explicitly does NOT do
 
@@ -235,15 +239,13 @@ This is half a day in elapsed time but only ~30 min of active hands-on. The rest
 
 ## Sequencing vs Phase 1.5
 
-These two phases can proceed in parallel. Phase 1.5 (OOS curation, [`docs/oos_v1_curation.md`](oos_v1_curation.md)) is mostly labor that needs deps installed; Phase 2 is mostly compute that needs deps installed. Both unblock the moment `brew install python@3.12 + make install` finishes.
+Phase 1.5 is now the front door to Phase 2.5. OOS curation ([`docs/oos_v1_curation.md`](oos_v1_curation.md)) should happen before the next model-improvement claim.
 
-Recommended order on day one of post-deps:
-1. Pre-flight checklist (~30 min)
-2. Phase 2.A smoke validation (5 min) ← cheap sanity check
-3. Phase 2.B reproducibility gate (10 min) ← cheap and high-information; if it fails, fix before everything else
-4. Phase 1.5 audio fetch + bootstrap labels for 5 cases (~3 h labor, ~30 min compute) ← while Phase 2.D runs
-5. Phase 2.D real fine-tune (~45 min compute) ← runs in parallel to 1.5
-6. Phase 2.E eval against benchmark + (if 1.5 ready) OOS v1
-7. Phase 2.F documentation
+Recommended order after the v5 result:
+1. Implement or extend the OOS audio-fetch/bootstrap helper for arbitrary URLs.
+2. Curate the 5-case OOS v1 pack and establish v3.2/x4/v5 baselines.
+3. Add diversity-aware data-pull controls if the existing first-shard pull cannot meet source-video/shabad-token floors.
+4. Pull `v5b_mac_diverse` (`1k-5k` clips, `min_score >= 0.85`, content holdout active).
+5. Train/evaluate with the same config first; only then consider LoRA rank/LR/augmentation changes.
 
-The Mac pipelines for 1.5 and 2.D don't conflict — they hit different parts of the stack at different times.
+The Mac pipelines for OOS curation and training do not conflict, but OOS should no longer be optional for promotion.

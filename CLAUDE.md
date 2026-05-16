@@ -101,6 +101,7 @@ Live causality is honor-system — the scorer can't tell. The output JSON looks 
 | `v3_2_pathA_no_title` | blind + live | **86.5%** | **Yes — current honest production candidate.** Generic fw-medium ASR; matcher/smoother tuning is mostly architecture-level, not shabad-specific. |
 | `v4_mlx_large_v3` | blind + live | 83.8% | Yes — alternative ASR backend (Apple GPU). |
 | `x4_pathA_surt` | blind + live | 74.0% | **Yes — best designed for generalization.** Uses surindersinghssj/surt-small-v3 (Whisper-small fine-tuned on 660h of kirtan). Lower benchmark score is real, but reflects honest accuracy on out-of-set kirtan. |
+| `v5_mac_baseline` | blind + live | 74.0% | **Yes, but neutral.** First real Mac LoRA on `surt-small-v3` using 200 clips / 0.418h. Validates the MPS training + PEFT inference pipeline, but does not beat `x4_pathA_surt`; do not promote as a model improvement. |
 | `x7_surt_only` | blind + live | 68.6% | Yes — surt with longer blind buffer; didn't help (kept for negative-result record). |
 | `x8_pb_finetuned` | blind + offline | 72.9% (Path B) | **Yes — proof of production training path.** w2v-bert-punjabi + LoRA adapter from 50-step fine-tune on 30 real kirtan clips. +2.6 over Path B baseline; +6 to +14 per-shabad on 3 of 4 shabads. Validates the end-to-end training pipeline; tiny scale, far from saturated. |
 | `x5_ensemble` | blind + live | 91.2% | **No — benchmark-overfit.** Route table `{1341 → surt}` chosen from test-set scores. |
@@ -131,7 +132,7 @@ Numbered roughly by order, not by difficulty:
 
 1. **Establish honest evaluation hygiene.** Before claiming any new score, run on a held-out audio recording not used during tuning. Even just one new Sikhnet-Radio recording with a known-but-not-in-benchmark shabad lets us catch overfitting early.
 2. **Ship surt-small-v3 with better integration as the v0 production engine.** The standalone 74% is held back by ASR-vs-matcher chunk-granularity mismatch, not by the model itself. Investigate: word-level timestamps from the HF pipeline, custom decoding that respects line boundaries, or use surt's text + faster-whisper's timestamps as a hybrid.
-3. **Fine-tune surt-small-v3 on the 300h dataset (Mac-first).** Pipeline validated end-to-end on real data (see `submissions/x8_pb_finetuned/notes.md` for the smoke run that moved Path B HMM +2.6 points). Real training runs locally on M-series Macs via PyTorch + MPS — see [`docs/training_on_mac.md`](docs/training_on_mac.md). Tools: `scripts/pull_dataset.py kirtan` (pulls from `surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical` with benchmark holdout), `scripts/finetune_path_b.py --config configs/training/surt_lora_mac.yaml` (auto-detects Whisper vs CTC from `--model-id`; target_modules default to Whisper's `q_proj/k_proj/v_proj/out_proj` when `surt-small-v3` is the base). Cloud fallback (Colab/RunPod) documented in [`docs/cloud_training.md`](docs/cloud_training.md) for the day Mac wall-clock becomes the bottleneck.
+3. **Fine-tune surt-small-v3 on the 300h dataset (Mac-first).** Pipeline validated end-to-end on real data: `v5_mac_baseline` trained and evaluated successfully, but scored neutral (74.0%, same as `x4_pathA_surt`) because the 200-clip slice was too small and too low-diversity. Next is **Phase 2.5**, not a blind 50h jump: curate OOS v1, then run a diversity-aware `v5b_mac_diverse` diagnostic pull. Real training runs locally on M-series Macs via PyTorch + MPS — see [`docs/training_on_mac.md`](docs/training_on_mac.md). Tools: `scripts/pull_dataset.py kirtan` (pulls from `surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical` with benchmark holdouts), `scripts/finetune_path_b.py --config configs/training/surt_lora_mac.yaml` (auto-detects Whisper vs CTC from `--model-id`; target_modules default to Whisper's `q_proj/k_proj/v_proj/out_proj` when `surt-small-v3` is the base). Cloud fallback (Colab/RunPod) documented in [`docs/cloud_training.md`](docs/cloud_training.md) for the day Mac wall-clock becomes the bottleneck.
 4. **Move to forced alignment over the full shabad** (Path B done right) instead of per-chunk classification. Aligns the whole shabad text to the audio as one continuous problem; naturally handles line transitions including rapid ones. Architecture sketch is in `src/path_b/`.
 5. **Replace the route table with a learned dispatcher** — small classifier picking the engine based on audio features (tempo, vocal/instrumental ratio, etc.), not on shabad ID lookup. Makes ensembling honest by design.
 6. **Build the live deployment surface**: streaming audio in, captions out, Sewadar UI with confirm/reset buttons (matches the reference system's UX from karanbirsingh.com).
@@ -180,18 +181,35 @@ When working a given phase, *fully adopt the named role* — primary literature,
 ### Phase 2 — Mac smoke baseline
 **Role:** ML Scientist.
 
-**Hypothesis:** A clean ~200-sample, 1-epoch fine-tune should reproducibly move benchmark by +1–3 pts and OOS by +1–2 pts. If it doesn't, the data or loop is broken — not the model.
+**Status:** ✅ Complete as pipeline proof; ❌ did not promote as model improvement. See [`docs/phase2_outcome.md`](docs/phase2_outcome.md) and [`submissions/v5_mac_baseline/notes.md`](submissions/v5_mac_baseline/notes.md).
 
-**Approach:** `make smoke` end-to-end with Phase 0 instrumentation; then a 200-sample, 1-epoch real fine-tune (~3–4 h wall-clock); benchmark + OOS eval; commit submission to `submissions/v5_mac_baseline/` with full lineage hash referenced in `notes.md`.
+**Actual result:** smoke and same-seed reproducibility passed; 200-clip / 0.418h real fine-tune completed on MPS; adapter loaded through PEFT inference; benchmark score was **74.0%**, equal to `x4_pathA_surt` and below the `>= 75.0%` gate. OOS v1 is still owed.
 
-**Success criteria:** Benchmark frame accuracy ≥ x4_pathA_surt baseline (74 %) + 1 pt; OOS reported (any honest number); run reproducible from `run_card.json`.
+**Decision:** treat `v5_mac_baseline` as an end-to-end validation artifact, not a promoted model. Do not start Phase 3 until Phase 2.5 answers whether diversity-scaled data moves the ASR and whether that movement survives OOS.
 
-**Cost:** ~half a day wall-clock.
+### Phase 2.5 — Diagnostic bridge before scaling
+**Role:** ML Scientist + Speech Data Engineer.
+
+**Hypothesis:** `v5_mac_baseline` was neutral because the data slice was too small / too narrow (200 clips from 2 videos) and the benchmark failures are dominated by blind-ID + cold-window behavior, not because the training loop is broken.
+
+**Approach:**
+- Curate `oos_v1` (5 shabads, 3 representative + 2 stress) and establish v3.2 / x4 / v5 baselines.
+- Add or verify diversity-aware data pulling: sample across shards, target `1k-5k` clips, require at least 20 source videos and 100 shabad tokens, `min_score >= 0.85`, all three holdouts active (shabad-ID, video-ID, content).
+- Train `v5b_mac_diverse` with the same proven config first; change only data scale/diversity.
+- Evaluate benchmark with `HF_WINDOW_SECONDS=10`, OOS v1, and transcript deltas vs `x4_pathA_surt`.
+
+**Success criteria:** OOS v1 exists; `v5b_mac_diverse` clears `>= 75.0%` benchmark **or** shows positive OOS movement without catastrophic per-case regression; transcript deltas confirm the adapter is changing ASR behavior.
+
+**Failure mode:** if `v5b_mac_diverse` is still neutral and mostly transcript-identical to x4, pause Whisper-small LoRA scaling and pivot to integration/alignment work: blind-ID robustness, windowing, word timestamps, full-shabad forced alignment, or IndicConformer.
+
+**Cost:** ~1 day engineering + OOS curation labor + one diagnostic train/eval cycle.
 
 ### Phase 3 — Mac-scale real fine-tune
 **Role:** ML Scientist (acoustic modeling) (lead) + Optimization Engineer.
 
-**Hypothesis:** 50 h of curated kirtan + SpecAugment + cosine LR + LoRA r=32 + weight decay + 3 seeds should push surt-small-v3 to ≥ 85 % benchmark and ≥ 80 % OOS — within 24–48 h M4 Pro wall-clock per run.
+**Precondition:** Phase 2.5 must produce a positive diagnostic result or a deliberate architecture pivot. Do not spend the 3 × 24h budget while the adapter is still neutral on the small diagnostic run.
+
+**Hypothesis:** If Phase 2.5 shows positive movement, 50 h of curated kirtan + SpecAugment + cosine LR + LoRA r=32 + weight decay + 3 seeds should push surt-small-v3 to ≥ 85 % benchmark and ≥ 80 % OOS — within 24–48 h M4 Pro wall-clock per run.
 
 **Approach:**
 - Pull 50 h slice at `min_score ≥ 0.85`

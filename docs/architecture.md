@@ -104,7 +104,8 @@ The repo currently ships two engines, frozen at different scores:
 | Path A v3.2 | 86.5% blind+live | faster-whisper + rapidfuzz matcher + smoother | frozen canonical |
 | Path B | 70.3% baseline / 72.9% with 50-step LoRA | w2v-bert CTC + loop-aware shabad HMM | development |
 | x4 (Path A with surt) | 74.0% honest | surt-small-v3 + same matcher/smoother | best generalization candidate |
-| Fine-tuned surt (M1 target) | TBD | surt-small-v3 fine-tuned on Mac MPS | next |
+| v5_mac_baseline | 74.0% honest / neutral | surt-small-v3 + 200-clip Mac MPS LoRA | pipeline proof, not promoted |
+| v5b_mac_diverse (planned) | TBD | larger/diverse surt-small-v3 Mac MPS LoRA + OOS v1 | next diagnostic |
 
 Path A is the deployment target because Whisper architectures have the cleanest Core ML / WhisperKit pipeline. Path B remains as research scaffolding for forced-alignment experiments.
 

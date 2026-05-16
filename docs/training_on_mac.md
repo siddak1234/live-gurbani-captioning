@@ -28,7 +28,7 @@ python scripts/pull_dataset.py kirtan \
   --min-score 0.8
 ```
 
-`--num-samples` controls how many qualifying clips to keep. The first parquet shard of the source dataset holds ~1500 rows (~2-3h of audio); raise `--max-scan` to widen the pool. Benchmark shabads and videos are filtered out automatically.
+`--num-samples` controls how many qualifying clips to keep. The first parquet shard of the source dataset holds ~1500 rows (~2-3h of audio); raise `--max-scan` to widen the pool. Benchmark shabads, benchmark videos, and benchmark canonical line text are filtered out automatically.
 
 For multi-source training mixes (kirtan + sehaj + sehajpath), pull each separately and concat the resulting manifests. See `configs/datasets.yaml` for the source registry.
 
@@ -62,8 +62,8 @@ The config (`configs/training/surt_lora_mac.yaml`) supplies:
 - `model_id = surindersinghssj/surt-small-v3`
 - `lora_r = 16`, `lora_alpha = 32`, target_modules covering Whisper attention projections
 - `batch_size = 4`, `grad_accum = 2` (effective batch 8)
-- `epochs = 3`, `lr = 1e-5`, `warmup_steps = 100`
-- `fp16: null` → auto-on for MPS (~30% throughput lift vs fp32)
+- `epochs = 3`, `lr = 1e-5`, `warmup_ratio = 0.1`
+- `fp16: false` on the current Mac stack. Torch 2.5 + accelerate <1.11 is the known-good window; re-enable MPS fp16 only after upgrading torch to 2.8+ and revalidating torchaudio / torchcodec / ctranslate2 compatibility.
 
 Any flag passed on the CLI overrides the YAML value.
 
@@ -73,9 +73,10 @@ Any flag passed on the CLI overrides the YAML value.
 
 ## 4. Evaluate
 
-Use the LoRA adapter directly via `scripts/run_path_a.py` with `--backend huggingface_whisper`:
+Use the LoRA adapter directly via `scripts/run_path_a.py` with `--backend huggingface_whisper`. Keep `HF_WINDOW_SECONDS=10` for fair comparison to `x4_pathA_surt`; 30-second windows are known-bad for this backend.
 
 ```bash
+HF_WINDOW_SECONDS=10 \
 python scripts/run_path_a.py \
   --backend huggingface_whisper \
   --model surindersinghssj/surt-small-v3 \
@@ -100,7 +101,7 @@ python ../live-gurbani-captioning-benchmark-v1/eval.py \
 
 - Loss not decreasing → check `--lr` (try 5e-6), check `--warmup-steps` (try 50).
 - OOM → drop `batch_size` to 2 or 1, raise `grad_accum` accordingly.
-- Throughput too slow → measure steps/sec from the trainer logs. If under 0.5/s, consider whether `fp16` is actually on (the trainer prints `Precision: bf16=False, fp16=True` at startup).
+- Throughput too slow → measure steps/sec from the trainer logs. Current validated MPS mode is fp32 and prints `Precision: bf16=False, fp16=False`. If under 0.5/s, check for CPU fallback, memory pressure, or a dependency drift from the known-good versions below.
 - Catastrophic regression on one shabad → likely overfitting to a narrow training distribution. Pull more diverse data (raise `--num-samples`, include sehaj source).
 
 ## 6. When to escape to cloud
@@ -112,13 +113,13 @@ If wall-clock pushes past ~24h for a single training run, or you want to sweep h
 | Component | Version |
 |---|---|
 | macOS | 14.0+ |
-| Python | 3.10 - 3.12 |
-| torch | 2.4+ |
-| transformers | 4.40+ |
-| peft | 0.10+ |
-| accelerate | 0.30+ |
+| Python | 3.12.13 |
+| torch | 2.5.0 |
+| transformers | 4.46.3 |
+| peft | 0.19.1 |
+| accelerate | 1.10.1 |
 
-If your `torch` is older, MPS coverage of cross-entropy / matmul / softmax may degrade. `pip install --upgrade torch` first if you see unexpected slowdowns.
+If you upgrade these, rerun `make smoke`, the same-seed reproducibility gate, and one benchmark eval before trusting a real training run.
 
 ## Troubleshooting
 

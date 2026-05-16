@@ -79,13 +79,13 @@ Per case, from "I have a candidate" to "GT JSON committed":
 
 Total per case: **~30–45 minutes**. Five cases: **~3 hours of focused labor.**
 
-Most of this is gated on `brew install python@3.12 + make install` finishing. The selection and audio sourcing (~15 min per case) is the only part that runs unblocked.
+On the current dev Mac, Python 3.12, ffmpeg, yt-dlp, torch, transformers, PEFT, and accelerate are installed and validated by Phase 2. The remaining blockers are curation labor and a small helper extension for arbitrary OOS audio URLs.
 
 ## Execution order — what to do first
 
-1. **Now (no deps):** confirm the 5 picks from the pool above. Listen to candidate recordings on Sikhnet Radio or YouTube. Note the audio URLs.
-2. **After deps install:** run `scripts/fetch_audio.py` extended to accept arbitrary URLs (currently it hardcodes the 4 benchmark videos — needs a small extension; flagged as a Phase 1.5.B follow-up).
-3. **After deps install:** bootstrap GT JSONs via `eval_oos.py --oracle` for each case.
+1. **Now:** confirm the 5 picks from the pool above. Listen to candidate recordings on Sikhnet Radio or YouTube. Note the audio URLs.
+2. **Next code PR:** extend or add an audio-fetch helper that accepts arbitrary source URLs (the existing benchmark fetch path is hardcoded to the 4 paired-benchmark videos).
+3. **After audio fetch:** bootstrap GT JSONs via `eval_oos.py --oracle` for each case.
 4. **Manual review:** open each bootstrap JSON in your editor, listen along, correct line boundaries. Save under `eval_data/oos_v1/test/`.
 5. **Lock in:** add each recording's `video_id` (or equivalent source identifier) to `configs/datasets.yaml` → `holdout.video_ids` so it's never accidentally pulled into training.
 6. **Baseline:** run `eval_oos.py --engine-config configs/inference/v3_2.yaml` against the curated pack. The v3.2 score is the v0 OOS number. Phase 2 fine-tunes must beat this on average AND not regress catastrophically on any single case.
