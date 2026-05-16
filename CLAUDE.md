@@ -105,6 +105,7 @@ Live causality is honor-system — the scorer can't tell. The output JSON looks 
 | `v5b_mac_diverse` | blind + live | 65.6% | **No — negative diagnostic.** 2,544 clips / 4.936h / 20 videos / 195 shabad tokens. Adapter changes transcripts but destabilizes blind-ID/cold-window behavior; pause Phase 3 and run alignment diagnostics. |
 | `v5b_twopass_v32_idlock` | two-pass proxy | 87.1% | **Diagnostic only.** Uses v3.2 pre-lock segments + v5b post-lock oracle-shabad alignment. Validates the ID-lock direction, but it is not yet a runtime engine or OOS-validated. |
 | `v5b_idlock_runtime` | runtime ID-lock | 75.6% | **No — Phase 2.7 failed.** Clean Layer 2 implementation, but current blind-ID commits two `kZhIA8P6xWI` starts to the wrong shabad. |
+| `phase2_8_idlock_preword` | runtime ID-lock + word-timestamp pre-lock | 86.6% | **Best current runtime candidate, not promoted.** Word timestamps fix shabad ID (12/12), v5b handles post-lock alignment, but it misses the 87% gate by 0.4 pts and OOS is owed. |
 | `x7_surt_only` | blind + live | 68.6% | Yes — surt with longer blind buffer; didn't help (kept for negative-result record). |
 | `x8_pb_finetuned` | blind + offline | 72.9% (Path B) | **Yes — proof of production training path.** w2v-bert-punjabi + LoRA adapter from 50-step fine-tune on 30 real kirtan clips. +2.6 over Path B baseline; +6 to +14 per-shabad on 3 of 4 shabads. Validates the end-to-end training pipeline; tiny scale, far from saturated. |
 | `x5_ensemble` | blind + live | 91.2% | **No — benchmark-overfit.** Route table `{1341 → surt}` chosen from test-set scores. |
@@ -247,7 +248,7 @@ When working a given phase, *fully adopt the named role* — primary literature,
 ### Phase 2.8 — ASR reproducibility recovery + timing/alignment pivot
 **Role:** ASR Integration Engineer + ML Scientist.
 
-**Status:** next — execution plan in [`docs/phase2_8_plan.md`](docs/phase2_8_plan.md).
+**Status:** in progress — execution plan and probe results in [`docs/phase2_8_plan.md`](docs/phase2_8_plan.md).
 
 **Hypothesis:** the old v3.2/faster-whisper result depends on unpinned ASR variables (faster-whisper/CTranslate2/model/VAD/cache). The path toward 95% is not another per-chunk scorer; it is reproducible ASR plus better timing/alignment (`vad_filter=False`, `word_timestamps=True`, hybrid surt text + faster-whisper timestamps, or full-shabad forced alignment).
 
@@ -256,6 +257,8 @@ When working a given phase, *fully adopt the named role* — primary literature,
 - Explain the `86.5% -> 73.5%` v3.2 reproducibility drift with transcript diffs, especially the first 30s blind-ID buffer for `kZhIA8P6xWI`.
 - Run timestamp prototypes before any training scale-up.
 - If timestamp prototypes fail, pivot to full-shabad forced alignment.
+
+**Initial result:** `phase2_8_fw_word` fixes blind ID but scores **72.0%** as a full caption path; `phase2_8_fw_vad` scores **25.4%** and is dead; `phase2_8_idlock_preword` scores **86.6%**, the best current runtime but still below the `>=87.0%` gate.
 
 **Success criteria:** either reproduce the historical v3.2 result at `>=86.0%` or document the drift cause, and produce one non-route-table timing/alignment prototype with paired benchmark `>=87.0%` before returning to adapter scale-up.
 

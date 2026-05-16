@@ -87,3 +87,33 @@ Before bigger LoRA training, test timestamp/transcription variants against this 
 4. hybrid: v5b/surt text with faster-whisper timing.
 
 If none recover the 86-90% range, move to full-shabad forced alignment.
+
+## Probe Cache Checksums
+
+Word-timestamp faster-whisper cache:
+
+| Cache file | sha256 |
+|---|---|
+| `asr_cache/IZOsmkdmmcg_16k__medium_word__pa.json` | `3fd05b78d62dd2ec92e069db235850a97e63605d81bb977f1c74936ccb1b3f3c` |
+| `asr_cache/kZhIA8P6xWI_16k__medium_word__pa.json` | `5e08d7314a48da088da52dead0517f7e5e76da6873713e2337959621b6463818` |
+| `asr_cache/kchMJPK9Axs_16k__medium_word__pa.json` | `cdacbd17d830e9d4e9f3ff020de08efa629818f1e043a93bea1b26959f5247b3` |
+| `asr_cache/zOtIpxMT9hU_16k__medium_word__pa.json` | `2bb445eff3a76b577df984e7a4dbe425f55c02319112d5ddd940ff284cdaf65f` |
+
+VAD-on faster-whisper cache:
+
+| Cache file | sha256 |
+|---|---|
+| `asr_cache/IZOsmkdmmcg_16k__medium_vad__pa.json` | `7a7fd434604f2a824397271aaf9918af336694e007dccdf045d770af0a78266d` |
+| `asr_cache/kZhIA8P6xWI_16k__medium_vad__pa.json` | `20555485185d0388f06b2b08e03aed8ae0a10708b51834f240c2210030703bbd` |
+| `asr_cache/kchMJPK9Axs_16k__medium_vad__pa.json` | `cbb35fa92fc481b369486504540b2759c54f8c6d28c66f2e56c0a3104049bd6f` |
+| `asr_cache/zOtIpxMT9hU_16k__medium_vad__pa.json` | `8dcf45b25209867dd9ef7164495749ac165faac51468f9ac263d7dfbd1f65bdf` |
+
+## Probe Outcome
+
+| Prototype | Score | Finding |
+|---|---:|---|
+| `phase2_8_fw_word` | 72.0% | Correct 12/12 shabad locks, but worse line/timing segmentation. |
+| `phase2_8_fw_vad` | 25.4% | VAD-on deletes too much kirtan; not viable. |
+| `phase2_8_idlock_preword` | 86.6% | Best current runtime; word timestamps for pre-lock ID + v5b post-lock alignment. |
+
+This makes the next target sharper: keep word timestamps as an ID-lock tool, then improve post-lock alignment/timing rather than rerunning larger LoRA training.

@@ -140,6 +140,12 @@ def main() -> int:
     parser.add_argument("--blind-aggregate", default="chunk_vote")
     parser.add_argument("--blind-ratio", default="WRatio")
     parser.add_argument("--blind-blend", default="")
+    parser.add_argument("--pre-word-timestamps", action="store_true",
+                        help="Use word_timestamps=True for the pre-lock ASR engine.")
+    parser.add_argument("--pre-vad-filter", action="store_true",
+                        help="Enable faster-whisper VAD filtering for the pre-lock ASR engine.")
+    parser.add_argument("--pre-no-speech-threshold", type=float, default=None,
+                        help="Override no_speech_threshold for the pre-lock ASR engine.")
     parser.add_argument("--post-context", choices=["buffered", "strict-live"],
                         default="buffered",
                         help="buffered uses pre-lock transcript as post-lock smoother context; "
@@ -156,6 +162,9 @@ def main() -> int:
         backend=args.pre_backend,
         model_size=args.pre_model,
         asr_cache_dir=args.asr_cache_dir.resolve(),
+        word_timestamps=args.pre_word_timestamps,
+        no_speech_threshold=args.pre_no_speech_threshold,
+        vad_filter=args.pre_vad_filter,
         ratio=args.ratio,
         blend=_parse_blend(args.blend),
         score_threshold=args.threshold,

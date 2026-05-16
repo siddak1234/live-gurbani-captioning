@@ -31,6 +31,9 @@ class EngineConfig:
     model_size: str = "medium"
     adapter_dir: str | None = None
     asr_cache_dir: pathlib.Path | None = None
+    word_timestamps: bool = False
+    no_speech_threshold: float | None = None
+    vad_filter: bool = False
 
     # Matching
     ratio: str = "WRatio"
@@ -104,6 +107,9 @@ def predict(
         model_size=cfg.model_size,
         cache_dir=cfg.asr_cache_dir,
         adapter_dir=cfg.adapter_dir,
+        word_timestamps=cfg.word_timestamps,
+        no_speech_threshold=cfg.no_speech_threshold,
+        vad_filter=cfg.vad_filter,
     )
     n_chunks_total = len(chunks)
 

@@ -1,0 +1,29 @@
+{
+  "video_id": "IZOsmkdmmcg",
+  "segments": [
+    {
+      "start": 1.04,
+      "end": 38.23,
+      "line_idx": 1,
+      "shabad_id": 4377,
+      "verse_id": 52522,
+      "banidb_gurmukhi": "ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ॥"
+    },
+    {
+      "start": 41.44,
+      "end": 273.67,
+      "line_idx": 2,
+      "shabad_id": 4377,
+      "verse_id": 52523,
+      "banidb_gurmukhi": "ਸਾਧਸੰਗਿ ਗਾਵਹਿ ਗੁਣ ਗੋਬਿੰਦ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨੁ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 280.24,
+      "end": 309.66,
+      "line_idx": 6,
+      "shabad_id": 4377,
+      "verse_id": 52527,
+      "banidb_gurmukhi": "ਖਿਨੁ ਪਲੁ ਬਿਸਰੁ ਨਹੀ ਮੇਰੇ ਕਰਤੇ ਇਹੁ ਨਾਨਕੁ ਮਾਂਗੈ ਦਾਨੁ ॥੨॥੯੦॥੧੧੩॥"
+    }
+  ]
+}

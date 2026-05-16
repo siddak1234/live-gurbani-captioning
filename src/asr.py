@@ -2,9 +2,11 @@
 """ASR wrapper supporting two backends.
 
   - `faster_whisper` (default): runs Whisper via CTranslate2. CPU on Mac, can use
-    Nvidia GPU elsewhere. Bundles Silero VAD as a pre-filter, which produces the
-    chunk granularity Path A's matcher and smoother are tuned for. **This is the
-    backend that produced v3.2 (86.5%); it's the canonical Path A backend.**
+    Nvidia GPU elsewhere. The current known-good command uses faster-whisper's
+    default ``vad_filter=False``; Phase 2.8 makes the VAD and timestamp knobs
+    explicit so ASR drift is auditable. **This is the backend that produced the
+    historical v3.2 artifact (86.5%); the current runtime repro is lower and is
+    under Phase 2.8 investigation.**
 
   - `mlx_whisper`: runs Whisper via Apple's mlx framework on Apple Silicon's
     Neural Engine + GPU. Much faster on Mac. Produces longer, time-aligned
@@ -80,6 +82,7 @@ def transcribe(
     cache_dir: pathlib.Path | str | None = None,
     word_timestamps: bool = False,
     no_speech_threshold: float | None = None,
+    vad_filter: bool = False,
     adapter_dir: str | None = None,
 ) -> list[AsrChunk]:
     """Transcribe audio with the selected backend, returning timestamped chunks."""
@@ -91,15 +94,15 @@ def transcribe(
     if cache_dir is not None:
         cache_dir = pathlib.Path(cache_dir)
 
-    extra_tag = ""
-    if word_timestamps:
-        extra_tag += "_word"
-    if no_speech_threshold is not None:
-        extra_tag += f"_nst{no_speech_threshold}"
-    if adapter_dir:
-        # Sanitize adapter path for cache key
-        adapter_tag = pathlib.Path(adapter_dir).name.replace("/", "_")
-        extra_tag += f"_lora-{adapter_tag}"
+    if vad_filter and backend != "faster_whisper":
+        raise ValueError("vad_filter is currently supported only for faster_whisper")
+
+    extra_tag = _extra_tag(
+        word_timestamps=word_timestamps,
+        no_speech_threshold=no_speech_threshold,
+        vad_filter=vad_filter,
+        adapter_dir=adapter_dir,
+    )
 
     cache_path = _cache_path(audio_path, cache_dir, backend, model_size, language, extra_tag)
     if cache_path is not None and cache_path.exists():
@@ -107,7 +110,14 @@ def transcribe(
         return [AsrChunk(**c) for c in data]
 
     if backend == "faster_whisper":
-        chunks = _transcribe_fw(audio_path, model_size, language, word_timestamps, no_speech_threshold)
+        chunks = _transcribe_fw(
+            audio_path,
+            model_size,
+            language,
+            word_timestamps,
+            no_speech_threshold,
+            vad_filter,
+        )
     elif backend == "mlx_whisper":
         chunks = _transcribe_mlx(audio_path, model_size, language, word_timestamps, no_speech_threshold)
     elif backend == "huggingface_whisper":
@@ -124,7 +134,32 @@ def transcribe(
     return chunks
 
 
-def _transcribe_fw(audio_path, model_size, language, word_timestamps, no_speech_threshold):
+def _extra_tag(
+    *,
+    word_timestamps: bool = False,
+    no_speech_threshold: float | None = None,
+    vad_filter: bool = False,
+    adapter_dir: str | None = None,
+) -> str:
+    """Cache-key suffix for non-default ASR knobs.
+
+    Empty string preserves the legacy faster-whisper cache names, which now
+    explicitly mean ``word_timestamps=False`` and ``vad_filter=False``.
+    """
+    extra_tag = ""
+    if word_timestamps:
+        extra_tag += "_word"
+    if vad_filter:
+        extra_tag += "_vad"
+    if no_speech_threshold is not None:
+        extra_tag += f"_nst{no_speech_threshold}"
+    if adapter_dir:
+        adapter_tag = pathlib.Path(adapter_dir).name.replace("/", "_")
+        extra_tag += f"_lora-{adapter_tag}"
+    return extra_tag
+
+
+def _transcribe_fw(audio_path, model_size, language, word_timestamps, no_speech_threshold, vad_filter):
     from faster_whisper import WhisperModel
 
     model = WhisperModel(model_size, compute_type="int8")
@@ -132,6 +167,7 @@ def _transcribe_fw(audio_path, model_size, language, word_timestamps, no_speech_
         "language": language,
         "beam_size": 5,
         "word_timestamps": word_timestamps,
+        "vad_filter": vad_filter,
     }
     if no_speech_threshold is not None:
         kwargs["no_speech_threshold"] = no_speech_threshold
