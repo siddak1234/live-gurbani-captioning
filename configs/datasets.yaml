@@ -1,12 +1,15 @@
 # Labeled-data source registry — single source of truth for what data exists,
-# where it lives, and how to pull it for training. Read by scripts/pull_dataset.py
-# (planned: load this for subcommand defaults instead of hard-coding HF repo IDs).
+# where it lives, and how to pull it for training.
+#
+# Loaded at runtime by scripts/pull_dataset.py via load_dataset_config().
+# The script reads per-source holdout from `sources.<key>.holdout` so a YAML
+# edit here propagates to every puller — no hardcoded constants in code.
 #
 # Holdout discipline (applies to every Gurbani-specific source):
 #   - shabad_ids: 4377, 1821, 1341, 3712  (the benchmark's 4 shabads)
 #   - video_ids:  IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU
-# Sources that don't carry shabad metadata (IndicVoices, CommonVoice) are
-# treated as general Punjabi acoustic data — holdout doesn't apply.
+# Sources that don't carry shabad metadata (IndicVoices, CommonVoice) set
+# `holdout.enforce: false` — general Punjabi acoustic data, no holdout needed.
 
 schema_version: 1
 
