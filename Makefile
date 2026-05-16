@@ -186,6 +186,14 @@ ios-benchmark: ## Measure Core ML latency on macOS (proxy for iPhone perf).
 		--warmup 2 --iters 5
 
 # -----------------------------------------------------------------------------
+# Tests
+# -----------------------------------------------------------------------------
+
+.PHONY: test
+test: ## Run the unit-test suite (stdlib unittest; no torch/transformers needed).
+	$(PYTHON) -m unittest discover -s tests -v
+
+# -----------------------------------------------------------------------------
 # Housekeeping
 # -----------------------------------------------------------------------------
 
