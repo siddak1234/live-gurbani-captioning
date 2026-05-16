@@ -39,6 +39,7 @@ Designed to run on Apple Silicon (MPS, CTC path validated) or CUDA GPU
 from __future__ import annotations
 
 import argparse
+import os
 import pathlib
 import sys
 
@@ -85,6 +86,64 @@ def _load_yaml_defaults(config_path: pathlib.Path) -> dict:
     return {k: v for k, v in raw.items() if v is not None}
 
 
+def _resolve_report_to(arg: str | list | None) -> list[str]:
+    """Resolve the ``--report-to`` argument to a concrete list HF Trainer accepts.
+
+    "auto" — wandb if WANDB_API_KEY is set and WANDB_MODE != "disabled";
+             else tensorboard if the package is importable;
+             else [] (no tracking).
+    "none" / "" — [] explicitly.
+    Anything else — comma-split list passed through verbatim.
+
+    A list already (e.g. set by YAML) — returned as-is.
+    """
+    if isinstance(arg, list):
+        return arg
+    if arg is None:
+        arg = "auto"
+    s = str(arg).strip().lower()
+    if s == "auto":
+        if os.environ.get("WANDB_API_KEY") and os.environ.get("WANDB_MODE", "").lower() != "disabled":
+            return ["wandb"]
+        try:
+            import tensorboard  # noqa: F401
+            return ["tensorboard"]
+        except ImportError:
+            return []
+    if s in ("none", "off", ""):
+        return []
+    return [t.strip() for t in str(arg).split(",") if t.strip()]
+
+
+def _resolve_warmup(args) -> tuple[float, int]:
+    """Return (warmup_ratio, warmup_steps) with ratio winning when > 0.
+
+    HF TrainingArguments accepts both; if both are non-zero, warmup_ratio takes
+    precedence (HF behavior). We mirror that here and zero out the unused one
+    so logs and run_card.json show the actual schedule.
+    """
+    ratio = float(getattr(args, "warmup_ratio", 0.0) or 0.0)
+    if ratio > 0:
+        return ratio, 0
+    return 0.0, int(args.warmup_steps)
+
+
+def _validate_eval_save_steps(args, parser: argparse.ArgumentParser) -> None:
+    """HF Trainer requires save_steps to be a multiple of eval_steps when
+    load_best_model_at_end is true. Surface this at argparse time with a clear
+    message instead of letting Trainer fail mid-init.
+    """
+    if not getattr(args, "load_best_model_at_end", False):
+        return
+    if args.eval_strategy == "no":
+        parser.error("load_best_model_at_end=true requires eval_strategy != 'no'")
+    if args.save_steps % args.eval_steps != 0:
+        parser.error(
+            f"save_steps ({args.save_steps}) must be a multiple of eval_steps "
+            f"({args.eval_steps}) when load_best_model_at_end=true"
+        )
+
+
 def main() -> int:
     # Two-pass parsing: first peek at --config so its keys can become defaults
     # for the real parser; then re-parse with CLI args overriding YAML values.
@@ -121,6 +180,8 @@ def main() -> int:
     parser.add_argument("--lora-alpha", type=int, default=32, help="LoRA alpha")
     parser.add_argument("--lora-dropout", type=float, default=0.1)
     parser.add_argument("--warmup-steps", type=int, default=100)
+    parser.add_argument("--warmup-ratio", type=float, default=0.0,
+                        help="Fraction of total steps used for warmup. When > 0, supersedes --warmup-steps.")
     parser.add_argument("--save-steps", type=int, default=500)
     parser.add_argument("--eval-manifest", type=pathlib.Path, default=None,
                         help="Optional held-out manifest for periodic evaluation")
@@ -130,6 +191,47 @@ def main() -> int:
                         help="Enable fp16 mixed precision. Auto-on when MPS available (and bf16 off), off otherwise.")
     parser.add_argument("--language", default="punjabi",
                         help="Whisper generation language tag (Whisper path only). Default: punjabi.")
+
+    # -- Reproducibility --
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Seed for torch/numpy/random + HF dataloader. MPS isn't bit-deterministic.")
+
+    # -- Regularization --
+    parser.add_argument("--weight-decay", type=float, default=0.0,
+                        help="AdamW weight decay. HF default 0.0; PEFT-Whisper FT literature uses 0.01.")
+    parser.add_argument("--max-grad-norm", type=float, default=1.0,
+                        help="Gradient clipping threshold (HF default).")
+
+    # -- LR schedule --
+    parser.add_argument("--lr-scheduler-type", default="linear",
+                        choices=["linear", "cosine", "cosine_with_restarts", "polynomial",
+                                 "constant", "constant_with_warmup", "inverse_sqrt"],
+                        help="LR decay shape. HF default is 'linear'; cosine is the Whisper FT norm.")
+
+    # -- Memory --
+    parser.add_argument("--gradient-checkpointing", action="store_true", default=False,
+                        help="Trade ~20%% throughput for ~30%% activation memory. Off by default.")
+
+    # -- Eval + early stopping --
+    parser.add_argument("--eval-strategy", default="no", choices=["no", "steps", "epoch"],
+                        help="Trainer eval strategy. 'no' disables; 'steps' uses --eval-steps.")
+    parser.add_argument("--eval-steps", type=int, default=500,
+                        help="Eval cadence when --eval-strategy=steps.")
+    parser.add_argument("--early-stopping-patience", type=int, default=0,
+                        help="Stop training after N evals without improvement. 0 disables. "
+                             "Requires --eval-strategy != 'no' and --load-best-model-at-end.")
+    parser.add_argument("--load-best-model-at-end", action="store_true", default=False,
+                        help="Restore the best-eval checkpoint at end of training. Required for early stopping.")
+
+    # -- Tracking --
+    parser.add_argument("--report-to", default="auto",
+                        help="Experiment tracker(s). 'auto' picks wandb if WANDB_API_KEY set, "
+                             "else tensorboard if importable, else none. 'none' disables. "
+                             "Comma-list passes through to HF Trainer.")
+    parser.add_argument("--wandb-project", default="kirtan-asr",
+                        help="WANDB_PROJECT — used when report_to resolves to include wandb.")
+    parser.add_argument("--run-name", default=None,
+                        help="Trainer run_name + wandb run name. Null auto-generates from config hash + timestamp.")
 
     # Apply YAML defaults BEFORE parse_args so CLI args still win.
     if yaml_defaults:
@@ -153,7 +255,28 @@ def main() -> int:
     if args.output_dir is None:
         parser.error("--output-dir is required (provide on CLI or in --config)")
 
+    # Validate eval/save coupling at argparse time (HF fails late and obscurely otherwise).
+    _validate_eval_save_steps(args, parser)
+
     import torch
+    from transformers import set_seed
+
+    # Seed torch/numpy/random/python-hash + HF Trainer's dataloader generator.
+    # NOTE: we do NOT call torch.use_deterministic_algorithms(True) — many MPS
+    # ops would fail. Same-seed runs match within ~2% on MPS, ~0.5% on CPU.
+    set_seed(args.seed)
+    # Belt-and-suspenders: older transformers releases of set_seed didn't cover
+    # MPS RNG. Harmless on newer versions; correct on older ones.
+    if hasattr(torch, "mps") and torch.backends.mps.is_available():
+        torch.mps.manual_seed(args.seed)
+
+    # Resolve tracking + project env BEFORE we instantiate Trainer.
+    args.report_to_resolved = _resolve_report_to(args.report_to)
+    if "wandb" in args.report_to_resolved:
+        os.environ.setdefault("WANDB_PROJECT", args.wandb_project)
+
+    # Resolve warmup (ratio wins over steps when > 0).
+    args.warmup_ratio_resolved, args.warmup_steps_resolved = _resolve_warmup(args)
 
     is_whisper = _is_whisper_model(args.model_id, args.model_type)
     model_type_resolved = "whisper" if is_whisper else "ctc"
@@ -172,6 +295,10 @@ def main() -> int:
     print(f"Type: {model_type_resolved} (detected={args.model_type == 'auto'})")
     print(f"LoRA target_modules: {target_modules}")
     print(f"Precision: bf16={args.bf16}, fp16={args.fp16}")
+    print(f"Seed: {args.seed}")
+    print(f"Scheduler: {args.lr_scheduler_type} (warmup_ratio={args.warmup_ratio_resolved}, "
+          f"warmup_steps={args.warmup_steps_resolved})")
+    print(f"Tracking: report_to={args.report_to_resolved or '[]'}")
 
     if is_whisper:
         return _run_whisper_train(args, target_modules)
@@ -256,6 +383,11 @@ def _run_ctc_train(args, target_modules: list[str]) -> int:
         ])
         return {audio_key: audio_batch, "attention_mask": attn_mask, "labels": labels}
 
+    # Eval strategy: explicit --eval-strategy wins; legacy fallback is "steps when eval_ds present, else no".
+    effective_eval_strategy = args.eval_strategy
+    if effective_eval_strategy == "no" and eval_ds is not None:
+        effective_eval_strategy = "steps"
+
     training_args = TrainingArguments(
         output_dir=str(args.output_dir),
         per_device_train_batch_size=args.batch_size,
@@ -263,16 +395,37 @@ def _run_ctc_train(args, target_modules: list[str]) -> int:
         num_train_epochs=args.epochs if args.max_steps == 0 else 1,
         max_steps=args.max_steps if args.max_steps > 0 else -1,
         learning_rate=args.lr,
-        warmup_steps=args.warmup_steps,
+        warmup_steps=args.warmup_steps_resolved,
+        warmup_ratio=args.warmup_ratio_resolved,
+        lr_scheduler_type=args.lr_scheduler_type,
+        weight_decay=args.weight_decay,
+        max_grad_norm=args.max_grad_norm,
         logging_steps=10,
         save_steps=args.save_steps,
-        eval_strategy="steps" if eval_ds else "no",
-        eval_steps=args.save_steps if eval_ds else None,
-        report_to=[],
-        gradient_checkpointing=False,
+        eval_strategy=effective_eval_strategy,
+        eval_steps=args.eval_steps if effective_eval_strategy != "no" else None,
+        load_best_model_at_end=args.load_best_model_at_end and eval_ds is not None,
+        metric_for_best_model="eval_loss" if (args.load_best_model_at_end and eval_ds is not None) else None,
+        greater_is_better=False if (args.load_best_model_at_end and eval_ds is not None) else None,
+        report_to=args.report_to_resolved,
+        run_name=args.run_name,
+        gradient_checkpointing=args.gradient_checkpointing,
         fp16=args.fp16,
         bf16=args.bf16,
+        seed=args.seed,
+        data_seed=args.seed,
     )
+
+    callbacks = []
+    if args.early_stopping_patience > 0:
+        if eval_ds is None:
+            print("Warning: --early-stopping-patience > 0 but no --eval-manifest; ignoring.", file=sys.stderr)
+        elif not args.load_best_model_at_end:
+            print("Warning: --early-stopping-patience > 0 but --load-best-model-at-end is false; ignoring.",
+                  file=sys.stderr)
+        else:
+            from transformers import EarlyStoppingCallback
+            callbacks.append(EarlyStoppingCallback(early_stopping_patience=args.early_stopping_patience))
 
     trainer = Trainer(
         model=model,
@@ -280,6 +433,7 @@ def _run_ctc_train(args, target_modules: list[str]) -> int:
         train_dataset=train_ds,
         eval_dataset=eval_ds,
         data_collator=data_collator,
+        callbacks=callbacks or None,
     )
 
     device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
@@ -365,6 +519,10 @@ def _run_whisper_train(args, target_modules: list[str]) -> int:
         ])
         return {"input_features": audio_batch, "labels": labels}
 
+    effective_eval_strategy = args.eval_strategy
+    if effective_eval_strategy == "no" and eval_ds is not None:
+        effective_eval_strategy = "steps"
+
     training_args = Seq2SeqTrainingArguments(
         output_dir=str(args.output_dir),
         per_device_train_batch_size=args.batch_size,
@@ -372,17 +530,38 @@ def _run_whisper_train(args, target_modules: list[str]) -> int:
         num_train_epochs=args.epochs if args.max_steps == 0 else 1,
         max_steps=args.max_steps if args.max_steps > 0 else -1,
         learning_rate=args.lr,
-        warmup_steps=args.warmup_steps,
+        warmup_steps=args.warmup_steps_resolved,
+        warmup_ratio=args.warmup_ratio_resolved,
+        lr_scheduler_type=args.lr_scheduler_type,
+        weight_decay=args.weight_decay,
+        max_grad_norm=args.max_grad_norm,
         logging_steps=10,
         save_steps=args.save_steps,
-        eval_strategy="steps" if eval_ds else "no",
-        eval_steps=args.save_steps if eval_ds else None,
-        report_to=[],
-        gradient_checkpointing=False,
+        eval_strategy=effective_eval_strategy,
+        eval_steps=args.eval_steps if effective_eval_strategy != "no" else None,
+        load_best_model_at_end=args.load_best_model_at_end and eval_ds is not None,
+        metric_for_best_model="eval_loss" if (args.load_best_model_at_end and eval_ds is not None) else None,
+        greater_is_better=False if (args.load_best_model_at_end and eval_ds is not None) else None,
+        report_to=args.report_to_resolved,
+        run_name=args.run_name,
+        gradient_checkpointing=args.gradient_checkpointing,
         fp16=args.fp16,
         bf16=args.bf16,
+        seed=args.seed,
+        data_seed=args.seed,
         predict_with_generate=False,  # speeds up training; switch on for WER eval at large scale
     )
+
+    callbacks = []
+    if args.early_stopping_patience > 0:
+        if eval_ds is None:
+            print("Warning: --early-stopping-patience > 0 but no --eval-manifest; ignoring.", file=sys.stderr)
+        elif not args.load_best_model_at_end:
+            print("Warning: --early-stopping-patience > 0 but --load-best-model-at-end is false; ignoring.",
+                  file=sys.stderr)
+        else:
+            from transformers import EarlyStoppingCallback
+            callbacks.append(EarlyStoppingCallback(early_stopping_patience=args.early_stopping_patience))
 
     trainer = Seq2SeqTrainer(
         model=model,
@@ -390,6 +569,7 @@ def _run_whisper_train(args, target_modules: list[str]) -> int:
         train_dataset=train_ds,
         eval_dataset=eval_ds,
         data_collator=data_collator,
+        callbacks=callbacks or None,
     )
 
     device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")

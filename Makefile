@@ -122,7 +122,7 @@ smoke: fetch-audio smoke-manifest ## 20-step fine-tune to validate the entire tr
 		--config $(TRAIN_CFG) \
 		--manifest training_data/smoke/manifest.json \
 		--output-dir $(SMOKE_OUT) \
-		--max-steps 20 --batch-size 1
+		--max-steps 20 --batch-size 1 --report-to none
 
 .PHONY: train
 train: data ## Full LoRA fine-tune of surt-small-v3 on $(DATA_DIR). Auto-pulls data if missing.
