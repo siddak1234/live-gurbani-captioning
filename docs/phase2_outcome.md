@@ -75,7 +75,9 @@ If `v5b_mac_diverse` is still neutral and mostly transcript-identical to `x4_pat
 
 ## Current next step
 
-The diversity-aware pull passed, `v5b_mac_diverse` trained, and benchmark eval scored **65.6%**. This is below `x4_pathA_surt` / `v5_mac_baseline` at **74.0%**, so Phase 2.5 is a negative diagnostic. Do not start Phase 3 scale-up. The next step is a Phase 2.6 alignment diagnostic: separate oracle-shabad alignment quality from blind-ID routing, then decide whether to fix integration or pivot acoustic backbones. The execution plan is [`docs/phase2_5_plan.md`](phase2_5_plan.md).
+The diversity-aware pull passed, `v5b_mac_diverse` trained, and benchmark eval scored **65.6%**. This is below `x4_pathA_surt` / `v5_mac_baseline` at **74.0%**, so Phase 2.5 is a negative diagnostic. Phase 2.6 then showed the adapter is not globally worse: oracle-shabad/live0 alignment scores **87.4%** for `v5b`, compared with **85.2%** for x4/v5, and a v3.2-ID-lock proxy scores **87.1%**.
+
+Do not start Phase 3 scale-up. The next step is Phase 2.7: build a real runtime ID-lock integration, then evaluate paired benchmark plus OOS v1. The execution plan is [`docs/phase2_6_plan.md`](phase2_6_plan.md).
 
 Implemented helpers:
 

@@ -1,0 +1,61 @@
+{
+  "video_id": "IZOsmkdmmcg",
+  "segments": [
+    {
+      "start": 310.0,
+      "end": 330.0,
+      "line_idx": 1,
+      "shabad_id": 4377,
+      "verse_id": 52522,
+      "banidb_gurmukhi": "ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ॥"
+    },
+    {
+      "start": 330.0,
+      "end": 350.0,
+      "line_idx": 2,
+      "shabad_id": 4377,
+      "verse_id": 52523,
+      "banidb_gurmukhi": "ਸਾਧਸੰਗਿ ਗਾਵਹਿ ਗੁਣ ਗੋਬਿੰਦ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨੁ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 350.0,
+      "end": 370.0,
+      "line_idx": 1,
+      "shabad_id": 4377,
+      "verse_id": 52522,
+      "banidb_gurmukhi": "ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ॥"
+    },
+    {
+      "start": 370.0,
+      "end": 390.0,
+      "line_idx": 2,
+      "shabad_id": 4377,
+      "verse_id": 52523,
+      "banidb_gurmukhi": "ਸਾਧਸੰਗਿ ਗਾਵਹਿ ਗੁਣ ਗੋਬਿੰਦ ਪੂਰਨ ਬ੍ਰਹਮ ਗਿਆਨੁ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 390.0,
+      "end": 420.0,
+      "line_idx": 1,
+      "shabad_id": 4377,
+      "verse_id": 52522,
+      "banidb_gurmukhi": "ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ॥"
+    },
+    {
+      "start": 420.0,
+      "end": 440.0,
+      "line_idx": 5,
+      "shabad_id": 4377,
+      "verse_id": 52526,
+      "banidb_gurmukhi": "ਜਾ ਕੈ ਰਿਦੈ ਵਸੈ ਭੈ ਭੰਜਨੁ ਤਿਸੁ ਜਾਨੈ ਸਗਲ ਜਹਾਨੁ ॥"
+    },
+    {
+      "start": 440.0,
+      "end": 458.02525,
+      "line_idx": 1,
+      "shabad_id": 4377,
+      "verse_id": 52522,
+      "banidb_gurmukhi": "ਪੋਥੀ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ ॥"
+    }
+  ]
+}

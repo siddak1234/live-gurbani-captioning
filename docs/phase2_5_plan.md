@@ -38,7 +38,7 @@ The diversity-gated pull passed, training completed, and benchmark eval failed t
 
 The pull intentionally exceeded the 1,000-clip minimum because diversity floors were active. This is the correct behavior: `DATA_SAMPLES` is a floor, not a cap, when `min_unique_*` constraints are set.
 
-**Recommended next step:** do not start Phase 3. Run a Phase 2.6 alignment diagnostic that separates acoustic transcript quality from blind shabad-ID routing. The immediate question is whether the adapter improves oracle-shabad alignment but hurts blind ID, or whether it also hurts alignment once the shabad is fixed.
+**Recommended next step:** do not start Phase 3. Phase 2.6 has now separated acoustic transcript quality from blind shabad-ID routing. The adapter improves oracle-shabad/live0 alignment (`87.4%` vs `85.2%` for x4/v5), and a v3.2-ID-lock proxy scores `87.1%`. The next step is Phase 2.7: build the actual runtime ID-lock integration and OOS-test it.
 
 ## Architecture stance
 
@@ -116,13 +116,13 @@ When diversity floors are active, `--num-samples` is a minimum, not a hard cap: 
 
 This gate failed on the benchmark (`65.6%`). Pause Phase 3. The next bet is alignment/integration: blind-ID robustness, chunking/windowing, word timestamps, full-shabad forced alignment, or IndicConformer.
 
-## Phase 2.6 proposal
+## Phase 2.6 result
 
-Do not tune matcher weights directly on the paired benchmark. Instead:
+Do not tune matcher weights directly on the paired benchmark. Phase 2.6 ran the diagnostic isolation instead:
 
-1. Build a blind-ID evidence report for `x4_pathA_surt`, `v5_mac_baseline`, and `v5b_mac_diverse`.
-2. Score `v5b_mac_diverse` with oracle shabad IDs or ground-truth-shabad-only matching to isolate acoustic/alignment quality from routing.
-3. Probe timestamp/window integration without retraining: shorter HF windows, word timestamps, or surt text with faster-whisper timestamps.
-4. Curate OOS v1 before any new promotion claim.
+1. `x4_pathA_surt_oracle_live0`: `85.2%`.
+2. `v5_mac_baseline_oracle_live0`: `85.2%`.
+3. `v5b_mac_diverse_oracle_live0`: `87.4%`.
+4. `v5b_twopass_v32_idlock`: `87.1%`.
 
-Decision rule: if oracle-shabad alignment improves but blind ID worsens, keep the adapter path and fix integration. If oracle-shabad alignment is also neutral/worse, stop scaling Whisper-small LoRA and test a stronger acoustic backbone (`surt-medium` or IndicConformer).
+Decision: keep the adapter path for one runtime integration step because oracle alignment improved. Do not start Phase 3 scale-up. Build a real ID-lock integration and curate OOS v1 before any promotion claim. If OOS or paired benchmark fails, pivot to word timestamps, hybrid timing, full-shabad forced alignment, `surt-medium`, or IndicConformer.
