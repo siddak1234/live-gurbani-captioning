@@ -196,8 +196,8 @@ When working a given phase, *fully adopt the named role* — primary literature,
 
 **Approach:**
 - Curate `oos_v1` (5 shabads, 3 representative + 2 stress) and establish v3.2 / x4 / v5 baselines.
-- Add or verify diversity-aware data pulling: sample across shards via `make data-v5b`, target `1k-5k` clips, require at least 20 source videos and 100 shabad tokens, `min_score >= 0.85`, all three holdouts active (shabad-ID, video-ID, content).
-- Train `v5b_mac_diverse` with the same proven config first; change only data scale/diversity.
+- Diversity-aware data pulling is now active and has passed for `v5b_mac_diverse`: 2,544 clips, 4.936 h, 20 source videos, 195 shabad tokens, `min_score >= 0.85`, shards 0-4, all three holdouts active with 0 benchmark video/content leaks.
+- Train `v5b_mac_diverse` with the same proven config next; change only data scale/diversity.
 - Evaluate benchmark with `HF_WINDOW_SECONDS=10`, OOS v1, and transcript deltas vs `x4_pathA_surt`.
 
 **Success criteria:** OOS v1 exists; `v5b_mac_diverse` clears `>= 75.0%` benchmark **or** shows positive OOS movement without catastrophic per-case regression; transcript deltas confirm the adapter is changing ASR behavior.

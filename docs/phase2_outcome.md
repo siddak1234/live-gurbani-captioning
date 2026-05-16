@@ -49,12 +49,12 @@ Insert **Phase 2.5** before Phase 3.
 1. Curate `oos_v1` before claiming another training win.
    - Pick 5 cases using [`docs/oos_v1_curation.md`](oos_v1_curation.md): 3 representative + 2 stress.
    - Establish baseline scores for Path A v3.2, `x4_pathA_surt`, and `v5_mac_baseline`.
-2. Add/verify data-pull diversity controls before the next adapter.
+2. Add/verify data-pull diversity controls before the next adapter. ✅ done
    - Pull beyond the first parquet shard or otherwise sample across shards.
    - Target `1k-5k` clips for `v5b_mac_diverse`.
-   - Require at least `20` source videos and at least `100` shabad tokens, or document why the dataset cannot provide that diversity at the requested size.
+   - Actual pull: `2,544` clips, `4.936 h`, `20` source videos, `195` shabad tokens, shards `0-4`.
    - Keep `min_score >= 0.85` for the diagnostic pull.
-   - Keep shabad-ID, video-ID, and content-based benchmark holdouts active.
+   - Keep shabad-ID, video-ID, and content-based benchmark holdouts active. Actual audit: `0` benchmark video leaks, `0` benchmark content leaks.
 3. Train `v5b_mac_diverse` with the same proven config first.
    - Do not change LoRA rank, LR, augmentation, or model size in the first retry.
    - The only intended variable is data scale/diversity.
@@ -75,7 +75,7 @@ If `v5b_mac_diverse` is still neutral and mostly transcript-identical to `x4_pat
 
 ## Current next step
 
-Start Phase 2.5 with OOS v1 curation and a diversity-aware pull. The execution plan is [`docs/phase2_5_plan.md`](phase2_5_plan.md).
+The diversity-aware pull has passed. Train `v5b_mac_diverse` next, then evaluate benchmark with `HF_WINDOW_SECONDS=10`. OOS v1 is still required before promoting a model-improvement claim. The execution plan is [`docs/phase2_5_plan.md`](phase2_5_plan.md).
 
 Implemented helpers:
 
