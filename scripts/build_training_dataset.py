@@ -36,12 +36,16 @@ import time
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+from scripts.pull_dataset import get_holdout                        # noqa: E402
 from src.asr import transcribe                                      # noqa: E402
 from src.matcher import match_chunk, normalize, TfidfScorer         # noqa: E402
 from src.shabad_id import identify_shabad                            # noqa: E402
 from src.smoother import smooth, smooth_with_stay_bias               # noqa: E402
 
-BENCHMARK_SHABADS = {4377, 1821, 1341, 3712}
+# Per-row holdout sourced from configs/datasets.yaml under the "kirtan" source.
+# Resolved once at module load. Both shabad and video filters apply — a benchmark
+# YouTube recording is contamination even if the user supplied a different shabad_id.
+_HOLDOUT_SHABADS, _HOLDOUT_VIDEOS, _ = get_holdout("kirtan")
 
 
 def fetch_audio(video_id: str, audio_dir: pathlib.Path) -> pathlib.Path | None:
@@ -194,11 +198,17 @@ def main() -> int:
     for row in rows:
         video_id = row["youtube_id"].strip()
         shabad_id = int(row["shabad_id"])
-        if shabad_id in BENCHMARK_SHABADS and not args.allow_benchmark_shabads:
-            print(f"skip {video_id}: shabad {shabad_id} is a benchmark shabad "
-                  f"(would contaminate eval)")
-            n_skipped += 1
-            continue
+        if not args.allow_benchmark_shabads:
+            if shabad_id in _HOLDOUT_SHABADS or str(shabad_id) in _HOLDOUT_SHABADS:
+                print(f"skip {video_id}: shabad {shabad_id} is a benchmark shabad "
+                      f"(would contaminate eval)")
+                n_skipped += 1
+                continue
+            if video_id in _HOLDOUT_VIDEOS:
+                print(f"skip {video_id}: youtube_id is a benchmark recording "
+                      f"(would contaminate eval)")
+                n_skipped += 1
+                continue
 
         print(f"\n=== {video_id} (shabad {shabad_id}) ===")
         t0 = time.time()
