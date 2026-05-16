@@ -138,6 +138,201 @@ Numbered roughly by order, not by difficulty:
 
 Steps 1, 2, 3 are the highest-leverage real-world improvements. Steps 4-6 are the polish.
 
+## Phased production training program (Mac-first → cloud → users)
+
+A structured program to take the existing scaffold from "working smoke test" to "enterprise-grade engine others can run." The M4 Pro 48 GB is the primary box for Phase 0–5; cloud GPU only enters once wall-clock becomes the gating bottleneck. **Each phase is gated** — don't start phase N+1 until phase N's success criterion is met or a deliberate pivot is documented. **No phase ships on paired-benchmark accuracy alone** — OOS eval is required before promotion (the 12-case benchmark is a smoke test, not the metric).
+
+When working a given phase, *fully adopt the named role* — primary literature, established conventions, naming, and instrumentation expected at that specialization. The roles aren't decoration; they constrain what "good" looks like at that step.
+
+### Phase 0 — Reproducibility hardening
+**Role:** ML Infrastructure Engineer (lead) + Senior ML Engineer.
+
+**Hypothesis:** The scaffold trains, but runs aren't reproducible and metrics aren't tracked. Without this, every downstream phase produces unrelatable numbers.
+
+**Approach:**
+- `seed_everything()` (torch + numpy + random + transformers) into [scripts/finetune_path_b.py](scripts/finetune_path_b.py) + config schema; enable deterministic flags where MPS supports them
+- Add `weight_decay`, `lr_scheduler_type` (cosine default), `warmup_ratio`, `max_grad_norm`, `gradient_checkpointing` to [configs/training/surt_lora_mac.yaml](configs/training/surt_lora_mac.yaml) and wire them through the script (today they're hardcoded or absent)
+- Wire `report_to=["wandb"]` (currently `[]`); `WANDB_PROJECT=kirtan-asr`, with tensorboard fallback for offline runs
+- Add `EarlyStoppingCallback(patience=2, metric="eval_loss")`
+- Emit `lora_adapters/<run>/run_card.json` per adapter: `{git_sha, config_hash, data_hash, seed, hostname, wall_clock_s, peak_mem_gb, final_val_loss}`
+
+**Success criteria:** Two same-seed runs match ≤ 0.5 % val loss; every adapter dir contains `run_card.json`; wandb shows live train/val curves end-to-end.
+
+**Cost:** ~1 day engineering. No GPU.
+
+### Phase 1 — Data foundation
+**Role:** Speech Data Engineer (lead) + Gurmukhi domain expert.
+
+**Hypothesis:** [scripts/pull_dataset.py](scripts/pull_dataset.py) pulls samples but the holdout is hardcoded (not loading [configs/datasets.yaml](configs/datasets.yaml)) and there's no auto train/val/test split. Bad data foundations make all downstream training noise.
+
+**Approach:**
+- Wire `configs/datasets.yaml` into pull script (kill the dead-code holdout duplication)
+- Add `--split-by shabad` producing zero-leakage train/val/test manifests
+- Gurmukhi normalization unit tests (unicode canonicalization, schwa-drop, ZWNJ handling) — write fixtures derived from `corpus_cache/`
+- Add SNR + duration filter on clip ingestion (1 s ≤ clip ≤ 30 s, SNR threshold via `pyloudnorm`)
+- Curate a 30-minute **OOS validation pack** from **5 NEW shabads** outside `{4377, 1821, 1341, 3712}` and never seen in the train pull; store under `eval_data/oos_v1/`
+- Emit `training_data/<run>/data_card.md` per pull: per-shabad clip count, hours, avg duration, ragi distribution if available
+
+**Success criteria:** No shabad appears in both train and val/test; 4 benchmark shabads never appear in any train manifest (unit-tested via pytest); `data_card.md` committed alongside manifest.
+
+**Cost:** 1–2 days. No training compute.
+
+### Phase 2 — Mac smoke baseline
+**Role:** ML Scientist.
+
+**Hypothesis:** A clean ~200-sample, 1-epoch fine-tune should reproducibly move benchmark by +1–3 pts and OOS by +1–2 pts. If it doesn't, the data or loop is broken — not the model.
+
+**Approach:** `make smoke` end-to-end with Phase 0 instrumentation; then a 200-sample, 1-epoch real fine-tune (~3–4 h wall-clock); benchmark + OOS eval; commit submission to `submissions/v5_mac_baseline/` with full lineage hash referenced in `notes.md`.
+
+**Success criteria:** Benchmark frame accuracy ≥ x4_pathA_surt baseline (74 %) + 1 pt; OOS reported (any honest number); run reproducible from `run_card.json`.
+
+**Cost:** ~half a day wall-clock.
+
+### Phase 3 — Mac-scale real fine-tune
+**Role:** ML Scientist (acoustic modeling) (lead) + Optimization Engineer.
+
+**Hypothesis:** 50 h of curated kirtan + SpecAugment + cosine LR + LoRA r=32 + weight decay + 3 seeds should push surt-small-v3 to ≥ 85 % benchmark and ≥ 80 % OOS — within 24–48 h M4 Pro wall-clock per run.
+
+**Approach:**
+- Pull 50 h slice at `min_score ≥ 0.85`
+- Add SpecAugment (freq + time masking) and ±10 % speed perturbation to [src/path_b/dataset.py](src/path_b/dataset.py) — currently no augmentation, single view per epoch
+- LoRA r=32, target_modules = `q_proj/k_proj/v_proj/out_proj` **plus** `fc1/fc2` (MLP) — current default is attention-only
+- Cosine LR with `warmup_ratio=0.1`, `weight_decay=0.01`, `max_grad_norm=1.0`
+- `gradient_checkpointing=True` to free memory for `batch_size=8` (currently False, sub-optimal)
+- 3 epochs, early stop on val patience=2
+- **3 seeds** for variance estimate
+
+**Success criteria:** Best-of-3 seeds: benchmark ≥ 85 %, OOS ≥ 80 %; cross-seed variance < 2 pts (otherwise regularize harder before scaling); wall-clock < 48 h.
+
+**Cost:** 3 × ~24 h = ~72 h M4 Pro. Overnight + weekend.
+
+**Failure mode → Phase 4 ablations:** if best-of-3 < 85 %, capacity or chunk granularity is the bottleneck, not data scale.
+
+### Phase 4 — Ablation + capacity scaling
+**Role:** ML Scientist (experimentation).
+
+**Hypothesis:** The marginal lifts come from data scale, target_modules coverage, and augmentation. Quantify each independently to find the Pareto frontier of accuracy vs wall-clock.
+
+**Approach (independent wandb sweeps):**
+- Data scale curve: 10 / 25 / 50 / 100 h → fit log-linear, predict the 200 h+ payoff
+- LoRA rank sweep: 8 / 16 / 32 / 64
+- Target modules: attn-only / attn+MLP / encoder-only / decoder-only / full
+- LR sweep on 25 h subset: {5e-6, 1e-5, 3e-5, 5e-5}
+- Augmentation ablation: none / specaug / specaug+speed / specaug+speed+noise
+
+**Success criteria:** Pareto frontier documented in `submissions/ablations/notes.md` with plot; clear next architecture bet identified.
+
+**Decision gate to Phase 5b:** If best ablation < 88 % benchmark, switch acoustic backbone — `surt-medium` or `surindersinghssj/indicconformer-pa-v3-kirtan` (NeMo Conformer). The reference system at karanbirsingh.com uses a 118 M *Conformer*, not Whisper; LoRA on Whisper-small has a real ceiling.
+
+**Cost:** ~5 sweeps × ~12 h = ~60 h M4 Pro.
+
+### Phase 5 — Honest evaluation & generalization audit
+**Role:** ML Test Engineer (lead) + Generalization Researcher.
+
+**Hypothesis:** A production-ready model maintains accuracy across (a) unseen shabads, (b) unseen ragis (singers), (c) unseen recording conditions (live vs studio, mic quality, harmonium-heavy vs voice-forward).
+
+**Approach:**
+- OOS eval v2 with **≥ 20 shabads, ≥ 5 ragis**, mixed conditions
+- Per-slice frame accuracy reporting (per-shabad / per-ragi / per-condition)
+- Calibration curve: predicted confidence vs actual correctness at each threshold
+- Worst-slice analysis — what failure modes correlate (tempo, instrumentation, raga, etc.)
+- Adversarial set: noisy clips, harmonium-heavy, fast tempo, sehaj-style
+
+**Success criteria:** OOS v2 mean ≥ 80 %, worst-slice ≥ 70 %; no catastrophic regression on the 4 benchmark shabads (regression test); calibration honest at deployment thresholds.
+
+**Cost:** 1–2 days data collection, 1 day automation, ~6 h compute.
+
+### Phase 6 — Cloud handoff
+**Role:** MLOps Engineer (lead) + Cloud Platform Engineer.
+
+**Hypothesis:** Exceeding the Mac ceiling needs 200 h+ data and/or distributed training. Cloud GPU turns weeks of wall-clock into hours.
+
+**Approach:**
+- Reproducible Dockerfile mirroring [requirements-cloud.txt](requirements-cloud.txt)
+- Pick one cloud target — **Modal recommended** (cheap, ephemeral, great DX) with RunPod as the documented fallback per [docs/cloud_training.md](docs/cloud_training.md)
+- `scripts/train_remote.py` mirrors local args and spins a cloud job
+- Accelerate + DeepSpeed ZeRO-2 config for multi-GPU (A100 8x scale)
+- S3 / R2 for dataset + adapter sync; **same wandb project** so local & cloud runs are directly comparable
+- `make train-cloud` target wired into the Makefile
+
+**Success criteria:** `make train-cloud DATA=200h` reproduces a Phase 3 result in < 4 h instead of 24 h; per-run $ cost logged; adapter pulled back to local automatically.
+
+**Cost:** 2–3 days engineering; ~$50–200 cloud spend for first runs.
+
+### Phase 7 — Model registry + serving (others-use-it surface)
+**Role:** ML Platform Engineer (serving) (lead) + Backend Engineer.
+
+**Hypothesis:** "Others can use it" requires (a) a stable, versioned artifact, and (b) a hosted endpoint with sane SLOs.
+
+**Approach:**
+- Publish adapter to `<org>/surt-small-v3-kirtan-lora-v1` on HF Hub with a **proper model card**: training data sources + hours, hyperparameters, holdout policy, benchmark + OOS scores, intended use, known failure modes, ethical considerations, license
+- Inference container (FastAPI + transformers + peft); LoRA merged at container build time via `peft.merge_and_unload()`
+- Deploy on Modal / HF Inference Endpoints / SageMaker (Modal recommended for cost)
+- API: `POST /caption {audio_url, mode: live|offline}` → segments JSON in the existing schema
+- Versioning: semantic version + git SHA + adapter hash in every response
+
+**Success criteria:** External `curl` returns captions for a Sikhnet Radio recording; p95 latency < 2× audio duration (real-time feasible); $/minute logged.
+
+**Cost:** 2–3 days for v1 endpoint.
+
+### Phase 8 — On-device (iOS / Apple Silicon)
+**Role:** Edge ML Engineer (Apple Silicon specialist).
+
+**Hypothesis:** Gurdwaras with poor connectivity need on-device inference. ANE makes Whisper-small fast enough on iPhone 14+.
+
+**Approach (largely scaffolded — Phase 8 finishes the polish):**
+- LoRA-merged surt → `whisperkittools` → `.mlpackage` via [scripts/export_coreml.py](scripts/export_coreml.py)
+- ANE palettization profiles (6-bit / 4-bit) A/B
+- Numerical parity test (Mac CoreML vs HF Python, target < 1 % WER divergence) — script stub referenced in [docs/ios_deployment.md](docs/ios_deployment.md) needs to land
+- Real-device iPhone latency benchmark (not just simulator)
+- End-to-end parity vs cloud endpoint output
+
+**Success criteria:** iPhone real-time factor < 1.0; < 1 % WER divergence from cloud; app ships, captions display.
+
+**Cost:** ~1 week.
+
+### Phase 9 — Continuous improvement loop
+**Role:** Applied ML Scientist (lead) + Product / domain advisor.
+
+**Hypothesis:** Real users surface failure modes the OOS set doesn't. The model that ships v1 won't be the model that ships v3.
+
+**Approach:**
+- App + cloud endpoint log low-confidence regions (anonymized audio fragments + predicted ID); opt-in only, with explicit user consent
+- Weekly active-learning review queue → hand-label → add to training set
+- Drift monitor: track per-shabad accuracy over time on a fixed eval set
+- Monthly LoRA refresh cadence, gated on OOS regression test (no regression > 1 pt)
+- Sewadar feedback channel: "wrong shabad" reports → ticket → labeled correction → next batch
+
+**Success criteria:** OOS accuracy curve improves quarter-over-quarter; drift never exceeds 5 pt on any shabad before being addressed.
+
+**Cost:** Continuous; ~10 % engineering FTE.
+
+### Expert role map (per phase)
+
+| # | Primary role | Secondary role |
+|---|---|---|
+| 0 | ML Infrastructure Engineer | Senior ML Engineer |
+| 1 | Speech Data Engineer | Gurmukhi domain expert |
+| 2 | ML Scientist | — |
+| 3 | ML Scientist (acoustic modeling) | Optimization Engineer |
+| 4 | ML Scientist (experimentation) | — |
+| 5 | ML Test Engineer | Generalization Researcher |
+| 6 | MLOps Engineer | Cloud Platform Engineer |
+| 7 | ML Platform Engineer (serving) | Backend Engineer |
+| 8 | Edge ML Engineer (Apple Silicon) | — |
+| 9 | Applied ML Scientist | Product / domain advisor |
+
+### Cross-cutting guarantees
+
+These apply across every phase and aren't optional:
+
+- **Every adapter committed has a `run_card.json`** with git_sha + config_hash + data_hash + seed + scores. No artifact without lineage.
+- **Every score reported specifies benchmark vs OOS.** Mixing them is intellectually dishonest; the 12-case benchmark is overfit-prone.
+- **No phase ships on a single seed.** Cross-seed variance ≥ 2 pts means add regularization or augmentation, don't ship.
+- **No data scrape from the 4 benchmark shabads, ever** — enforced in `configs/datasets.yaml` + pytest.
+- **W&B is the source of truth for training curves**; HF Hub is the source of truth for artifacts; git is the source of truth for code.
+- **Ensembles and route tables are research-only.** Production is a *single model* serving a *single deployment*. The leaderboard's x5/x6 routes don't count toward production.
+
 ## Repo layout
 
 The repo holds **two engine implementations side-by-side** (Path A and Path B). They share infrastructure (audio fetcher, corpus cache, scoring) but their engines live in separate folders so changes to one never affect the other.
