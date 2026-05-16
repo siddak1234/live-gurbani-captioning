@@ -40,6 +40,14 @@ make data-v5b
 
 This scans multiple parquet shards, keeps `min_score >= 0.85`, and fails unless the kept manifest has enough source-video and shabad-token diversity. With diversity floors active, `DATA_SAMPLES` is a minimum rather than a hard cap; the pull can keep extra clips until the floors pass. Inspect `training_data/v5b_mac_diverse/data_card.md` before training.
 
+Current checkpoint: `v5b_mac_diverse` has passed the gate with `2,544` clips, `4.936 h`, `20` videos, `195` shabad tokens, and `0` benchmark video/content leaks. The next step is to train:
+
+```bash
+make train \
+  DATA_DIR=training_data/v5b_mac_diverse \
+  TRAIN_OUT=lora_adapters/v5b_mac_diverse
+```
+
 ## 2. Smoke-test the pipeline (~5 minutes)
 
 Before committing a multi-hour training run, verify the script gets through 20 steps:

@@ -11,10 +11,30 @@ Phase 2.5 exists because `v5_mac_baseline` proved the pipeline works but did not
 | Training loop | Smoke passed, 3-epoch real run completed, loss moved `~0.77 -> ~0.65`. | Loop is sound enough to scale one diagnostic step. |
 | Reproducibility | Same-seed smoke delta `0.000%`; `run_card.json` hashes stable. | Instrumentation is strong; failures are interpretable. |
 | Data hygiene | Shabad-ID, video-ID, and content holdouts active. | Contamination risk is controlled for benchmark lines. |
-| Data diversity | `v5_mac_baseline`: 200 clips, 0.418h, 28 shabad tokens, **2 videos**. | Too narrow. This is the dominant flaw in the neutral result. |
+| Data diversity | `v5_mac_baseline`: 200 clips, 0.418h, 28 shabad tokens, **2 videos**. `v5b_mac_diverse` pull now has 2,544 clips, 4.936h, 195 shabad tokens, 20 videos. | The narrow-data flaw is fixed enough for one diagnostic training run. |
 | Benchmark result | `74.0%`, equal to `x4_pathA_surt`; 9/12 JSONs byte-identical. | Adapter did not materially affect most inference outputs. |
 | OOS status | OOS v1 scoped; audio helper exists; cases not curated. | No model-improvement claim should promote without OOS. |
 | Architecture | Inference stays layered through `engine.predict()`; data/training are separate. | Clean enough. Next work belongs in data tooling, not inference primitives. |
+
+## Current checkpoint — 2026-05-16
+
+The diversity-gated pull has passed and is ready for training:
+
+| Field | `v5b_mac_diverse` |
+|---|---:|
+| Clips | 2,544 |
+| Hours | 4.936 |
+| Unique source videos | 20 |
+| Unique shabad tokens | 195 |
+| Source shards used | 0, 1, 2, 3, 4 |
+| `min_score` | 0.85 |
+| Benchmark video leaks | 0 |
+| Benchmark content leaks | 0 |
+| Diversity gate | PASS |
+
+The pull intentionally exceeded the 1,000-clip minimum because diversity floors were active. This is the correct behavior: `DATA_SAMPLES` is a floor, not a cap, when `min_unique_*` constraints are set.
+
+**Recommended next step:** train `v5b_mac_diverse` with the same known-good LoRA config. Do not change LoRA rank, LR, windowing, matcher weights, or architecture until this diagnostic run is scored.
 
 ## Architecture stance
 
@@ -52,16 +72,16 @@ When diversity floors are active, `--num-samples` is a minimum, not a hard cap: 
 
 ## Execution order
 
-1. **Curate OOS v1.**
+1. **Curate OOS v1.** *(still owed before promotion)*
    - Pick 5 recordings: 3 representative + 2 stress.
    - Fetch audio with `make fetch-oos-audio OOS_URL='case_001=https://...'`.
    - Hand-correct GT JSONs under `eval_data/oos_v1/test/`.
    - Baseline Path A v3.2, `x4_pathA_surt`, and `v5_mac_baseline`.
-2. **Pull `v5b_mac_diverse`.**
+2. **Pull `v5b_mac_diverse`.** *(done; passed diversity and holdout audit)*
    - Run `make data-v5b`.
    - Required floors: `>=20` source videos and `>=100` shabad tokens.
    - If floors fail, do not train; widen the pull first.
-3. **Train with the same config.**
+3. **Train with the same config.** *(current step)*
    ```bash
    make train \
      DATA_DIR=training_data/v5b_mac_diverse \
