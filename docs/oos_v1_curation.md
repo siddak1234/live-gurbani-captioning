@@ -90,6 +90,12 @@ On the current dev Mac, Python 3.12, ffmpeg, yt-dlp, torch, transformers, PEFT, 
 5. **Lock in:** add each recording's `video_id` (or equivalent source identifier) to `configs/datasets.yaml` → `holdout.video_ids` so it's never accidentally pulled into training.
 6. **Baseline:** run `eval_oos.py --engine-config configs/inference/v3_2.yaml` against the curated pack. The v3.2 score is the v0 OOS number. Phase 2 fine-tunes must beat this on average AND not regress catastrophically on any single case.
 
+7. **Current architecture score:** run `make eval-oos-loop-align`. This scores
+   the same runtime stack as `phase2_9_loop_align` (word-timestamp ID-lock,
+   retro-buffered finalization, simran-aware null alignment) against the curated
+   OOS pack. This is the required production-promotion gate for the current
+   best paired-benchmark result.
+
 ## What `oos_v1` is NOT
 
 - **It is not the production accuracy metric.** 5 cases is too few. The phased program calls for `oos_v2` at Phase 5 with ≥ 20 shabads + ≥ 5 ragis. `oos_v1` is the fast-iteration eval that catches major regressions while Phase 2–4 train.

@@ -202,6 +202,21 @@ eval-oos: ## Out-of-set eval — the honest accuracy number.
 		--pred-dir submissions/oos_v1_$(notdir $(TRAIN_OUT)) \
 		--engine-config $(INFER_CFG)
 
+.PHONY: eval-oos-loop-align
+eval-oos-loop-align: ## OOS eval for current best runtime: Phase 2.9 loop-align ID-lock.
+	HF_WINDOW_SECONDS=10 $(PYTHON) scripts/run_idlock_path.py \
+		--gt-dir eval_data/oos_v1/test \
+		--audio-dir eval_data/oos_v1/audio \
+		--out-dir submissions/oos_v1_phase2_9_loop_align \
+		--post-adapter-dir lora_adapters/v5b_mac_diverse \
+		--post-context buffered \
+		--merge-policy retro-buffered \
+		--pre-word-timestamps \
+		--smoother loop_align
+	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
+		--pred submissions/oos_v1_phase2_9_loop_align \
+		--gt   eval_data/oos_v1/test
+
 # -----------------------------------------------------------------------------
 # iOS export
 # -----------------------------------------------------------------------------
@@ -259,4 +274,5 @@ start-dev: doctor-dev install fetch-audio corpus data smoke train ## DEV MACHINE
 	@echo "✓ training complete. adapter at $(TRAIN_OUT)"
 	@echo "  next: make eval        # benchmark score"
 	@echo "        make eval-oos    # honest accuracy on held-out shabads"
+	@echo "        make eval-oos-loop-align  # current Phase 2.9 runtime on OOS"
 	@echo "        make ios-export  # convert to Core ML for the iOS app"
