@@ -80,6 +80,20 @@ Required fields: `video_id`, `shabad_id`, `segments[*].{start, end, line_idx}`. 
 
 ## Running an evaluation
 
+For the current best runtime architecture (`phase2_9_loop_align`), use the
+ID-lock OOS target:
+
+```bash
+make eval-oos-loop-align
+```
+
+That command runs the same stack that scored 91.2% on the paired benchmark:
+faster-whisper word timestamps for pre-lock shabad ID, `v5b_mac_diverse` for
+post-lock captions, retro-buffered finalization, and simran-aware null
+alignment.
+
+For older single-engine configs, use:
+
 ```bash
 python scripts/eval_oos.py \
   --data-dir eval_data/oos_v1 \
