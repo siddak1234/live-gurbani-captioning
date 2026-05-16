@@ -1,6 +1,6 @@
 # Phase 2.8 — ASR reproducibility recovery + timing/alignment pivot
 
-**Status:** next.
+**Status:** in progress — ASR knob surface and first timestamp probes complete.
 
 Phase 2.8 exists because Phase 2.7 exposed a more basic problem than the v5b adapter: the archived Path A v3.2 result is no longer reproducible as a runtime.
 
@@ -65,6 +65,21 @@ Evaluation:
 Success:
 
 - One timestamp/alignment prototype scores `>= 87.0%` paired benchmark without a shabad route table, or yields a clear reason to move to full-shabad forced alignment.
+
+### Initial probe results
+
+2026-05-16:
+
+| Prototype | Score | Result |
+|---|---:|---|
+| `v3_2_repro_current` | 73.5% | Current default (`vad_filter=False`, no word timestamps); reproduces the drift, not archived v3.2. |
+| `phase2_8_fw_word` | 72.0% | Word timestamps fix blind ID (12/12 locks) but hurt full-run line tracking/timing. |
+| `phase2_8_fw_vad` | 25.4% | VAD filtering deletes too much sung kirtan; dead path. |
+| `phase2_8_idlock_preword` | **86.6%** | Best current runtime: word timestamps for pre-lock ID, v5b for post-lock alignment. Misses gate by 0.4 pts; OOS still owed. |
+
+Shorter pre-word ID-lock windows were worse: 15s = `79.7%`, 20s = `79.8%`, both because the open `kZhIA8P6xWI` case mis-locks. Keep 30s as the current conservative runtime choice.
+
+Interpretation: word timestamps are useful for shabad ID, but not as the final caption timing layer. The next lift is likely a real post-lock alignment layer, especially for short cold-start cases such as `zOtIpxMT9hU_cold66`.
 
 ## Workstream C — Forced-alignment decision
 

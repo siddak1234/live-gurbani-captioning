@@ -1,0 +1,61 @@
+{
+  "video_id": "kZhIA8P6xWI",
+  "segments": [
+    {
+      "start": 215.98000000000002,
+      "end": 226.98000000000002,
+      "line_idx": 3,
+      "shabad_id": 1821,
+      "verse_id": 21978,
+      "banidb_gurmukhi": "ਪ੍ਰੀਤਮ ਕਿਉ ਬਿਸਰਹਿ ਮੇਰੇ ਪ੍ਰਾਣ ਅਧਾਰ ॥"
+    },
+    {
+      "start": 232.84,
+      "end": 233.5,
+      "line_idx": 9,
+      "shabad_id": 1821,
+      "verse_id": 21984,
+      "banidb_gurmukhi": "ਸੁਰਿ ਨਰ ਨਾਥ ਬੇਅੰਤ ਅਜੋਨੀ ਸਾਚੈ ਮਹਲਿ ਅਪਾਰਾ ॥"
+    },
+    {
+      "start": 233.5,
+      "end": 250.0,
+      "line_idx": 9,
+      "shabad_id": 1821,
+      "verse_id": 21984,
+      "banidb_gurmukhi": "ਸੁਰਿ ਨਰ ਨਾਥ ਬੇਅੰਤ ਅਜੋਨੀ ਸਾਚੈ ਮਹਲਿ ਅਪਾਰਾ ॥"
+    },
+    {
+      "start": 250.0,
+      "end": 270.0,
+      "line_idx": 10,
+      "shabad_id": 1821,
+      "verse_id": 21985,
+      "banidb_gurmukhi": "ਨਾਨਕ ਸਹਜਿ ਮਿਲੇ ਜਗਜੀਵਨ ਨਦਰਿ ਕਰਹੁ ਨਿਸਤਾਰਾ ॥੪॥੨॥"
+    },
+    {
+      "start": 270.0,
+      "end": 280.0,
+      "line_idx": 3,
+      "shabad_id": 1821,
+      "verse_id": 21978,
+      "banidb_gurmukhi": "ਪ੍ਰੀਤਮ ਕਿਉ ਬਿਸਰਹਿ ਮੇਰੇ ਪ੍ਰਾਣ ਅਧਾਰ ॥"
+    },
+    {
+      "start": 280.0,
+      "end": 300.0,
+      "line_idx": 4,
+      "shabad_id": 1821,
+      "verse_id": 21979,
+      "banidb_gurmukhi": "ਜਾ ਕੀ ਭਗਤਿ ਕਰਹਿ ਜਨ ਪੂਰੇ ਮੁਨਿ ਜਨ ਸੇਵਹਿ ਗੁਰ ਵੀਚਾਰਿ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 300.0,
+      "end": 306.027375,
+      "line_idx": 3,
+      "shabad_id": 1821,
+      "verse_id": 21978,
+      "banidb_gurmukhi": "ਪ੍ਰੀਤਮ ਕਿਉ ਬਿਸਰਹਿ ਮੇਰੇ ਪ੍ਰਾਣ ਅਧਾਰ ॥"
+    }
+  ]
+}

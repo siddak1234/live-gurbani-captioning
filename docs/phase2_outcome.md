@@ -81,6 +81,8 @@ Phase 2.7 implemented that real runtime ID-lock integration as `src/idlock_engin
 
 Do not start Phase 3 scale-up. The next step is Phase 2.8: recover/pin ASR reproducibility and prototype timestamp/alignment fixes before any larger LoRA run. The execution plan is [`docs/phase2_8_plan.md`](phase2_8_plan.md).
 
+Initial Phase 2.8 probes sharpened the path: word timestamps fix shabad ID (12/12 locks) but hurt full-run timing (`phase2_8_fw_word`: **72.0%**); VAD-on is catastrophic (`phase2_8_fw_vad`: **25.4%**); using word timestamps only for the pre-lock ID window and v5b after lock gives the best current runtime (`phase2_8_idlock_preword`: **86.6%**). This is close to, but still below, the `>=87.0%` gate and OOS is still owed.
+
 Implemented helpers:
 
 1. `make fetch-oos-audio OOS_URL='case_001=https://...'` for OOS audio.

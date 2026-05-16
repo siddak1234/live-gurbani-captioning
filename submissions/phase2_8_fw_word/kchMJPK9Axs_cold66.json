@@ -1,0 +1,37 @@
+{
+  "video_id": "kchMJPK9Axs",
+  "segments": [
+    {
+      "start": 432.18,
+      "end": 457.18,
+      "line_idx": 8,
+      "shabad_id": 1341,
+      "verse_id": 15274,
+      "banidb_gurmukhi": "ਜੈਸਾ ਰੰਗੁ ਕਸੁੰਭ ਕਾ ਮਨ ਬਉਰਾ ਰੇ ਤਿਉ ਪਸਰਿਓ ਪਾਸਾਰੁ ॥੩॥"
+    },
+    {
+      "start": 459.24,
+      "end": 483.5,
+      "line_idx": 3,
+      "shabad_id": 1341,
+      "verse_id": 15269,
+      "banidb_gurmukhi": "ਬਿਖੈ ਬਾਚੁ ਹਰਿ ਰਾਚੁ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ॥"
+    },
+    {
+      "start": 504.54,
+      "end": 559.86,
+      "line_idx": 8,
+      "shabad_id": 1341,
+      "verse_id": 15274,
+      "banidb_gurmukhi": "ਜੈਸਾ ਰੰਗੁ ਕਸੁੰਭ ਕਾ ਮਨ ਬਉਰਾ ਰੇ ਤਿਉ ਪਸਰਿਓ ਪਾਸਾਰੁ ॥੩॥"
+    },
+    {
+      "start": 561.62,
+      "end": 650.02,
+      "line_idx": 3,
+      "shabad_id": 1341,
+      "verse_id": 15269,
+      "banidb_gurmukhi": "ਬਿਖੈ ਬਾਚੁ ਹਰਿ ਰਾਚੁ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ॥"
+    }
+  ]
+}

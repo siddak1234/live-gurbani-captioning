@@ -135,6 +135,8 @@ Implementation split:
 
 Phase 2.7 result: the architecture was implemented cleanly, but `v5b_idlock_runtime` scored only `75.6%`. The failure was current runtime blind-ID, not the post-lock adapter: two `kZhIA8P6xWI` starts committed to the wrong shabad. The next architecture checkpoint is Phase 2.8: recover/pin ASR reproducibility, then prototype timestamp/alignment paths before more training scale.
 
+Phase 2.8 first signal: `phase2_8_idlock_preword` scores `86.6%` by using word timestamps only for the pre-lock ID window and v5b after lock. This restores correct shabad locks but still misses the promotion gate; the remaining architecture work is post-lock alignment/timing, not more route tables.
+
 ## Configuration surface
 
 Per-experiment settings live in `submissions/<run>/notes.md` (frozen historical record per CLAUDE.md convention). Per-pipeline reusable settings live in `configs/` (planned, M0.3 + M1.1): training hyperparameters, export quantization profiles, dataset registry.

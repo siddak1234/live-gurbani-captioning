@@ -31,6 +31,8 @@ def main() -> int:
     parser.add_argument("--language", default="pa")
     parser.add_argument("--cache-dir", type=pathlib.Path, default=pathlib.Path("asr_cache"))
     parser.add_argument("--word-timestamps", action="store_true")
+    parser.add_argument("--vad-filter", action="store_true",
+                        help="Enable faster-whisper VAD filtering. Default is off.")
     parser.add_argument("--no-speech-threshold", type=float, default=None)
     parser.add_argument("--adapter-dir", default=None)
     args = parser.parse_args()
@@ -42,6 +44,7 @@ def main() -> int:
         language=args.language,
         cache_dir=args.cache_dir,
         word_timestamps=args.word_timestamps,
+        vad_filter=args.vad_filter,
         no_speech_threshold=args.no_speech_threshold,
         adapter_dir=args.adapter_dir,
     )

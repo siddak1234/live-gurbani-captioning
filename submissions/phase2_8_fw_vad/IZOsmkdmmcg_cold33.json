@@ -1,0 +1,21 @@
+{
+  "video_id": "IZOsmkdmmcg",
+  "segments": [
+    {
+      "start": 180.42,
+      "end": 273.67,
+      "line_idx": 5,
+      "shabad_id": 1821,
+      "verse_id": 21980,
+      "banidb_gurmukhi": "ਰਵਿ ਸਸਿ ਦੀਪਕ ਜਾ ਕੇ ਤ੍ਰਿਭਵਣਿ ਏਕਾ ਜੋਤਿ ਮੁਰਾਰਿ ॥"
+    },
+    {
+      "start": 280.24,
+      "end": 309.66,
+      "line_idx": 3,
+      "shabad_id": 1821,
+      "verse_id": 21978,
+      "banidb_gurmukhi": "ਪ੍ਰੀਤਮ ਕਿਉ ਬਿਸਰਹਿ ਮੇਰੇ ਪ੍ਰਾਣ ਅਧਾਰ ॥"
+    }
+  ]
+}

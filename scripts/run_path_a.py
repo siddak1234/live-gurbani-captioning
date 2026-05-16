@@ -189,6 +189,12 @@ def main() -> int:
                         help="In live mode, emit per-chunk global-best (shabad, line) during ID buffer")
     parser.add_argument("--adapter-dir", default=None,
                         help="Path to a LoRA/PEFT adapter (only used with huggingface_whisper backend)")
+    parser.add_argument("--word-timestamps", action="store_true",
+                        help="Pass word_timestamps=True to ASR. Phase 2.8 timing probe.")
+    parser.add_argument("--vad-filter", action="store_true",
+                        help="Enable faster-whisper Silero VAD filtering. Default is off.")
+    parser.add_argument("--no-speech-threshold", type=float, default=None,
+                        help="Override faster-whisper no_speech_threshold (default: backend default).")
     parser.add_argument("--streaming", action="store_true",
                         help="Route through StreamingEngine (iOS-shape contract) instead of "
                              "batch predict(). Audit gate for M3.3 / iOS Swift port.")
@@ -202,6 +208,9 @@ def main() -> int:
         model_size=args.model,
         adapter_dir=args.adapter_dir,
         asr_cache_dir=args.asr_cache_dir.resolve(),
+        word_timestamps=args.word_timestamps,
+        no_speech_threshold=args.no_speech_threshold,
+        vad_filter=args.vad_filter,
         ratio=args.ratio,
         blend=_parse_blend(args.blend),
         score_threshold=args.threshold,
