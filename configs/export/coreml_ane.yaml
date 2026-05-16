@@ -1,0 +1,79 @@
+# Core ML export profile for ANE-optimized on-device deployment.
+# Consumed by scripts/export_coreml.py to drive the whisperkittools conversion.
+#
+# What we're targeting
+# --------------------
+# Whisper-small (240M) → ANE-accelerated Core ML, ~150-250 MB on disk after
+# 4-bit palettization. Argmax's published OD-MBP technique keeps WER within
+# 1% of the unquantized model on standard benchmarks; we'll re-verify against
+# our own benchmark + OOS eval after the first successful export.
+#
+# Compatibility
+# -------------
+# macOS 14.0+ / iOS 17.0+ for the Core ML compiler features we use here.
+# Apple Silicon Mac required for any quantization that targets the ANE.
+
+# -------------------------------------------------------------------------
+# Source model
+# -------------------------------------------------------------------------
+
+base_model: surindersinghssj/surt-small-v3
+# adapter_dir is supplied at runtime via the --adapter-dir flag on
+# export_coreml.py; nothing here.
+
+# -------------------------------------------------------------------------
+# Output
+# -------------------------------------------------------------------------
+
+# whisperkittools writes the .mlpackage tree under <output_dir>/<base_model>/.
+# We'll set output_dir on the CLI; this just controls the package name.
+package_name: surt-small-v3-kirtan
+
+# -------------------------------------------------------------------------
+# Quantization
+# -------------------------------------------------------------------------
+# whisperkittools supports several quantization profiles via its
+# --quantization flag. Common values: float32, float16, q4, q8, mixed.
+#
+# Recommended for our use case:
+#   encoder:           q4 (palettized 4-bit) — biggest weight chunk
+#   decoder:           q4 with fp16 outlier branches (OD-MBP)
+#   text_decoder:      q4 mixed
+#
+# Set "auto" to let whisperkittools pick its current best-known profile per
+# component. Override per-component when we want to A/B specific quant levels.
+
+quantization:
+  encoder: q4
+  decoder: q4
+  audio_encoder: q4
+
+# Whether to enable Argmax's outlier-decomposed mixed-bit palettization.
+# Trades a small amount of model size for substantially better WER retention.
+od_mbp: true
+
+# -------------------------------------------------------------------------
+# Streaming / ANE specifics
+# -------------------------------------------------------------------------
+# Stateful audio encoder: critical for low-latency streaming. iOS app feeds
+# audio frames incrementally; the stateful encoder caches activations across
+# frames so we don't re-encode the full 30s window every step.
+stateful_encoder: true
+
+# Use the ANE-optimized attention implementation from ane-transformers
+# (used by WhisperKit). Falls back to standard attention when --no-ane.
+ane_attention: true
+
+# Compute precision target. Setting fp16 here also enables CPU+GPU+ANE
+# heterogeneous execution; fp32 forces ANE-only with no fallback.
+compute_precision: fp16
+
+# -------------------------------------------------------------------------
+# Validation
+# -------------------------------------------------------------------------
+# After conversion, optionally run a numerical-parity check against the
+# original HF model on a held-out clip. Fails the export if WER drift > 5pp.
+validation:
+  enabled: true
+  test_clip: training_data/smoke/snippet_00.wav   # any small clip we have
+  max_wer_drift_pp: 5.0

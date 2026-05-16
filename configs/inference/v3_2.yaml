@@ -1,0 +1,29 @@
+# Path A v3.2 canonical inference config — the configuration that produced
+# the 86.5% blind+live score on the paired benchmark. Loaded by
+# scripts/eval_oos.py (and any future runners that take --engine-config).
+#
+# Keys must match `src.engine.EngineConfig` field names exactly. CLI flags
+# in the consuming runner override these values.
+
+# -- ASR backend -------------------------------------------------------------
+backend: faster_whisper
+model_size: medium
+adapter_dir: null
+# asr_cache_dir is resolved by the runner (typically asr_cache/)
+
+# -- Matching ----------------------------------------------------------------
+ratio: WRatio
+blend: "token_sort_ratio:0.5,WRatio:0.5"   # parsed to dict by runner
+score_threshold: 0.0
+margin_threshold: 0.0
+stay_bias: 6.0
+
+# -- Blind shabad ID ---------------------------------------------------------
+blind_lookback: 30.0
+blind_aggregate: chunk_vote
+blind_ratio: WRatio
+blind_blend: null
+
+# -- Live mode (causal) ------------------------------------------------------
+live: true
+tentative_emit: true

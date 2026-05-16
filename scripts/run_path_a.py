@@ -22,12 +22,59 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.engine import predict, EngineConfig  # noqa: E402
+from src.streaming_engine import StreamingEngine  # noqa: E402
 
 DEFAULT_GT_DIR = REPO_ROOT.parent / "live-gurbani-captioning-benchmark-v1" / "test"
 DEFAULT_AUDIO_DIR = REPO_ROOT / "audio"
 DEFAULT_CORPUS_DIR = REPO_ROOT / "corpus_cache"
 DEFAULT_ASR_CACHE = REPO_ROOT / "asr_cache"
 DEFAULT_OUT_DIR = REPO_ROOT / "submissions" / "v1_pathA_oracle"
+
+
+def _run_batch(audio_path, corpora, shabad_id, uem_start, engine_config):
+    """Standard batch path — full audio in, segments out."""
+    return predict(audio_path, corpora,
+                   shabad_id=shabad_id, uem_start=uem_start, config=engine_config)
+
+
+def _run_streaming(audio_path, corpora, shabad_id, uem_start,
+                   engine_config, chunk_s: float):
+    """Simulate iOS-style streaming by feeding the file through StreamingEngine.
+
+    The benchmark audit gate: this path must produce segments equivalent to
+    batch within 1 s tolerance, validating that the streaming contract is
+    correct before Swift mirrors it in M5.
+    """
+    import soundfile as sf
+    from src.engine import PredictionResult
+
+    audio_np, sr = sf.read(str(audio_path), dtype="float32")
+    if audio_np.ndim > 1:
+        audio_np = audio_np.mean(axis=1)
+
+    # Size the ring to hold the full file so nothing ages out during the audit.
+    capacity_s = max(120.0, float(len(audio_np)) / sr + 10.0)
+    eng = StreamingEngine(
+        corpora, config=engine_config,
+        buffer_capacity_s=capacity_s,
+        process_interval_s=chunk_s,
+    )
+    eng.reset(shabad_id=shabad_id)
+
+    chunk_samples = int(chunk_s * sr)
+    for i in range(0, len(audio_np), chunk_samples):
+        eng.process_pcm(audio_np[i : i + chunk_samples], sr=sr)
+    segments = eng.flush()
+    state = eng.get_state()
+
+    # Shim into the PredictionResult contract so the caller doesn't branch.
+    return PredictionResult(
+        segments=segments,
+        shabad_id=state.committed_shabad_id if state.committed_shabad_id is not None else 0,
+        n_chunks=len(segments),
+        blind_id_score=None,
+        blind_runner_up_score=None,
+    )
 
 
 def process_one(
@@ -38,6 +85,8 @@ def process_one(
     out_dir: pathlib.Path,
     blind: bool,
     engine_config: EngineConfig,
+    streaming: bool = False,
+    streaming_chunk_s: float = 5.0,
 ) -> bool:
     gt = json.loads(gt_path.read_text())
     video_id = gt["video_id"]
@@ -49,19 +98,23 @@ def process_one(
         return False
 
     uem_start = float(gt.get("uem", {}).get("start", 0.0))
+    shabad_for_engine = None if blind else gt_shabad_id
 
     try:
-        result = predict(
-            audio_path, corpora,
-            shabad_id=None if blind else gt_shabad_id,
-            uem_start=uem_start,
-            config=engine_config,
-        )
+        if streaming:
+            result = _run_streaming(
+                audio_path, corpora, shabad_for_engine, uem_start,
+                engine_config, chunk_s=streaming_chunk_s,
+            )
+        else:
+            result = _run_batch(
+                audio_path, corpora, shabad_for_engine, uem_start, engine_config,
+            )
     except ValueError as e:
         print(f"  error: {e}", file=sys.stderr)
         return False
 
-    if blind:
+    if blind and not streaming:
         sid_correct = "✓" if result.shabad_id == gt_shabad_id else "✗"
         print(f"  {gt_path.stem}: blind ID predicts {result.shabad_id} (GT {gt_shabad_id}) {sid_correct} "
               f"top={result.blind_id_score:.1f} runner_up={result.blind_runner_up_score:.1f}")
@@ -83,7 +136,8 @@ def process_one(
         {"video_id": video_id, "segments": submission_segments},
         ensure_ascii=False, indent=2,
     ))
-    print(f"  {gt_path.stem}: {result.n_chunks} chunks → {len(result.segments)} segments")
+    mode_tag = "streaming" if streaming else "batch"
+    print(f"  {gt_path.stem}: [{mode_tag}] {result.n_chunks} chunks → {len(result.segments)} segments")
     return True
 
 
@@ -135,6 +189,12 @@ def main() -> int:
                         help="In live mode, emit per-chunk global-best (shabad, line) during ID buffer")
     parser.add_argument("--adapter-dir", default=None,
                         help="Path to a LoRA/PEFT adapter (only used with huggingface_whisper backend)")
+    parser.add_argument("--streaming", action="store_true",
+                        help="Route through StreamingEngine (iOS-shape contract) instead of "
+                             "batch predict(). Audit gate for M3.3 / iOS Swift port.")
+    parser.add_argument("--streaming-chunk-s", type=float, default=5.0,
+                        help="Streaming chunk size in seconds (default 5.0). Smaller = lower "
+                             "latency at higher redundant-work cost.")
     args = parser.parse_args()
 
     engine_config = EngineConfig(
@@ -184,6 +244,8 @@ def main() -> int:
             out_dir=args.out_dir.resolve(),
             blind=args.blind,
             engine_config=engine_config,
+            streaming=args.streaming,
+            streaming_chunk_s=args.streaming_chunk_s,
         ):
             failures.append(gt_file.stem)
 

@@ -1,0 +1,155 @@
+# Labeled-data source registry — single source of truth for what data exists,
+# where it lives, and how to pull it for training. Read by scripts/pull_dataset.py
+# (planned: load this for subcommand defaults instead of hard-coding HF repo IDs).
+#
+# Holdout discipline (applies to every Gurbani-specific source):
+#   - shabad_ids: 4377, 1821, 1341, 3712  (the benchmark's 4 shabads)
+#   - video_ids:  IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU
+# Sources that don't carry shabad metadata (IndicVoices, CommonVoice) are
+# treated as general Punjabi acoustic data — holdout doesn't apply.
+
+schema_version: 1
+
+# ---------------------------------------------------------------------------
+# Gurbani-specific labeled audio (surindersinghssj). Apache 2.0. Public HF.
+# These are the primary training sources for surt-small-v3 fine-tuning.
+# ---------------------------------------------------------------------------
+
+sources:
+
+  kirtan:
+    hf_repo: surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical
+    description: 300h of canonicalized sung Gurbani (kirtan) from YouTube
+    domain: gurbani-sung
+    hours: 300
+    rows: 208000
+    license: apache-2.0
+    text_column: final_text
+    quality_column: canonical_match_score
+    default_min_score: 0.8
+    holdout:
+      enforce: true
+      shabad_ids: ["4377", "1821", "1341", "3712"]
+      video_ids: [IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU]
+    pull: python scripts/pull_dataset.py kirtan --out-dir training_data/kirtan_v1
+    notes: |
+      Primary kirtan corpus. Labels are auto-aligned YouTube captions snapped
+      to canonical SGGS via BaniDB. Quality varies — filter with --min-score.
+
+  sehaj:
+    hf_repo: surindersinghssj/gurbani-sehajpath-yt-captions-canonical
+    description: ~160h of spoken paath (calm recitation) from YouTube
+    domain: gurbani-spoken
+    hours: 160
+    license: apache-2.0
+    text_column: final_text
+    quality_column: canonical_match_score
+    default_min_score: 0.8
+    holdout:
+      enforce: true
+      shabad_ids: ["4377", "1821", "1341", "3712"]
+      video_ids: [IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU]
+    pull: python scripts/pull_dataset.py sehaj --out-dir training_data/sehaj_v1
+    notes: |
+      Spoken paath complements kirtan; helps the model learn phonemes without
+      melodic confounds. Use as auxiliary stream when fine-tuning surt-small-v3.
+
+  sehajpath:
+    hf_repo: surindersinghssj/gurbani-sehajpath
+    description: ~66h of studio-quality spoken paath
+    domain: gurbani-spoken-clean
+    hours: 66
+    license: apache-2.0
+    text_column: gurmukhi_text
+    holdout:
+      enforce: true
+      shabad_ids: ["4377", "1821", "1341", "3712"]
+      video_ids: [IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU]
+    pull: python scripts/pull_dataset.py sehajpath --out-dir training_data/sehajpath_v1
+    notes: |
+      Cleanest source. Use as anchor against catastrophic forgetting when the
+      training mix is dominated by noisy YouTube kirtan data.
+
+  # -------------------------------------------------------------------------
+  # General Punjabi (not Gurbani-specific). Used as acoustic regularization
+  # to keep the fine-tuned model robust to Punjabi phonemes outside the SGGS
+  # vocabulary. No holdout filter needed.
+  # -------------------------------------------------------------------------
+
+  indicvoices:
+    hf_repo: ai4bharat/IndicVoices
+    description: AI4Bharat IndicVoices — Punjabi subset
+    domain: punjabi-speech-general
+    hours_estimate: 30
+    license: cc-by-4.0
+    holdout:
+      enforce: false
+    pull: python scripts/pull_dataset.py indicvoices --out-dir training_data/iv_pa_v1
+    status: stub
+    notes: |
+      AI4Bharat catalog; stream via datasets.load_dataset with lang filter.
+      Subcommand not implemented yet — lands when we scale data acquisition
+      past 500h.
+
+  commonvoice:
+    hf_repo: mozilla-foundation/common_voice_12_0
+    description: Mozilla Common Voice 12 — Punjabi (pa-IN) subset
+    domain: punjabi-speech-crowdsourced
+    hours_estimate: 5
+    license: cc0-1.0
+    holdout:
+      enforce: false
+    pull: python scripts/pull_dataset.py commonvoice --out-dir training_data/cv_pa_v1
+    status: stub
+    notes: |
+      Smaller and noisier than IndicVoices. Crowdsourced; quality varies.
+      Mostly useful as a regularizer, not a primary signal.
+
+  archiveorg:
+    source: https://archive.org/details/GurbaniKirtan
+    description: archive.org bulk Gurbani Kirtan collection (audio only, no labels)
+    domain: gurbani-sung-unlabeled
+    hours_estimate: unknown
+    license: varies
+    holdout:
+      enforce: true   # auto-label pipeline must drop benchmark shabads
+      shabad_ids: ["4377", "1821", "1341", "3712"]
+    pull: python scripts/pull_dataset.py archiveorg --out-dir training_data/ao_v1
+    status: stub
+    notes: |
+      Unlabeled. Pipeline (planned): scrape → rough-transcribe with surt →
+      align to canonical SGGS via BaniDB → confidence-filter → keep only
+      ≥0.85 alignment score. Tadabur-style auto-label playbook for kirtan.
+
+# ---------------------------------------------------------------------------
+# Recommended training mixes — what we'd use for v0, v1, v2 fine-tunes.
+# Driven by intuition; revisit after first OOS eval (task M2).
+# ---------------------------------------------------------------------------
+
+training_mixes:
+
+  v0_smoke:
+    description: Validate the surt fine-tune pipeline end-to-end (no expectation of real lift)
+    samples:
+      kirtan: 30
+    notes: Use scripts/build_smoke_manifest.py output. ~5 min on M4 Pro.
+
+  v1_first_real:
+    description: First real fine-tune of surt-small-v3 on Mac
+    sources:
+      - kirtan        # primary, 64% sampling weight
+      - sehaj         # auxiliary, 25%
+      - sehajpath     # anchor, 11%
+    target_hours: 50
+    notes: 4-8 hours per epoch on M4 Pro, 3 epochs. Held-out shabads enforced.
+
+  v2_scale:
+    description: Scale to 200h+ once v1 numbers justify
+    sources:
+      - kirtan
+      - sehaj
+      - sehajpath
+      - indicvoices   # general Punjabi regularization
+      - archiveorg    # auto-labeled extra kirtan
+    target_hours: 250
+    notes: Likely needs cloud GPU (Colab A100 or RunPod) for reasonable iteration speed.

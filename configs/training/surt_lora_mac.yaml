@@ -1,0 +1,54 @@
+# LoRA fine-tune of surt-small-v3 on Apple Silicon (M-series, MPS).
+# Tuned for an M4 Pro with 48 GB unified memory. Trades a bit of throughput
+# for memory headroom so the box stays usable while training.
+#
+# Usage:
+#   python scripts/finetune_path_b.py --config configs/training/surt_lora_mac.yaml \
+#     --manifest training_data/kirtan_v1/manifest.json \
+#     --output-dir lora_adapters/surt_mac_v1
+#
+# Any CLI flag overrides the corresponding YAML key. --manifest and
+# --output-dir have no defaults here; supply them on the command line.
+
+# -- Base model selection -----------------------------------------------------
+
+model_id: surindersinghssj/surt-small-v3
+model_type: whisper              # explicit; skips auto-detection
+language: punjabi                # Whisper generation language tag
+
+# -- LoRA --------------------------------------------------------------------
+# r=16 / alpha=32 is the standard PEFT default for Whisper-small; ~3M trainable
+# params (~1% of 240M base). q_proj/k_proj/v_proj/out_proj are Whisper's
+# attention projections — where most kirtan-domain adaptation lives.
+
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.1
+lora_target_modules: "q_proj,k_proj,v_proj,out_proj"
+
+# -- Training loop -----------------------------------------------------------
+# batch=4 + grad_accum=2 => effective batch 8.
+# M4 Pro 48 GB easily fits this; bigger batches don't speed up much because
+# MPS isn't dramatically tensor-bound at this scale.
+
+batch_size: 4
+grad_accum: 2
+epochs: 3
+lr: 1.0e-5                       # Whisper fine-tunes prefer lower LR than CTC
+warmup_steps: 100
+save_steps: 500
+max_steps: 0                     # 0 means "use epochs"; set >0 for smoke tests
+
+# -- Precision ---------------------------------------------------------------
+# bf16 is CUDA-only. On MPS, fp16 gives ~30% throughput lift and fits
+# comfortably in 48 GB unified memory. Auto-detect respects this when bf16
+# is unset by the caller.
+
+bf16: null                        # auto: True on CUDA, False on MPS/CPU
+fp16: null                        # auto: True on MPS, False otherwise
+
+# -- Reproducibility hint ----------------------------------------------------
+# When you set up your shell:
+#   export PYTORCH_ENABLE_MPS_FALLBACK=1   # falls back for unimplemented ops
+#   export HF_HUB_ENABLE_HF_TRANSFER=1     # faster HF downloads
+# The .claude/settings.json env block sets these automatically inside Claude Code.

@@ -72,12 +72,36 @@ def _default_target_modules(model_type: str, user_override: str | None) -> list[
     return ["linear_q", "linear_k", "linear_v", "linear_out"]
 
 
+def _load_yaml_defaults(config_path: pathlib.Path) -> dict:
+    """Load training hyperparameters from a YAML config file.
+
+    Keys must match argparse ``dest`` names (i.e. underscores, not hyphens).
+    Values of ``None`` / ``null`` are ignored so YAML can declare a key while
+    leaving its actual default to the script's own auto-detection.
+    """
+    import yaml
+    with open(config_path) as f:
+        raw = yaml.safe_load(f) or {}
+    return {k: v for k, v in raw.items() if v is not None}
+
+
 def main() -> int:
+    # Two-pass parsing: first peek at --config so its keys can become defaults
+    # for the real parser; then re-parse with CLI args overriding YAML values.
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--config", type=pathlib.Path, default=None)
+    pre_args, _ = pre.parse_known_args()
+    yaml_defaults: dict = {}
+    if pre_args.config:
+        yaml_defaults = _load_yaml_defaults(pre_args.config)
+
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", type=pathlib.Path, required=True,
-                        help="Path to training manifest JSON")
-    parser.add_argument("--output-dir", type=pathlib.Path, required=True,
-                        help="Where to save LoRA adapter weights")
+    parser.add_argument("--config", type=pathlib.Path, default=None,
+                        help="YAML config providing defaults; CLI args still override.")
+    parser.add_argument("--manifest", type=pathlib.Path, default=None,
+                        help="Path to training manifest JSON (required unless set in --config)")
+    parser.add_argument("--output-dir", type=pathlib.Path, default=None,
+                        help="Where to save LoRA adapter weights (required unless set in --config)")
     parser.add_argument("--model-id", default="kdcyberdude/w2v-bert-punjabi",
                         help="HF model ID for the base model")
     parser.add_argument("--model-type", choices=["auto", "ctc", "whisper"], default="auto",
@@ -102,9 +126,32 @@ def main() -> int:
                         help="Optional held-out manifest for periodic evaluation")
     parser.add_argument("--bf16", action="store_true", default=None,
                         help="Enable bf16 mixed precision. Auto-on when CUDA available, off otherwise.")
+    parser.add_argument("--fp16", action="store_true", default=None,
+                        help="Enable fp16 mixed precision. Auto-on when MPS available (and bf16 off), off otherwise.")
     parser.add_argument("--language", default="punjabi",
                         help="Whisper generation language tag (Whisper path only). Default: punjabi.")
+
+    # Apply YAML defaults BEFORE parse_args so CLI args still win.
+    if yaml_defaults:
+        known = {a.dest for a in parser._actions}
+        unknown = set(yaml_defaults) - known
+        if unknown:
+            print(f"Warning: ignoring unknown YAML keys: {sorted(unknown)}", file=sys.stderr)
+        parser.set_defaults(**{k: v for k, v in yaml_defaults.items() if k in known})
+
     args = parser.parse_args()
+
+    # Convert YAML-supplied paths from str to pathlib.Path (set_defaults bypasses type=).
+    if args.manifest is not None and not isinstance(args.manifest, pathlib.Path):
+        args.manifest = pathlib.Path(args.manifest)
+    if args.output_dir is not None and not isinstance(args.output_dir, pathlib.Path):
+        args.output_dir = pathlib.Path(args.output_dir)
+
+    # Validate required-ish args (kept non-required at argparse level so YAML can provide them).
+    if args.manifest is None:
+        parser.error("--manifest is required (provide on CLI or in --config)")
+    if args.output_dir is None:
+        parser.error("--output-dir is required (provide on CLI or in --config)")
 
     import torch
 
@@ -112,14 +159,19 @@ def main() -> int:
     model_type_resolved = "whisper" if is_whisper else "ctc"
     target_modules = _default_target_modules(model_type_resolved, args.lora_target_modules)
 
-    # bf16 auto-detection: enable on CUDA, disable otherwise.
+    # Precision auto-detection.
+    #   - bf16: CUDA-only feature; auto-on when CUDA is available.
+    #   - fp16: Apple-MPS-friendly mixed precision; auto-on when MPS is available
+    #     and bf16 is not in play. CPU stays at fp32.
     if args.bf16 is None:
         args.bf16 = bool(torch.cuda.is_available())
+    if args.fp16 is None:
+        args.fp16 = (not args.bf16) and bool(torch.backends.mps.is_available())
 
     print(f"Model: {args.model_id}")
     print(f"Type: {model_type_resolved} (detected={args.model_type == 'auto'})")
     print(f"LoRA target_modules: {target_modules}")
-    print(f"bf16: {args.bf16}")
+    print(f"Precision: bf16={args.bf16}, fp16={args.fp16}")
 
     if is_whisper:
         return _run_whisper_train(args, target_modules)
@@ -218,7 +270,7 @@ def _run_ctc_train(args, target_modules: list[str]) -> int:
         eval_steps=args.save_steps if eval_ds else None,
         report_to=[],
         gradient_checkpointing=False,
-        fp16=False,
+        fp16=args.fp16,
         bf16=args.bf16,
     )
 
@@ -327,7 +379,7 @@ def _run_whisper_train(args, target_modules: list[str]) -> int:
         eval_steps=args.save_steps if eval_ds else None,
         report_to=[],
         gradient_checkpointing=False,
-        fp16=False,
+        fp16=args.fp16,
         bf16=args.bf16,
         predict_with_generate=False,  # speeds up training; switch on for WER eval at large scale
     )

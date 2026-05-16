@@ -2,6 +2,14 @@
 
 Orientation for Claude Code sessions in this repo. Read the paired benchmark for deeper detail; this file is an index, not a duplicate.
 
+## Two machines, two roles
+
+If you're a Claude session on the **training machine** (a dedicated Apple Silicon Mac that runs fine-tunes), your job is narrow: `make start`. That runs Python check → `pip install -r requirements-mac.txt` → auto-pulls `surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical` from HuggingFace → LoRA-fine-tunes `surt-small-v3`. No ffmpeg, no paired benchmark repo, no smoke test. Adapter lands in `lora_adapters/surt_mac_v1/`; ship it back to the dev machine.
+
+If you're a Claude session on the **dev machine** (where code review, benchmark scoring, OOS evaluation, and iOS export happen), your job is wider. Run `make start-dev` for the kitchen-sink chain (doctor-dev + install + fetch-audio + corpus + data + smoke + train), or pick targets individually: `make eval`, `make eval-oos`, `make ios-export`. Requires `ffmpeg` (`brew install ffmpeg`) and the paired benchmark repo cloned at `../live-gurbani-captioning-benchmark-v1/`. iOS deployment goes through Argmax's `whisperkittools` (HF → Core ML w/ ANE quantization) + the [WhisperKit](https://github.com/argmaxinc/WhisperKit) Swift package; see [`docs/ios_deployment.md`](docs/ios_deployment.md) and the `ios/` directory.
+
+Run `make help` on either machine to see every target and its one-line purpose.
+
 ## Project goal
 
 Build a **real, robust, scalable kirtan captioning engine** that works at user level on arbitrary recordings — not just the 4 shabads in the paired benchmark. The benchmark is a *measurement tool*, not the deliverable. Solutions that overfit to its 12 cases are leaderboard exercises, not deployable systems.
@@ -123,7 +131,7 @@ Numbered roughly by order, not by difficulty:
 
 1. **Establish honest evaluation hygiene.** Before claiming any new score, run on a held-out audio recording not used during tuning. Even just one new Sikhnet-Radio recording with a known-but-not-in-benchmark shabad lets us catch overfitting early.
 2. **Ship surt-small-v3 with better integration as the v0 production engine.** The standalone 74% is held back by ASR-vs-matcher chunk-granularity mismatch, not by the model itself. Investigate: word-level timestamps from the HF pipeline, custom decoding that respects line boundaries, or use surt's text + faster-whisper's timestamps as a hybrid.
-3. **Train our own model on the 300h dataset.** Pipeline now validated end-to-end on real data (see `submissions/x8_pb_finetuned/notes.md`). 50 steps on 30 clips moved Path B HMM +2.6 points. Real training at scale (hundreds of hours, cloud GPU) is the next step. Tools: `scripts/pull_kirtan_data.py` (pulls from `surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical` with benchmark holdout), `scripts/finetune_path_b.py` (LoRA), [docs/cloud_training.md](docs/cloud_training.md) for Colab/RunPod walkthrough. To fine-tune surt-small-v3 specifically, the finetune script's `target_modules` needs to switch from w2v-bert's `linear_*` to Whisper's `q_proj/k_proj/v_proj/out_proj`.
+3. **Fine-tune surt-small-v3 on the 300h dataset (Mac-first).** Pipeline validated end-to-end on real data (see `submissions/x8_pb_finetuned/notes.md` for the smoke run that moved Path B HMM +2.6 points). Real training runs locally on M-series Macs via PyTorch + MPS — see [`docs/training_on_mac.md`](docs/training_on_mac.md). Tools: `scripts/pull_dataset.py kirtan` (pulls from `surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical` with benchmark holdout), `scripts/finetune_path_b.py --config configs/training/surt_lora_mac.yaml` (auto-detects Whisper vs CTC from `--model-id`; target_modules default to Whisper's `q_proj/k_proj/v_proj/out_proj` when `surt-small-v3` is the base). Cloud fallback (Colab/RunPod) documented in [`docs/cloud_training.md`](docs/cloud_training.md) for the day Mac wall-clock becomes the bottleneck.
 4. **Move to forced alignment over the full shabad** (Path B done right) instead of per-chunk classification. Aligns the whole shabad text to the audio as one continuous problem; naturally handles line transitions including rapid ones. Architecture sketch is in `src/path_b/`.
 5. **Replace the route table with a learned dispatcher** — small classifier picking the engine based on audio features (tempo, vocal/instrumental ratio, etc.), not on shabad ID lookup. Makes ensembling honest by design.
 6. **Build the live deployment surface**: streaming audio in, captions out, Sewadar UI with confirm/reset buttons (matches the reference system's UX from karanbirsingh.com).
@@ -178,74 +186,80 @@ Default `--backend faster_whisper` is the canonical Path A backend. `--backend m
 | B.1: LoRA fine-tune pipeline | ✅ | smoke-tested, ready for real data |
 | B.2-B.6: collect kirtan data + fine-tune | ⏳ next | target 90-95% |
 
-### Fine-tuning (LoRA on w2v-bert) — multi-week plan
+### Fine-tuning (LoRA on surt-small-v3) — Mac-first plan
 
-The ASR plateau (Path A 86.5%, Path B 70.3%) is structural and only escapes via domain-adapted acoustic modeling.
+The ASR plateau (Path A 86.5%, Path B 70.3%) is structural and only escapes via domain-adapted acoustic modeling. The production target is `surt-small-v3` (Whisper-small architecture, kirtan-fine-tuned by surindersinghssj). Path B (w2v-bert + HMM) remains as research scaffolding but is not the deployment target.
 
 **Pipeline (built):**
-- `src/path_b/dataset.py` — manifest-driven (audio, text) data loader
-- `scripts/build_training_dataset.py` — **the data acquisition tool**. Takes a CSV of `(youtube_id, shabad_id)` pairs, downloads each, runs Path A v3.2 in oracle mode to forced-align line → time, writes a training manifest. Refuses benchmark shabads by default.
-- `scripts/finetune_path_b.py` — LoRA fine-tune of any HF CTC model (default `kdcyberdude/w2v-bert-punjabi`)
-- `scripts/build_smoke_manifest.py` — generates a tiny pipeline-validation manifest (NOT for real training — contaminates test set)
-- `scripts/run_path_b_hmm.py --adapter-dir <path>` — inference with a saved LoRA adapter
+- `src/path_b/dataset.py` — manifest-driven (audio, text) data loader; has separate paths for CTC and Whisper Seq2Seq
+- `scripts/pull_dataset.py` — unified data acquisition with subcommands (`kirtan`, `sehaj`, `sehajpath`); enforces benchmark holdout
+- `scripts/build_training_dataset.py` — YouTube-source fallback when HF isn't enough
+- `scripts/finetune_path_b.py` — LoRA fine-tune; auto-detects Whisper vs CTC from `--model-id` (or override with `--model-type`). Loads pinned hyperparameters from `configs/training/surt_lora_mac.yaml`.
+- `scripts/build_smoke_manifest.py` — tiny pipeline-validation manifest (NOT for real training — contaminates test set)
+- `scripts/run_path_a.py --backend huggingface_whisper --adapter-dir <path>` — inference with a saved LoRA adapter against the canonical Path A pipeline
 - Training cache: `lora_adapters/<name>/` (gitignored)
 - Training data: `training_data/<manifest>/` (gitignored — keep audio off the public repo)
 
-**End-to-end workflow once you have a CSV:**
+**Canonical end-to-end workflow (Mac):**
 
 ```bash
-# 1) Curate a CSV with non-benchmark shabads:
-#    youtube_id,shabad_id,notes
-#    abc123XYZ,5621,...
-
-# 2) Build training manifest (downloads + auto-labels via Path A):
-python scripts/build_training_dataset.py \
-  --input-csv my_kirtan_sources.csv \
+# 1) Pull a labeled slice (benchmark shabads filtered out automatically):
+python scripts/pull_dataset.py kirtan \
   --out-dir training_data/kirtan_v1 \
-  --backend faster_whisper --model medium
+  --num-samples 200 --min-score 0.8
 
-# 3) Manually review/curate manifest.json (Path A labels are ~86% accurate; drop bad rows)
-
-# 4) Fine-tune (locally for small data, cloud GPU for scale):
-PYTORCH_ENABLE_MPS_FALLBACK=1 python scripts/finetune_path_b.py \
+# 2) LoRA fine-tune surt-small-v3 (Whisper Seq2Seq path auto-detected):
+python scripts/finetune_path_b.py \
+  --config configs/training/surt_lora_mac.yaml \
   --manifest training_data/kirtan_v1/manifest.json \
-  --output-dir lora_adapters/kirtan_v1 \
-  --epochs 3 --batch-size 2
+  --output-dir lora_adapters/surt_mac_v1
 
-# 5) Evaluate fine-tuned adapter:
-python scripts/run_path_b_hmm.py \
-  --model-id kdcyberdude/w2v-bert-punjabi --target-lang "" \
-  --adapter-dir lora_adapters/kirtan_v1 \
-  --out-dir submissions/pb_kirtan_v1
+# 3) Evaluate against the paired benchmark:
+python scripts/run_path_a.py \
+  --backend huggingface_whisper \
+  --model surindersinghssj/surt-small-v3 \
+  --adapter-dir lora_adapters/surt_mac_v1 \
+  --blend "token_sort_ratio:0.5,WRatio:0.5" --threshold 0 \
+  --stay-bias 6 --blind --blind-aggregate chunk_vote \
+  --blind-lookback 30 --live --tentative-emit \
+  --out-dir submissions/v5_surt_mac_v1
+
 python ../live-gurbani-captioning-benchmark-v1/eval.py \
-  --pred submissions/pb_kirtan_v1 --gt ../live-gurbani-captioning-benchmark-v1/test/
+  --pred submissions/v5_surt_mac_v1 \
+  --gt   ../live-gurbani-captioning-benchmark-v1/test/
+
+# 4) Out-of-set evaluation (honest accuracy — required before claiming a number):
+python scripts/eval_oos.py \
+  --data-dir eval_data/oos_v1 \
+  --pred-dir submissions/oos_v1_surt_mac_v1 \
+  --engine-config configs/inference/v3_2.yaml
 ```
 
-**Smoke-test (validated):** `PYTORCH_ENABLE_MPS_FALLBACK=1 python scripts/finetune_path_b.py --manifest <smoke.json> --output-dir /tmp/lora_smoke --max-steps 20`. ~1.4 steps/sec on Apple Silicon (CTC loss falls back to CPU; PyTorch MPS doesn't yet implement aten::_ctc_loss). Trainable params: 3.3M of 617M (0.53% via LoRA r=16).
+**Smoke-test (validated on prior w2v-bert path):** `PYTORCH_ENABLE_MPS_FALLBACK=1 python scripts/finetune_path_b.py --manifest <smoke.json> --output-dir /tmp/lora_smoke --max-steps 20 --batch-size 1`. ~1.4 steps/sec on Apple Silicon. For Whisper Seq2Seq specifically: cross-entropy loss is MPS-native (no CPU fallback like CTC has), so throughput is higher — measure on first real run.
 
 **Data sources (sorted by current relevance):**
 
-1. **🎯 `surindersinghssj` on HuggingFace** — ALREADY EXISTS, ALREADY DONE.
-   - [`surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical`](https://huggingface.co/datasets/surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical) — **300h of kirtan audio with line text labels**, 208k samples. Apache 2.0.
-   - [`surindersinghssj/surt-small-v3`](https://huggingface.co/surindersinghssj/surt-small-v3) — Whisper-small fine-tuned on 660h of Gurbani audio, produces canonical Gurmukhi directly.
-   - [`surindersinghssj/indicconformer-pa-v3-kirtan`](https://huggingface.co/surindersinghssj/indicconformer-pa-v3-kirtan) — IndicConformer fine-tune for kirtan (needs NeMo lib).
+1. **`surindersinghssj` on HuggingFace** — primary source.
+   - [`surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical`](https://huggingface.co/datasets/surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical) — 300h kirtan audio + line text, 208k samples, Apache 2.0
+   - [`surindersinghssj/gurbani-sehajpath-yt-captions-canonical`](https://huggingface.co/datasets/surindersinghssj/gurbani-sehajpath-yt-captions-canonical) — ~160h spoken paath
+   - [`surindersinghssj/surt-small-v3`](https://huggingface.co/surindersinghssj/surt-small-v3) — our base model, Whisper-small fine-tuned on 660h Gurbani
    - Phase X4 (committed) confirmed: pure surt substitution hits 74.0% overall but wins +10-17 points on kchMJPK9Axs vs Path A v3.2. Oracle ensemble of {v3.2, X4} per case ≈ 90.3%.
-2. **YouTube kirtan with shabad-level metadata** — fallback if surindersinghssj isn't enough. `scripts/build_training_dataset.py` is built and ready.
-3. **SikhiToTheMax / Khalis Foundation archives** — potential source of ground-truth line-timed broadcast recordings.
-4. **AI4Bharat IndicVoices Punjabi subset** — general Punjabi speech foundation.
+2. **YouTube kirtan with shabad-level metadata** — `scripts/build_training_dataset.py` covers this fallback path.
+3. **AI4Bharat IndicVoices Punjabi subset** — general Punjabi speech regularization (stub subcommand in `pull_dataset.py`, lands when needed).
+4. **SikhiToTheMax / Khalis Foundation archives** — potential broadcast-quality source for future iterations.
 
 **Compute reality:**
-- Local Apple Silicon: fine for LoRA on tiny datasets (≤1h) and smoke tests
-- Real fine-tune on 20-50h: needs cloud GPU (Colab Pro, RunPod). Single-GPU A100 should finish 20h dataset in a few hours.
+- M4 Pro 48GB (or any M-series ≥16GB unified): fits surt-small-v3 LoRA comfortably. ~4-8 hours per epoch for a 50h dataset. **Primary path.**
+- Cloud GPU (Colab A100, RunPod) covered by `requirements-cloud.txt` + [`docs/cloud_training.md`](docs/cloud_training.md). Use only if Mac wall-clock becomes the bottleneck.
 
 **Anti-overfitting hygiene:**
 - Hold out by *shabad identity*, not by recording
-- Strict separation: benchmark's 4 shabads (4377, 1821, 1341, 3712) NEVER appear in train
+- Strict separation: benchmark's 4 shabads (4377, 1821, 1341, 3712) NEVER appear in train (enforced by `pull_dataset.py` and `configs/datasets.yaml`)
 - 80/10/10 train/val/test with shabad-level boundaries
 - Early stopping on val loss
-- LoRA's parameter efficiency (~0.5% trainable) is its own regularization
+- LoRA's parameter efficiency (~1% trainable) is its own regularization
 
-**Expected lift if executed well:** lyrics-alignment and Quran-recitation literature consistently report +10-15 points from in-domain fine-tuning. Target: blind+live 90-95%.
+**Expected lift if executed well:** lyrics-alignment and Quran-recitation literature consistently report +10-15 points from in-domain fine-tuning. Target: 90-95% on the paired benchmark, 85-90% on OOS eval.
 
 **Cloud training**: see [docs/cloud_training.md](docs/cloud_training.md) for cell-by-cell Google Colab + RunPod walkthrough. Mac is fine for smoke tests; real fine-tune (20+ hours of data) needs cloud GPU. A100 turns days of CPU into hours.
 

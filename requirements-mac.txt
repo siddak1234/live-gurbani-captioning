@@ -10,3 +10,9 @@ mlx-whisper
 # Vocal source separation (Phase X1 experiments)
 demucs
 torchcodec  # required by recent torchaudio.save()
+
+# Core ML export pipeline (M4) — converts HF Whisper checkpoints to ANE-optimized
+# .mlpackage via Argmax's whisperkittools. Requires macOS 14.0+ and Xcode 15+.
+# coremltools is a transitive dep but pin it explicitly to surface install errors early.
+coremltools>=8.0
+git+https://github.com/argmaxinc/whisperkittools.git
