@@ -40,7 +40,7 @@ make data-v5b
 
 This scans multiple parquet shards, keeps `min_score >= 0.85`, and fails unless the kept manifest has enough source-video and shabad-token diversity. With diversity floors active, `DATA_SAMPLES` is a minimum rather than a hard cap; the pull can keep extra clips until the floors pass. Inspect `training_data/v5b_mac_diverse/data_card.md` before training.
 
-Current checkpoint: `v5b_mac_diverse` passed the data gate with `2,544` clips, `4.936 h`, `20` videos, `195` shabad tokens, and `0` benchmark video/content leaks. It trained successfully, but benchmark eval regressed to `65.6%`. Do not start Phase 3 from this result. The next step is Phase 2.6 alignment analysis, not another larger LoRA run.
+Current checkpoint: `v5b_mac_diverse` passed the data gate with `2,544` clips, `4.936 h`, `20` videos, `195` shabad tokens, and `0` benchmark video/content leaks. It trained successfully, but blind/live benchmark eval regressed to `65.6%`. Phase 2.6 found that oracle-shabad/live0 alignment improves to `87.4%` (x4/v5 oracle baseline: `85.2%`) and a v3.2-ID-lock proxy scores `87.1%`. Do not start Phase 3 from this result. The next step is a runtime ID-lock integration plus OOS validation, not another larger LoRA run.
 
 The completed train command was:
 

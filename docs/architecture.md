@@ -106,8 +106,26 @@ The repo currently ships two engines, frozen at different scores:
 | x4 (Path A with surt) | 74.0% honest | surt-small-v3 + same matcher/smoother | best generalization candidate |
 | v5_mac_baseline | 74.0% honest / neutral | surt-small-v3 + 200-clip Mac MPS LoRA | pipeline proof, not promoted |
 | v5b_mac_diverse | 65.6% honest / regressed | 2,544-clip / 4.936h diverse surt-small-v3 Mac MPS LoRA | negative diagnostic; do not promote |
+| v5b two-pass proxy | 87.1% diagnostic | v3.2 pre-lock segments + v5b post-lock alignment | validates ID-lock direction; not yet a runtime engine |
 
 Path A is the deployment target because Whisper architectures have the cleanest Core ML / WhisperKit pipeline. Path B remains as research scaffolding for forced-alignment experiments.
+
+## Phase 2.7 architecture direction
+
+The Phase 2.6 diagnostic says the next architecture should be state-based, not shabad-route-based:
+
+```
+first 30s / no committed shabad:
+    v3.2 faster-whisper path
+    ├─ robust chunk-vote shabad ID
+    └─ tentative captions
+
+after committed shabad_id:
+    v5b surt-small-v3 LoRA path
+    └─ match only inside the locked shabad's line set
+```
+
+This is cleaner than x5/x6 route tables because the switch is based on engine state and time, not on benchmark shabad IDs. It must still pass OOS before promotion.
 
 ## Configuration surface
 
