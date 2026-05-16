@@ -32,6 +32,14 @@ python scripts/pull_dataset.py kirtan \
 
 For multi-source training mixes (kirtan + sehaj + sehajpath), pull each separately and concat the resulting manifests. See `configs/datasets.yaml` for the source registry.
 
+For the Phase 2.5 diagnostic pull, prefer the diversity-gated target:
+
+```bash
+make data-v5b
+```
+
+This scans multiple parquet shards, keeps `min_score >= 0.85`, and fails unless the kept manifest has enough source-video and shabad-token diversity. Inspect `training_data/v5b_mac_diverse/data_card.md` before training.
+
 ## 2. Smoke-test the pipeline (~5 minutes)
 
 Before committing a multi-hour training run, verify the script gets through 20 steps:

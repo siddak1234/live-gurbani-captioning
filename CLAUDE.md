@@ -190,11 +190,13 @@ When working a given phase, *fully adopt the named role* — primary literature,
 ### Phase 2.5 — Diagnostic bridge before scaling
 **Role:** ML Scientist + Speech Data Engineer.
 
+**Execution plan:** [`docs/phase2_5_plan.md`](docs/phase2_5_plan.md).
+
 **Hypothesis:** `v5_mac_baseline` was neutral because the data slice was too small / too narrow (200 clips from 2 videos) and the benchmark failures are dominated by blind-ID + cold-window behavior, not because the training loop is broken.
 
 **Approach:**
 - Curate `oos_v1` (5 shabads, 3 representative + 2 stress) and establish v3.2 / x4 / v5 baselines.
-- Add or verify diversity-aware data pulling: sample across shards, target `1k-5k` clips, require at least 20 source videos and 100 shabad tokens, `min_score >= 0.85`, all three holdouts active (shabad-ID, video-ID, content).
+- Add or verify diversity-aware data pulling: sample across shards via `make data-v5b`, target `1k-5k` clips, require at least 20 source videos and 100 shabad tokens, `min_score >= 0.85`, all three holdouts active (shabad-ID, video-ID, content).
 - Train `v5b_mac_diverse` with the same proven config first; change only data scale/diversity.
 - Evaluate benchmark with `HF_WINDOW_SECONDS=10`, OOS v1, and transcript deltas vs `x4_pathA_surt`.
 

@@ -25,7 +25,7 @@ These steps must complete before any Phase 2 step runs. They're system-level set
 | Install Python deps | `make install` (or `pip install -r requirements-mac.txt`) | `python3 -c "import torch, transformers, peft, soundfile, yaml"` works | 5–10 min (torch is large) |
 | Fetch benchmark audio | `make fetch-audio` | 4 WAVs exist in `audio/` | 5–15 min depending on connection |
 | Build the smoke manifest | `make smoke-manifest` | `training_data/smoke/manifest.json` exists with 4 entries | <1 min |
-| Verify full test suite passes WITH deps | `make test` | 83/83 pass, **0 skipped** on the current Python 3.12 venv | <20 sec |
+| Verify full test suite passes WITH deps | `make test` | 103/103 pass, **0 skipped** on the current Python 3.12 venv | <20 sec |
 
 **Gate before proceeding:** if any pre-flight step fails, fix before continuing. Phase 2.A failing on missing deps is wasted wall-clock.
 
