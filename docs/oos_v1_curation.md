@@ -64,6 +64,31 @@ These are *suggestions*, not picks. Pick the final 5 from this pool (or substitu
 | M2 | A short-line shabad (e.g., ਪਉੜੀਆਂ with avg line ≤ 3s) | Sub-chunk lines | Per-chunk voting window straddles multiple lines |
 | M3 | A shabad whose first pangti uses common vocabulary (e.g., starts with "ਸਤਿਗੁਰ ਸਾਚੇ" or similar high-IDF token) | Initial-line ambiguity | Shabad ID is hardest at the start; this stresses the blind buffer |
 
+## Current v1 candidate slate
+
+Drafted 2026-05-16 after the Phase 2.9 paired-benchmark result (`phase2_9_loop_align`
+= 91.2%). These are the five cases to curate first. They are deliberately
+not in the paired benchmark holdout `{4377, 1821, 1341, 3712}` and their BaniDB
+corpora are cached locally via `make corpus-oos`.
+
+| Case | Role | BaniDB shabad | Opening line | Candidate recording | Clip window | Why this case |
+|---|---|---:|---|---|---|---|
+| `case_001` | Representative | 2333 | ਮੇਰਾ ਬੈਦੁ ਗੁਰੂ ਗੋਵਿੰਦਾ ॥ | `hhpYbZ9_jH4` — Bhai Navdeep Singh Ji, 5:52 | `30-210` | Clean Sorath shabad, short line set (7 lines), common kirtan form. |
+| `case_002` | Representative | 906 | ਤੂ ਠਾਕੁਰੁ ਤੁਮ ਪਹਿ ਅਰਦਾਸਿ ॥ | `ZdZ5sBLcjr0` — Tu Thakur Tum Peh Ardas, 4:42 | `20-180` | Gauri, mainstream melody, strong test of ordinary production input. |
+| `case_003` | Representative | 2600 | ਜੋ ਮਾਗਹਿ ਠਾਕੁਰ ਅਪੁਨੇ ਤੇ ਸੋਈ ਸੋਈ ਦੇਵੈ ॥ | `9SNXYPEVE60` — Bhai Sarabjit Singh Ji, 6:47 | `30-210` | Dhanaasree, well-known and mid-tempo; useful non-Sorath representative. |
+| `case_004` | Acoustic/lexical stress | 4892 | ਅਵਲਿ ਅਲਹ ਨੂਰੁ ਉਪਾਇਆ ਕੁਦਰਤਿ ਕੇ ਸਭ ਬੰਦੇ ॥ | `kZnV63eQOeM` — Bhai Jujhar Singh Ji, 9:49 | `45-225` | Kabeer/Prabhaatee with Arabic/Persian vocabulary; tests ASR lexical robustness. |
+| `case_005` | Matcher stress | 3297 | ਕੋਈ ਬੋਲੈ ਰਾਮ ਰਾਮ ਕੋਈ ਖੁਦਾਇ ॥ | `yr6Y3gzjAu4` — Delhi Wale, 12:17 | `45-225` | Ramkali with repeated deity names and semantically similar lines; stresses canonical matching and loop/null handling. |
+
+Alternates already checked:
+
+| Candidate | BaniDB shabad | Recording | Use if |
+|---|---:|---|---|
+| ਹਰਿ ਜੀਉ ਨਿਮਾਣਿਆ ਤੂ ਮਾਣੁ ॥ | 2361 | `zTif1snQcHI` / `lPif1dmtIaI` | One representative recording above has poor audio or unusable intros. |
+| ਅਨੰਦੁ ਭਇਆ ਮੇਰੀ ਮਾਏ ਸਤਿਗੁਰੂ ਮੈ ਪਾਇਆ ॥ | 333375 | Long Anand Sahib recordings | We need a longer, highly familiar Ramkali stress case and can afford the curation time. |
+
+Do not claim an OOS result until the `test/case_00N.json` files are
+hand-corrected. The table above is a sourcing slate, not ground truth.
+
 ## Labor budget
 
 Per case, from "I have a candidate" to "GT JSON committed":
@@ -84,13 +109,16 @@ On the current dev Mac, Python 3.12, ffmpeg, yt-dlp, torch, transformers, PEFT, 
 ## Execution order — what to do first
 
 1. **Now:** confirm the 5 picks from the pool above. Listen to candidate recordings on Sikhnet Radio or YouTube. Note the audio URLs.
-2. **Fetch audio:** use `make fetch-oos-audio OOS_URL='case_001=https://...'` for each selected recording. This writes `eval_data/oos_v1/audio/case_001_16k.wav`.
-3. **After audio fetch:** bootstrap GT JSONs via `eval_oos.py --oracle` for each case.
-4. **Manual review:** open each bootstrap JSON in your editor, listen along, correct line boundaries. Save under `eval_data/oos_v1/test/`.
-5. **Lock in:** add each recording's `video_id` (or equivalent source identifier) to `configs/datasets.yaml` → `holdout.video_ids` so it's never accidentally pulled into training.
-6. **Baseline:** run `eval_oos.py --engine-config configs/inference/v3_2.yaml` against the curated pack. The v3.2 score is the v0 OOS number. Phase 2 fine-tunes must beat this on average AND not regress catastrophically on any single case.
+2. **Cache BaniDB corpus:** once a pick's BaniDB shabad ID is known, run
+   `make corpus-oos OOS_SHABAD_ID=<id>`. The default `make corpus` only caches
+   the 4 paired-benchmark shabads; OOS needs explicit additions.
+3. **Fetch audio:** use `make fetch-oos-audio OOS_URL='case_001=https://...' OOS_CLIP='case_001=30-210'` for each selected recording. This writes `eval_data/oos_v1/audio/case_001_16k.wav`. Prefer 60-180s windows so v1 remains cheap to label and cheap to score.
+4. **After audio fetch:** bootstrap GT JSONs via `eval_oos.py --oracle` for each case.
+5. **Manual review:** open each bootstrap JSON in your editor, listen along, correct line boundaries. Save under `eval_data/oos_v1/test/`.
+6. **Lock in:** add each recording's `video_id` (or equivalent source identifier) to `configs/datasets.yaml` → `holdout.video_ids` so it's never accidentally pulled into training.
+7. **Baseline:** run `eval_oos.py --engine-config configs/inference/v3_2.yaml` against the curated pack. The v3.2 score is the v0 OOS number. Phase 2 fine-tunes must beat this on average AND not regress catastrophically on any single case.
 
-7. **Current architecture score:** run `make eval-oos-loop-align`. This scores
+8. **Current architecture score:** run `make eval-oos-loop-align`. This scores
    the same runtime stack as `phase2_9_loop_align` (word-timestamp ID-lock,
    retro-buffered finalization, simran-aware null alignment) against the curated
    OOS pack. This is the required production-promotion gate for the current

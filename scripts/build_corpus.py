@@ -47,6 +47,16 @@ def collect_shabad_ids(gt_dir: pathlib.Path) -> list[int]:
     return sorted(ids)
 
 
+def resolve_shabad_ids(gt_dir: pathlib.Path, explicit_ids: list[int]) -> list[int]:
+    """Return sorted shabad IDs from GT plus explicit CLI additions.
+
+    The paired benchmark path remains the default, but OOS curation needs a way
+    to pre-cache new shabads before GT JSONs exist. Explicit IDs are therefore
+    additive and deduped with anything found in ``gt_dir``.
+    """
+    return sorted(set(collect_shabad_ids(gt_dir)) | set(explicit_ids))
+
+
 def fetch_shabad(shabad_id: int, timeout: int = 15) -> dict | None:
     url = f"{BANIDB_API}/shabads/{shabad_id}"
     try:
@@ -100,9 +110,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--gt-dir", type=pathlib.Path, default=DEFAULT_GT_DIR)
     parser.add_argument("--cache-dir", type=pathlib.Path, default=DEFAULT_CACHE_DIR)
+    parser.add_argument(
+        "--shabad-id",
+        type=int,
+        action="append",
+        default=[],
+        help="Additional BaniDB shabad ID to cache. Repeatable; useful for OOS curation.",
+    )
     args = parser.parse_args()
 
-    shabad_ids = collect_shabad_ids(args.gt_dir.resolve())
+    shabad_ids = resolve_shabad_ids(args.gt_dir.resolve(), args.shabad_id)
     if not shabad_ids:
         print(f"error: no shabad_ids found in {args.gt_dir}", file=sys.stderr)
         return 1

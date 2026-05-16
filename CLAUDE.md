@@ -293,6 +293,14 @@ scores **91.2%**, with `zOtIpxMT9hU_cold66` improving to **86.9%**. This clears
 the paired score threshold and catastrophic-case guardrail, but is not promoted
 because OOS v1 remains owed.
 
+**Checkpoint 2026-05-16:** OOS v1 sourcing is underway, not complete. The
+five-case slate is documented in [`docs/oos_v1_curation.md`](docs/oos_v1_curation.md),
+OOS corpus caching and clipped audio fetch support are implemented, the five
+source clips are downloaded locally under `eval_data/oos_v1/audio/` (gitignored),
+and their source YouTube IDs are in `configs/datasets.yaml` holdout lists. The
+remaining gate is hand-corrected GT JSONs under `eval_data/oos_v1/test/`, then
+`make eval-oos-loop-align`.
+
 ### Phase 3 — Mac-scale real fine-tune
 **Role:** ML Scientist (acoustic modeling) (lead) + Optimization Engineer.
 
