@@ -127,6 +127,14 @@ after committed shabad_id:
 
 This is cleaner than x5/x6 route tables because the switch is based on engine state and time, not on benchmark shabad IDs. It must still pass OOS before promotion.
 
+Implementation split:
+
+- `src/idlock_engine.py` is the runtime Layer 2 orchestrator. It composes two `engine.predict()` calls and merges segments at `uem.start + blind_lookback`. It imports no argparse and knows no benchmark paths.
+- `scripts/run_idlock_path.py` is the Layer 3 benchmark runner. It loads GT/audio/corpus files, builds pre/post configs, calls the library, and writes submission JSON.
+- `scripts/merge_idlock_submissions.py` remains a Phase 2.6 diagnostic transformer only. It should not be used as evidence that the runtime path works.
+
+Phase 2.7 result: the architecture was implemented cleanly, but `v5b_idlock_runtime` scored only `75.6%`. The failure was current runtime blind-ID, not the post-lock adapter: two `kZhIA8P6xWI` starts committed to the wrong shabad. The next architecture checkpoint is Phase 2.8: recover/pin ASR reproducibility, then prototype timestamp/alignment paths before more training scale.
+
 ## Configuration surface
 
 Per-experiment settings live in `submissions/<run>/notes.md` (frozen historical record per CLAUDE.md convention). Per-pipeline reusable settings live in `configs/` (planned, M0.3 + M1.1): training hyperparameters, export quantization profiles, dataset registry.

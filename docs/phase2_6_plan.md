@@ -62,15 +62,21 @@ What they do **not** validate:
 - They do not satisfy OOS requirements. OOS v1 is still required before any promotion claim.
 - They do not justify Phase 3 scale-up yet. Scaling a fragile integration is the wrong experiment.
 
-## Recommended next phase: Phase 2.7
+## Follow-up result: Phase 2.7
 
-Build an actual runtime two-pass ID-lock path, then test it on paired benchmark and OOS:
+Phase 2.7 built the actual runtime two-pass ID-lock path and tested it on the paired benchmark:
 
-1. **ID-lock engine.** Use the proven v3.2/faster-whisper path for the first 30s shabad-ID buffer and tentative captions.
-2. **Post-lock adapter alignment.** After the shabad is locked, run `v5b_mac_diverse` surt text against the locked shabad only.
-3. **No route tables.** The switch is by time/state, not by benchmark shabad ID. This is generalizable in a way x5/x6 are not.
-4. **OOS v1.** Curate the 5-case OOS pack before claiming improvement.
-5. **Decision gate.** Promote only if paired benchmark is at least `87.0%` and OOS does not regress. If OOS fails, pivot to word timestamps / hybrid timing / full-shabad forced alignment.
+1. **ID-lock engine.** `src/idlock_engine.py` uses the v3.2/faster-whisper path for the first 30s shabad-ID buffer and tentative captions.
+2. **Post-lock adapter alignment.** After the shabad is locked, it runs `v5b_mac_diverse` against the locked shabad only.
+3. **No route tables.** The switch is by time/state, not by benchmark shabad ID.
+
+Result:
+
+- `v5b_idlock_runtime`: **75.6%**, below the `87.0%` gate.
+- Failure mode: current runtime blind-ID commits two `kZhIA8P6xWI` starts to shabad `4377` instead of `1821`.
+- Reproducibility finding: the documented v3.2 command now scores **73.5%**, not the archived **86.5%**. The Phase 2.6 proxy remains useful as a diagnostic, but it was not a currently reproducible runtime baseline.
+
+Decision: do not train larger. Move to Phase 2.8: ASR reproducibility recovery plus timestamp/alignment prototypes.
 
 ## Path to 95%
 

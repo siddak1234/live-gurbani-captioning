@@ -1,0 +1,29 @@
+{
+  "video_id": "kZhIA8P6xWI",
+  "segments": [
+    {
+      "start": 116.10000000000001,
+      "end": 128.10000000000002,
+      "line_idx": 3,
+      "shabad_id": 1821,
+      "verse_id": 21978,
+      "banidb_gurmukhi": "ਪ੍ਰੀਤਮ ਕਿਉ ਬਿਸਰਹਿ ਮੇਰੇ ਪ੍ਰਾਣ ਅਧਾਰ ॥"
+    },
+    {
+      "start": 128.1,
+      "end": 148.1,
+      "line_idx": 5,
+      "shabad_id": 1821,
+      "verse_id": 21980,
+      "banidb_gurmukhi": "ਰਵਿ ਸਸਿ ਦੀਪਕ ਜਾ ਕੇ ਤ੍ਰਿਭਵਣਿ ਏਕਾ ਜੋਤਿ ਮੁਰਾਰਿ ॥"
+    },
+    {
+      "start": 148.1,
+      "end": 304.1,
+      "line_idx": 6,
+      "shabad_id": 4377,
+      "verse_id": 52527,
+      "banidb_gurmukhi": "ਖਿਨੁ ਪਲੁ ਬਿਸਰੁ ਨਹੀ ਮੇਰੇ ਕਰਤੇ ਇਹੁ ਨਾਨਕੁ ਮਾਂਗੈ ਦਾਨੁ ॥੨॥੯੦॥੧੧੩॥"
+    }
+  ]
+}
