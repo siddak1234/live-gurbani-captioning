@@ -63,7 +63,55 @@ matches GT on 235 and stay-bias matches GT on 244 (**91.0%**). The worst
 best is correct on all 3. This points away from "recognition is impossible" and
 toward boundary/null handling plus loop-aware alignment.
 
-### 2.9.B — loop-aware text-score aligner
+### 2.9.B — retro-buffered finalization policy
+
+Before building a heavier aligner, test the smallest state-policy change implied
+by the score-lattice evidence.
+
+Current `idlock` behavior is **commit cutover**:
+
+- pre-lock engine emits tentative captions before `uem.start + 30s`;
+- post-lock engine emits only after commit time;
+- buffered post-lock evidence before commit is used as smoother context but is
+  not allowed to revise the final transcript.
+
+That is conservative for a UI, but it may be unnecessarily conservative for the
+final transcript. In a real live product, pre-lock captions are tentative; after
+the shabad is confirmed, the app can revise the buffered window. The new
+diagnostic policy is therefore **retro-buffered finalization**:
+
+- pre-lock word timestamps still decide the shabad ID;
+- once locked, the post-lock v5b/surt path rewrites the final transcript from
+  `uem.start`, not only from commit time;
+- no shabad-specific route table and no benchmark-specific timing rule.
+
+This is not a new model. It tests whether the remaining Phase 2.8 miss is caused
+by the merge policy discarding already-good post-lock evidence.
+
+Run exactly one default configuration:
+
+```bash
+HF_WINDOW_SECONDS=10 python3 scripts/run_idlock_path.py \
+  --out-dir submissions/phase2_9_retro_buffered \
+  --post-adapter-dir lora_adapters/v5b_mac_diverse \
+  --post-context buffered \
+  --merge-policy retro-buffered \
+  --pre-word-timestamps
+```
+
+Decision:
+
+- If this clears `>=87.0%`, archive it as the first positive Phase 2.9
+  architecture signal and then OOS-test before promotion.
+- If it does not, proceed to 2.9.C loop-aware alignment.
+
+**Result:** `phase2_9_retro_buffered` scored **88.7%** (`3038/3425`) with 12/12
+correct locks. This is a positive architecture signal and beats
+`phase2_8_idlock_preword` by +2.1 pts. It is not production-promoted yet:
+`zOtIpxMT9hU_cold66` remains **57.6%**, just below the no-catastrophic-case
+guardrail, and OOS v1 is still owed.
+
+### 2.9.C — loop-aware text-score aligner
 
 Build a first aligner over matcher score vectors, not frame-level CTC:
 
@@ -78,7 +126,7 @@ This is deliberately less ambitious than Path B's CTC HMM. Past `pb1_hmm`
 showed MMS CTC frames are blank-dominated on slow kirtan, while Whisper chunk
 text is already discriminative. Start from the evidence that works.
 
-### 2.9.C — paired benchmark gate
+### 2.9.D — paired benchmark gate
 
 Run exactly one default configuration:
 
@@ -97,7 +145,7 @@ Promotion threshold for this phase:
 - no catastrophic case below `60%`;
 - OOS v1 owed before production promotion.
 
-### 2.9.D — decision
+### 2.9.E — decision
 
 If loop-aware text-score alignment beats `86.6%`, proceed to OOS v1 and then
 Phase 3 scale-up only if OOS is acceptable.

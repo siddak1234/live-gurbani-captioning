@@ -93,6 +93,13 @@ not another per-chunk smoother.
 The next step is Phase 2.9: full-shabad alignment with explicit loop/refrain
 handling, using the current best ID-lock path only to decide the shabad.
 
+Phase 2.9's first policy probe is positive: `phase2_9_retro_buffered` keeps the
+same models but lets the locked-shabad post engine revise the buffered pre-lock
+window after ID commit. It scores **88.7%**, up from **86.6%**, without a route
+table. This is the best current honest runtime architecture, but not promoted:
+`zOtIpxMT9hU_cold66` remains below the catastrophic-case guardrail at **57.6%**
+and OOS v1 is still owed.
+
 Implemented helpers:
 
 1. `make fetch-oos-audio OOS_URL='case_001=https://...'` for OOS audio.

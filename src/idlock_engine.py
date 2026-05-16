@@ -9,8 +9,9 @@ Architecture:
    and emits tentative captions.
 2. Once that engine commits a shabad_id, a post-lock engine runs against only
    that shabad's line set.
-3. Output before commit time comes from the pre-lock result; output after commit
-   time comes from the post-lock result.
+3. Output merge policy decides how final captions handle the buffered pre-lock
+   window: commit-cutover preserves tentative pre-lock captions before commit;
+   retro-buffered lets the locked-shabad post engine revise from UEM start.
 
 The default post-lock context is "buffered": the post-lock smoother may use the
 pre-lock transcript as causal state/context, but emitted segments are still cut
@@ -28,6 +29,7 @@ from src.engine import EngineConfig, PredictionResult, Segment, predict
 
 
 PostContextMode = Literal["buffered", "strict-live"]
+MergePolicy = Literal["commit-cutover", "retro-buffered"]
 
 
 @dataclass
@@ -39,6 +41,7 @@ class IdLockPredictionResult:
     post_lock: PredictionResult
     commit_time: float
     post_context: PostContextMode
+    merge_policy: MergePolicy
 
 
 def _clip_segment(
@@ -78,6 +81,26 @@ def merge_segments_at_commit(
     return merged
 
 
+def retro_buffer_segments(
+    post_segments: list[Segment],
+    *,
+    start_time: float,
+) -> list[Segment]:
+    """Use locked-shabad post segments from ``start_time`` onward.
+
+    This models a live UI where pre-lock captions are tentative. Once shabad ID
+    is committed, the system can revise the buffered window with the final
+    locked-shabad alignment. It is state/time based, not benchmark-shabad based.
+    """
+    out: list[Segment] = []
+    for segment in post_segments:
+        clipped = _clip_segment(segment, start=start_time)
+        if clipped is not None:
+            out.append(clipped)
+    out.sort(key=lambda s: (float(s.start), float(s.end)))
+    return out
+
+
 def predict_idlocked(
     audio: pathlib.Path,
     corpora: dict[int, list[dict]],
@@ -86,6 +109,7 @@ def predict_idlocked(
     pre_config: EngineConfig | None = None,
     post_config: EngineConfig | None = None,
     post_context: PostContextMode = "buffered",
+    merge_policy: MergePolicy = "commit-cutover",
 ) -> IdLockPredictionResult:
     """Run a state/time-based two-engine ID-lock prediction.
 
@@ -98,12 +122,18 @@ def predict_idlocked(
         post_context: ``"buffered"`` runs post-lock alignment over the full
             buffered transcript and emits only after commit. ``"strict-live"``
             makes the post engine itself ignore pre-commit chunks.
+        merge_policy: ``"commit-cutover"`` preserves the pre-lock tentative
+            segments before commit and post-lock segments after commit.
+            ``"retro-buffered"`` uses the locked-shabad post result from
+            ``uem_start`` onward, treating pre-lock output as revisable.
 
     Returns:
         ``IdLockPredictionResult`` with merged prediction and child diagnostics.
     """
     if post_context not in ("buffered", "strict-live"):
         raise ValueError(f"unknown post_context: {post_context}")
+    if merge_policy not in ("commit-cutover", "retro-buffered"):
+        raise ValueError(f"unknown merge_policy: {merge_policy}")
 
     pre_cfg = replace(pre_config or EngineConfig(), live=True, tentative_emit=True)
     pre_result = predict(
@@ -131,11 +161,17 @@ def predict_idlocked(
         config=post_cfg,
     )
 
-    merged_segments = merge_segments_at_commit(
-        pre_result.segments,
-        post_result.segments,
-        commit_time=commit_time,
-    )
+    if merge_policy == "commit-cutover":
+        merged_segments = merge_segments_at_commit(
+            pre_result.segments,
+            post_result.segments,
+            commit_time=commit_time,
+        )
+    else:
+        merged_segments = retro_buffer_segments(
+            post_result.segments,
+            start_time=float(uem_start),
+        )
     merged = PredictionResult(
         segments=merged_segments,
         shabad_id=pre_result.shabad_id,
@@ -149,4 +185,5 @@ def predict_idlocked(
         post_lock=post_result,
         commit_time=commit_time,
         post_context=post_context,
+        merge_policy=merge_policy,
     )
