@@ -100,6 +100,20 @@ table. This is the best current honest runtime architecture, but not promoted:
 `zOtIpxMT9hU_cold66` remains below the catastrophic-case guardrail at **57.6%**
 and OOS v1 is still owed.
 
+Phase 2.9's first loop/null-aware aligner then validates the diagnosis:
+`phase2_9_loop_align` adds one generic null rule for chunks dominated by
+repeated simran (`ਵਾਹਿਗੁਰੂ` / `waheguru`) and keeps the retro-buffered ID-lock
+stack unchanged. It scores **91.2%** with 12/12 locks and no catastrophic case;
+`zOtIpxMT9hU_cold66` rises from **57.6%** to **86.9%**. This is the best current
+honest runtime architecture and the first non-route-table runtime candidate
+above 90%.
+
+Protocol decision: still do **not** start Phase 3. The paired benchmark now
+says the architecture is promising, but the production-goal gate is OOS v1.
+The next step is to curate the 5-case OOS pack and score `phase2_9_loop_align`
+outside the paired benchmark before making any promotion or training-scale
+claim.
+
 Implemented helpers:
 
 1. `make fetch-oos-audio OOS_URL='case_001=https://...'` for OOS audio.
