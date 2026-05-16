@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from src.asr import transcribe
 from src.matcher import match_chunk, score_chunk, normalize, TfidfScorer
 from src.shabad_id import identify_shabad, per_chunk_global_match
-from src.smoother import smooth, smooth_with_stay_bias
+from src.smoother import smooth, smooth_with_stay_bias, smooth_with_viterbi
 
 
 @dataclass
@@ -41,6 +41,11 @@ class EngineConfig:
     score_threshold: float = 55.0
     margin_threshold: float = 0.0
     stay_bias: float = 0.0
+    smoother: str = "auto"
+    viterbi_jump_penalty: float = 4.0
+    viterbi_backtrack_penalty: float = 8.0
+    viterbi_null_score: float | None = None
+    viterbi_null_switch_penalty: float = 0.0
 
     # Blind shabad ID
     blind_lookback: float = 30.0
@@ -174,15 +179,32 @@ def predict(
                 ))
         chunks = [c for c in chunks if c.start >= commit_time]
 
-    if cfg.stay_bias > 0.0:
+    smoother_name = cfg.smoother
+    if smoother_name == "auto":
+        smoother_name = "stay_bias" if cfg.stay_bias > 0.0 else "basic"
+
+    if smoother_name not in ("basic", "stay_bias", "viterbi"):
+        raise ValueError(f"unknown smoother: {cfg.smoother}")
+
+    if smoother_name in ("stay_bias", "viterbi"):
         scored = [
             (c.start, c.end,
              score_chunk(c.text, lines, ratio=cfg.ratio, blend=cfg.blend, tfidf=tfidf))
             for c in chunks
         ]
-        smooth_segments = smooth_with_stay_bias(
-            scored, stay_margin=cfg.stay_bias, score_threshold=cfg.score_threshold,
-        )
+        if smoother_name == "stay_bias":
+            smooth_segments = smooth_with_stay_bias(
+                scored, stay_margin=cfg.stay_bias, score_threshold=cfg.score_threshold,
+            )
+        else:
+            smooth_segments = smooth_with_viterbi(
+                scored,
+                jump_penalty=cfg.viterbi_jump_penalty,
+                backtrack_penalty=cfg.viterbi_backtrack_penalty,
+                score_threshold=cfg.score_threshold,
+                null_score=cfg.viterbi_null_score,
+                null_switch_penalty=cfg.viterbi_null_switch_penalty,
+            )
     else:
         raw = [
             (c.start, c.end,

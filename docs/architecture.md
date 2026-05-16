@@ -34,7 +34,7 @@ This project is deliberately split into three decoupled layers so the same infer
 │  • src/asr.py            — transcribe(audio) → list[AsrChunk]    │
 │  • src/matcher.py        — score_chunk, match_chunk, TfidfScorer │
 │  • src/shabad_id.py      — identify_shabad, per_chunk_global     │
-│  • src/smoother.py       — smooth, smooth_with_stay_bias         │
+│  • src/smoother.py       — smooth, stay-bias, Viterbi diagnostic │
 │  • src/path_b/           — CTC encoder + tokenizer + HMM         │
 │                                                                  │
 │  Pure: typed inputs → typed outputs. No file I/O beyond audio    │
@@ -62,7 +62,7 @@ GT JSON → audio path → engine.predict() → submission JSON
                           ├─ transcribe (whole file)
                           ├─ identify_shabad (if blind)
                           ├─ match_chunk × N  (per ASR chunk)
-                          ├─ smooth / smooth_with_stay_bias
+                          ├─ smooth / smooth_with_stay_bias / Viterbi diagnostic
                           └─ pre-commit segments (if live + tentative_emit)
 ```
 
@@ -135,7 +135,7 @@ Implementation split:
 
 Phase 2.7 result: the architecture was implemented cleanly, but `v5b_idlock_runtime` scored only `75.6%`. The failure was current runtime blind-ID, not the post-lock adapter: two `kZhIA8P6xWI` starts committed to the wrong shabad. The next architecture checkpoint is Phase 2.8: recover/pin ASR reproducibility, then prototype timestamp/alignment paths before more training scale.
 
-Phase 2.8 first signal: `phase2_8_idlock_preword` scores `86.6%` by using word timestamps only for the pre-lock ID window and v5b after lock. This restores correct shabad locks but still misses the promotion gate; the remaining architecture work is post-lock alignment/timing, not more route tables.
+Phase 2.8 first signal: `phase2_8_idlock_preword` scores `86.6%` by using word timestamps only for the pre-lock ID window and v5b after lock. This restores correct shabad locks but still misses the promotion gate; the remaining architecture work is post-lock alignment/timing, not more route tables. Follow-up Viterbi smoother probes scored `77.2%` and `77.1%`, confirming that generic per-chunk smoothing is not enough; the next clean architecture is full-shabad alignment with explicit loop/refrain handling.
 
 ## Configuration surface
 

@@ -115,5 +115,9 @@ VAD-on faster-whisper cache:
 | `phase2_8_fw_word` | 72.0% | Correct 12/12 shabad locks, but worse line/timing segmentation. |
 | `phase2_8_fw_vad` | 25.4% | VAD-on deletes too much kirtan; not viable. |
 | `phase2_8_idlock_preword` | 86.6% | Best current runtime; word timestamps for pre-lock ID + v5b post-lock alignment. |
+| `phase2_8_idlock_preword_viterbi` | 77.2% | Viterbi line-continuity smoother over-regularizes refrain/non-local returns. |
+| `phase2_8_idlock_preword_viterbi_null45` | 77.1% | Null-state Viterbi drops useful weak evidence along with filler. |
 
-This makes the next target sharper: keep word timestamps as an ID-lock tool, then improve post-lock alignment/timing rather than rerunning larger LoRA training.
+This makes the next target sharper: keep word timestamps as an ID-lock tool,
+archive the generic smoother probes as negative, then build a full-shabad
+alignment layer rather than rerunning larger LoRA training.

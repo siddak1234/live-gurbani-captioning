@@ -1,6 +1,7 @@
 # Phase 2.8 — ASR reproducibility recovery + timing/alignment pivot
 
-**Status:** in progress — ASR knob surface and first timestamp probes complete.
+**Status:** complete as a diagnostic phase — ASR timestamp probes and
+post-lock smoother probes are archived. Phase 2.9 is the next step.
 
 Phase 2.8 exists because Phase 2.7 exposed a more basic problem than the v5b adapter: the archived Path A v3.2 result is no longer reproducible as a runtime.
 
@@ -76,14 +77,23 @@ Success:
 | `phase2_8_fw_word` | 72.0% | Word timestamps fix blind ID (12/12 locks) but hurt full-run line tracking/timing. |
 | `phase2_8_fw_vad` | 25.4% | VAD filtering deletes too much sung kirtan; dead path. |
 | `phase2_8_idlock_preword` | **86.6%** | Best current runtime: word timestamps for pre-lock ID, v5b for post-lock alignment. Misses gate by 0.4 pts; OOS still owed. |
+| `phase2_8_idlock_preword_viterbi` | 77.2% | Generic line-distance Viterbi smoother improves `IZOsmkdmmcg` but collapses `kZhIA8P6xWI` / `kchMJPK9Axs`; over-regularizes refrain/loop structure. |
+| `phase2_8_idlock_preword_viterbi_null45` | 77.1% | Null-state Viterbi suppresses some filler but removes useful weak evidence elsewhere. |
 
 Shorter pre-word ID-lock windows were worse: 15s = `79.7%`, 20s = `79.8%`, both because the open `kZhIA8P6xWI` case mis-locks. Keep 30s as the current conservative runtime choice.
 
-Interpretation: word timestamps are useful for shabad ID, but not as the final caption timing layer. The next lift is likely a real post-lock alignment layer, especially for short cold-start cases such as `zOtIpxMT9hU_cold66`.
+Interpretation: word timestamps are useful for shabad ID, but not as the final
+caption timing layer. A generic post-lock Viterbi smoother is also not enough:
+it is too blunt for shabads with refrain loops and non-local returns. The next
+lift is a real full-shabad alignment layer with explicit loop/refrain handling,
+especially for short cold-start cases such as `zOtIpxMT9hU_cold66`.
 
 ## Workstream C — Forced-alignment decision
 
-If Workstream B cannot recover the 86-90% range, stop trying to squeeze per-chunk classification. The next architecture should align the entire shabad text to the audio as a sequence problem:
+Workstream B recovered a near-baseline runtime (`86.6%`) but not a promotable
+one, and the post-lock smoother probes regressed. Stop trying to squeeze
+per-chunk classification. The next architecture should align the entire shabad
+text to the audio as a sequence problem:
 
 - known/committed shabad text;
 - monotonic line progression with explicit loop/refrain handling;
@@ -91,6 +101,8 @@ If Workstream B cannot recover the 86-90% range, stop trying to squeeze per-chun
 - no per-shabad benchmark routing.
 
 This is the principled path toward the 95% target. It matches the old notes: x5/x6 reached 91-93% only by route tables, while honest single-engine paths plateaued below 90%.
+
+The next execution plan is [`phase2_9_plan.md`](phase2_9_plan.md).
 
 ## Stop Conditions
 

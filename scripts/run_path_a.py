@@ -173,6 +173,18 @@ def main() -> int:
                         help='Weighted blend, e.g. "token_sort_ratio:0.7,ratio:0.3"')
     parser.add_argument("--stay-bias", type=float, default=0.0,
                         help="Stay-bias margin; if >0, prefer previous line when within margin")
+    parser.add_argument("--smoother", default="auto",
+                        choices=["auto", "basic", "stay_bias", "viterbi"],
+                        help="Smoother implementation. auto preserves historical behavior: "
+                             "stay_bias when --stay-bias > 0, otherwise basic.")
+    parser.add_argument("--viterbi-jump-penalty", type=float, default=4.0,
+                        help="Penalty per line-distance for the Viterbi sequence smoother.")
+    parser.add_argument("--viterbi-backtrack-penalty", type=float, default=8.0,
+                        help="Extra penalty per backward line-distance for Viterbi smoothing.")
+    parser.add_argument("--viterbi-null-score", type=float, default=None,
+                        help="Enable Viterbi no-line state with this constant local score.")
+    parser.add_argument("--viterbi-null-switch-penalty", type=float, default=0.0,
+                        help="Penalty for entering/exiting Viterbi no-line state.")
     parser.add_argument("--blind", action="store_true",
                         help="Identify shabad from audio instead of using GT shabad_id")
     parser.add_argument("--blind-lookback", type=float, default=30.0,
@@ -216,6 +228,11 @@ def main() -> int:
         score_threshold=args.threshold,
         margin_threshold=args.margin,
         stay_bias=args.stay_bias,
+        smoother=args.smoother,
+        viterbi_jump_penalty=args.viterbi_jump_penalty,
+        viterbi_backtrack_penalty=args.viterbi_backtrack_penalty,
+        viterbi_null_score=args.viterbi_null_score,
+        viterbi_null_switch_penalty=args.viterbi_null_switch_penalty,
         blind_lookback=args.blind_lookback,
         blind_aggregate=args.blind_aggregate,
         blind_ratio=args.blind_ratio,
@@ -243,7 +260,7 @@ def main() -> int:
     mode = "+".join(mode_parts)
     print(f"processing {len(gt_files)} GT cases "
           f"(mode={mode}, model={args.model}, {label}, threshold={args.threshold}, "
-          f"margin={args.margin}, stay_bias={args.stay_bias})\n")
+          f"margin={args.margin}, stay_bias={args.stay_bias}, smoother={args.smoother})\n")
     failures: list[str] = []
     for gt_file in gt_files:
         if not process_one(
