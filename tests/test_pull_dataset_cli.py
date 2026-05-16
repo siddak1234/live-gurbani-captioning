@@ -50,6 +50,8 @@ class TestKirtanHelp(unittest.TestCase):
             "--split-by", "--split-ratios", "--split-seed",
             # 1.C: duration filter
             "--min-duration-s", "--max-duration-s",
+            # 2.5: diversity pull controls
+            "--shards", "--min-unique-videos", "--min-unique-shabads",
         ):
             self.assertIn(flag, r.stdout, msg=f"--help missing {flag}")
 
@@ -60,7 +62,8 @@ class TestKirtanHelp(unittest.TestCase):
         for sub in ("sehaj", "sehajpath"):
             r = _run(sub, "--help")
             self.assertEqual(r.returncode, 0, msg=f"{sub} --help failed: {r.stderr}")
-            for flag in ("--split-by", "--min-duration-s", "--max-duration-s"):
+            for flag in ("--split-by", "--min-duration-s", "--max-duration-s",
+                         "--shards", "--min-unique-videos", "--min-unique-shabads"):
                 self.assertIn(flag, r.stdout, msg=f"{sub} --help missing {flag}")
 
 

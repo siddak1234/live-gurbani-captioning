@@ -115,7 +115,7 @@ Per-experiment settings live in `submissions/<run>/notes.md` (frozen historical 
 
 ## What this architecture forbids
 
-- **Engine library importing argparse, sys.argv, or any benchmark-specific paths.** Audit: `grep argparse src/engine.py src/asr.py src/matcher.py src/smoother.py src/shabad_id.py` returns empty.
+- **Engine library importing argparse, sys.argv, or any benchmark-specific paths.** Audit: `grep -E '^(import|from) argparse' src/engine.py src/asr.py src/matcher.py src/smoother.py src/shabad_id.py` returns empty.
 - **Runners doing inference calls directly.** All ASR/match/smooth calls must route through `engine.predict()`.
 - **Path A and Path B sharing engine state.** They share infrastructure (audio fetch, corpus, scoring) but their inference internals are separate. A bug in one doesn't break the other.
 - **Hardcoded user paths in tracked files.** Enforced by `.claude/hooks/pre-write-secret-scan.sh` and verified at commit time.

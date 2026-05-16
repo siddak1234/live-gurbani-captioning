@@ -15,15 +15,12 @@ Cache keys differ by backend so transcripts don't collide. The fw cache uses
 the legacy filename convention (no backend prefix) so existing cached files
 keep working.
 
-Standalone use:
-
-    python src/asr.py audio/IZOsmkdmmcg_16k.wav                       # fw default
-    python src/asr.py audio/IZOsmkdmmcg_16k.wav --backend mlx_whisper --model large-v3
+Standalone debugging lives in ``scripts/transcribe_audio.py``. This module is
+Layer 1 library code and intentionally has no CLI surface.
 """
 
 from __future__ import annotations
 
-import argparse
 import json
 import pathlib
 from dataclasses import asdict, dataclass
@@ -228,34 +225,3 @@ def _transcribe_mlx(audio_path, model_size, language, word_timestamps, no_speech
         )
         for s in result.get("segments", [])
     ]
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("audio_path", type=pathlib.Path)
-    parser.add_argument("--backend", default="faster_whisper",
-                        choices=["faster_whisper", "mlx_whisper", "huggingface_whisper"])
-    parser.add_argument("--model", default="medium")
-    parser.add_argument("--language", default="pa")
-    parser.add_argument("--cache-dir", type=pathlib.Path, default=pathlib.Path("asr_cache"))
-    parser.add_argument("--word-timestamps", action="store_true")
-    parser.add_argument("--no-speech-threshold", type=float, default=None)
-    args = parser.parse_args()
-
-    chunks = transcribe(
-        args.audio_path,
-        backend=args.backend,
-        model_size=args.model,
-        language=args.language,
-        cache_dir=args.cache_dir,
-        word_timestamps=args.word_timestamps,
-        no_speech_threshold=args.no_speech_threshold,
-    )
-    print(f"{len(chunks)} chunks ({args.backend}, {args.model}):\n")
-    for c in chunks:
-        print(f"  [{c.start:7.2f}-{c.end:7.2f}] {c.text}")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

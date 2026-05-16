@@ -75,7 +75,9 @@ If `v5b_mac_diverse` is still neutral and mostly transcript-identical to `x4_pat
 
 ## Current next step
 
-Start Phase 2.5 with OOS v1 curation and a diversity-aware pull design. The next code PR should be either:
+Start Phase 2.5 with OOS v1 curation and a diversity-aware pull. The execution plan is [`docs/phase2_5_plan.md`](phase2_5_plan.md).
 
-1. an OOS audio-fetch/label-bootstrap helper for arbitrary source URLs, or
-2. a `pull_dataset.py` enhancement that samples across multiple parquet shards and enforces minimum source-video/shabad-token diversity.
+Implemented helpers:
+
+1. `make fetch-oos-audio OOS_URL='case_001=https://...'` for OOS audio.
+2. `make data-v5b` for a diversity-gated diagnostic pull.

@@ -167,11 +167,51 @@ def get_holdout(source_key: str, cfg: dict | None = None) -> tuple[set, set, boo
 # Shared helpers
 # -----------------------------------------------------------------------------
 
-def _iter_first_parquet_shard(dataset_id: str, shard_idx: int = 0) -> Iterator[dict]:
-    """Download the (shard_idx)-th parquet shard from an HF dataset and yield rows.
+def _parse_shards(spec: str) -> tuple[int, ...]:
+    """Parse a shard spec like ``"0"``, ``"0,2,5"``, or ``"0-3,7"``.
 
-    Doesn't stream the full dataset — pulls one parquet file (~2-5h of audio for
-    surindersinghssj sources). Caller stops early via --num-samples.
+    Returned tuple is deduped while preserving order. Used for Phase 2.5
+    diversity pulls, where the first shard alone proved too narrow
+    (v5_mac_baseline kept 200 clips from only 2 source videos).
+    """
+    out: list[int] = []
+    seen: set[int] = set()
+    for raw_part in spec.split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        try:
+            if "-" in part:
+                start_s, end_s = part.split("-", 1)
+                start, end = int(start_s), int(end_s)
+                if end < start:
+                    raise ValueError
+                vals = range(start, end + 1)
+            else:
+                vals = (int(part),)
+        except ValueError as e:
+            raise argparse.ArgumentTypeError(
+                f"--shards must be a comma list/range of non-negative integers; got {spec!r}"
+            ) from e
+        for val in vals:
+            if val < 0:
+                raise argparse.ArgumentTypeError(
+                    f"--shards must be non-negative; got {val} in {spec!r}"
+                )
+            if val not in seen:
+                out.append(val)
+                seen.add(val)
+    if not out:
+        raise argparse.ArgumentTypeError(f"--shards parsed to no shard indexes: {spec!r}")
+    return tuple(out)
+
+
+def _iter_parquet_shards(dataset_id: str, shard_idxs: Iterable[int]) -> Iterator[dict]:
+    """Download selected parquet shards from an HF dataset and yield rows.
+
+    Pulls only the requested shards, not the full dataset. Caller stops early
+    via --num-samples / --max-scan. Each yielded row gets a private
+    ``_source_shard`` key for data-card lineage.
     """
     import pyarrow.parquet as pq
     from huggingface_hub import hf_hub_download, list_repo_files
@@ -181,19 +221,62 @@ def _iter_first_parquet_shard(dataset_id: str, shard_idx: int = 0) -> Iterator[d
     files.sort()
     if not files:
         raise RuntimeError(f"no parquet files found in dataset {dataset_id}")
-    if shard_idx >= len(files):
-        raise RuntimeError(f"shard {shard_idx} out of range (dataset has {len(files)} shards)")
 
-    target = files[shard_idx]
-    print(f"  downloading {target} from {dataset_id} ...")
-    parquet_path = hf_hub_download(repo_id=dataset_id, filename=target, repo_type="dataset")
-    print(f"  downloaded to {parquet_path}")
+    for shard_idx in shard_idxs:
+        if shard_idx >= len(files):
+            raise RuntimeError(f"shard {shard_idx} out of range (dataset has {len(files)} shards)")
 
-    table = pq.read_table(parquet_path)
-    print(f"  parquet rows: {table.num_rows}")
-    cols = table.column_names
-    for row in zip(*[table.column(c).to_pylist() for c in cols]):
-        yield dict(zip(cols, row))
+        target = files[shard_idx]
+        print(f"  downloading {target} from {dataset_id} ...")
+        parquet_path = hf_hub_download(repo_id=dataset_id, filename=target, repo_type="dataset")
+        print(f"  downloaded to {parquet_path}")
+
+        table = pq.read_table(parquet_path)
+        print(f"  parquet rows: {table.num_rows}")
+        cols = table.column_names
+        for row in zip(*[table.column(c).to_pylist() for c in cols]):
+            rec = dict(zip(cols, row))
+            rec["_source_shard"] = shard_idx
+            yield rec
+
+
+def _iter_first_parquet_shard(dataset_id: str, shard_idx: int = 0) -> Iterator[dict]:
+    """Back-compat wrapper for tests / older callers."""
+    yield from _iter_parquet_shards(dataset_id, (shard_idx,))
+
+
+def _diversity_counts(manifest: list[dict]) -> dict[str, int]:
+    """Count unique source-video and shabad-token diversity in a manifest."""
+    return {
+        "unique_videos": len({r.get("video_id") for r in manifest if r.get("video_id")}),
+        "unique_shabads": len({str(r.get("shabad_id")) for r in manifest if r.get("shabad_id")}),
+    }
+
+
+def _check_diversity_floors(
+    manifest: list[dict],
+    *,
+    min_unique_videos: int = 0,
+    min_unique_shabads: int = 0,
+) -> tuple[dict[str, int], list[str]]:
+    """Return diversity counts plus human-readable floor failures.
+
+    This is a guardrail for Phase 2.5. It intentionally runs after the pull
+    and writes the data card even on failure, so the user can inspect what the
+    attempted pull actually contained and decide whether to widen shards,
+    raise max_scan, or change source mix.
+    """
+    counts = _diversity_counts(manifest)
+    failures: list[str] = []
+    if min_unique_videos and counts["unique_videos"] < min_unique_videos:
+        failures.append(
+            f"unique videos {counts['unique_videos']} < required {min_unique_videos}"
+        )
+    if min_unique_shabads and counts["unique_shabads"] < min_unique_shabads:
+        failures.append(
+            f"unique shabads {counts['unique_shabads']} < required {min_unique_shabads}"
+        )
+    return counts, failures
 
 
 def _is_held_out(shabad_id, video_id: str, *, shabads: set, videos: set) -> tuple[bool, str]:
@@ -383,6 +466,8 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
     print(f"  holdout: enforce={apply_holdout} "
           f"(shabads={sorted(s for s in holdout_shabads if isinstance(s, str))}, "
           f"videos={sorted(holdout_videos)})")
+    shard_idxs = args.shards if getattr(args, "shards", None) is not None else (args.shard,)
+    print(f"  shards: {','.join(str(s) for s in shard_idxs)}")
 
     # Content-level holdout: the kirtan dataset's canonical_shabad_id namespace
     # doesn't align with BaniDB's integer IDs, so the shabad-ID filter is a
@@ -400,7 +485,7 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
     n_skipped_dur_short = n_skipped_dur_long = 0
     n_skipped_content = 0
 
-    for row in _iter_first_parquet_shard(dataset_id, shard_idx=args.shard):
+    for row in _iter_parquet_shards(dataset_id, shard_idxs):
         n_scanned += 1
         if n_scanned > args.max_scan:
             print(f"  hit --max-scan limit ({args.max_scan}); stopping")
@@ -464,6 +549,7 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
             "video_id": video_id,
             "score": score,
             "duration_s": duration,
+            "source_shard": row.get("_source_shard"),
         }
         manifest.append(record)
         n_kept += 1
@@ -485,6 +571,13 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
         "dur_short":       n_skipped_dur_short,
         "dur_long":        n_skipped_dur_long,
     }
+    diversity_counts, diversity_failures = _check_diversity_floors(
+        manifest,
+        min_unique_videos=getattr(args, "min_unique_videos", 0),
+        min_unique_shabads=getattr(args, "min_unique_shabads", 0),
+    )
+    print(f"diversity: videos={diversity_counts['unique_videos']} "
+          f"shabads={diversity_counts['unique_shabads']}")
 
     splits = None
     if getattr(args, "split_by", "none") == "shabad":
@@ -515,10 +608,18 @@ def _run_surt_puller(args, source_key: str, *, enforce_gurbani_holdout: bool) ->
         holdout_shabads=holdout_shabads,
         holdout_videos=holdout_videos,
         apply_holdout=apply_holdout,
+        diversity_counts=diversity_counts,
+        diversity_failures=diversity_failures,
     )
     card_path = out_dir / "data_card.md"
     card_path.write_text(card_md, encoding="utf-8")
     print(f"data_card: {card_path}")
+    if diversity_failures:
+        for failure in diversity_failures:
+            print(f"error: diversity floor failed: {failure}", file=sys.stderr)
+        print("hint: widen --shards, raise --max-scan, or lower the floor for a diagnostic pull.",
+              file=sys.stderr)
+        return 2
     return 0
 
 
@@ -534,6 +635,8 @@ def _build_data_card(
     holdout_shabads: set,
     holdout_videos: set,
     apply_holdout: bool,
+    diversity_counts: dict[str, int] | None = None,
+    diversity_failures: list[str] | None = None,
 ) -> str:
     """Generate ``data_card.md`` content for a pull. Pure: caller writes to disk.
 
@@ -561,6 +664,9 @@ def _build_data_card(
         f"**Source:** `{source_id}` (`{source_key}` in configs/datasets.yaml)  ",
         f"**Pull config:** num_samples={args.num_samples}, min_score={args.min_score}, "
         f"min_duration_s={args.min_duration_s}, max_duration_s={args.max_duration_s}, "
+        f"shards={getattr(args, 'shards', None) or (getattr(args, 'shard', 0),)}, "
+        f"min_unique_videos={getattr(args, 'min_unique_videos', 0)}, "
+        f"min_unique_shabads={getattr(args, 'min_unique_shabads', 0)}, "
         f"split_by={getattr(args, 'split_by', 'none')}, "
         f"split_seed={getattr(args, 'split_seed', 'n/a')}  ",
         "",
@@ -631,6 +737,23 @@ def _build_data_card(
         lines += [f"## {section_title}", ""]
         for i, (sid, hrs) in enumerate(top, 1):
             lines.append(f"{i}. shabad `{sid}` — {hrs:.3f} h ({per_shabad_count[sid]} clips)")
+        lines.append("")
+
+    # --- training-pull diversity floor (Phase 2.5) ---
+    min_videos = int(getattr(args, "min_unique_videos", 0) or 0)
+    min_shabads = int(getattr(args, "min_unique_shabads", 0) or 0)
+    if min_videos or min_shabads:
+        counts = diversity_counts or _diversity_counts(manifest)
+        failures = diversity_failures or []
+        lines += ["## Training diversity gate", ""]
+        lines.append(f"- Unique videos: {counts['unique_videos']} (floor: {min_videos})")
+        lines.append(f"- Unique shabads: {counts['unique_shabads']} (floor: {min_shabads})")
+        if failures:
+            lines.append("- Status: FAIL")
+            for failure in failures:
+                lines.append(f"  - {failure}")
+        else:
+            lines.append("- Status: PASS")
         lines.append("")
 
     # --- diversity guardrail status ---
@@ -725,6 +848,15 @@ def _add_surt_args(p: argparse.ArgumentParser) -> None:
                    help="Stop scanning the stream after this many rows (default 5000)")
     p.add_argument("--shard", type=int, default=0,
                    help="Which parquet shard to pull (default 0 = first)")
+    p.add_argument("--shards", type=_parse_shards, default=None,
+                   help="Comma/range shard list to scan, e.g. 0,2,4 or 0-9. "
+                        "Overrides --shard. Use for diversity pulls.")
+    p.add_argument("--min-unique-videos", type=int, default=0,
+                   help="Fail after writing the data card unless the kept manifest has at least "
+                        "this many source videos (default 0 = no floor).")
+    p.add_argument("--min-unique-shabads", type=int, default=0,
+                   help="Fail after writing the data card unless the kept manifest has at least "
+                        "this many shabad tokens (default 0 = no floor).")
     # -- Duration filter (Phase 1.C) --
     # Whisper's encoder is fixed at 30s; longer clips get truncated, which
     # corrupts the trailing label. Floor at 1s drops near-silent fragments.

@@ -26,6 +26,13 @@ PYTHON         ?= python3
 REQUIREMENTS   ?= requirements-mac.txt
 DATA_DIR       ?= training_data/kirtan_v1
 DATA_SAMPLES   ?= 200
+DATA_MIN_SCORE ?= 0.8
+DATA_MAX_SCAN  ?= 5000
+DATA_SHARD     ?= 0
+DATA_SHARDS    ?=
+DATA_MIN_UNIQUE_VIDEOS  ?= 0
+DATA_MIN_UNIQUE_SHABADS ?= 0
+DATA_FORCE     ?= 0
 SMOKE_OUT      ?= /tmp/lora_smoke
 TRAIN_OUT      ?= lora_adapters/surt_mac_v1
 TRAIN_CFG      ?= configs/training/surt_lora_mac.yaml
@@ -35,6 +42,7 @@ COREML_CFG     ?= configs/export/coreml_ane.yaml
 COREML_OUT     ?= ios/Sources/GurbaniCaptioning/Resources
 BENCHMARK_DIR  ?= ../live-gurbani-captioning-benchmark-v1
 HF_WINDOW_SECONDS ?= 10
+DATA_SHARDS_ARG := $(if $(DATA_SHARDS),--shards $(DATA_SHARDS),--shard $(DATA_SHARD))
 
 # -----------------------------------------------------------------------------
 # Help
@@ -110,12 +118,30 @@ fetch-oos-audio: ## Download one OOS URL: make fetch-oos-audio OOS_URL='case_001
 
 .PHONY: data
 data: ## Pull a labeled kirtan slice from HuggingFace (idempotent — skips if manifest exists).
-	@test -f $(DATA_DIR)/manifest.json && { \
-		echo "skip: $(DATA_DIR)/manifest.json already present (delete it to force re-pull)"; \
-	} || $(PYTHON) scripts/pull_dataset.py kirtan \
-		--out-dir $(DATA_DIR) \
-		--num-samples $(DATA_SAMPLES) \
-		--min-score 0.8
+	@if [ "$(DATA_FORCE)" != "1" ] && [ -f "$(DATA_DIR)/manifest.json" ]; then \
+		echo "skip: $(DATA_DIR)/manifest.json already present (delete it or set DATA_FORCE=1 to re-pull)"; \
+	else \
+		$(PYTHON) scripts/pull_dataset.py kirtan \
+			--out-dir $(DATA_DIR) \
+			--num-samples $(DATA_SAMPLES) \
+			--min-score $(DATA_MIN_SCORE) \
+			--max-scan $(DATA_MAX_SCAN) \
+			$(DATA_SHARDS_ARG) \
+			--min-unique-videos $(DATA_MIN_UNIQUE_VIDEOS) \
+			--min-unique-shabads $(DATA_MIN_UNIQUE_SHABADS); \
+	fi
+
+.PHONY: data-v5b
+data-v5b: ## Phase 2.5 diagnostic pull: larger/diverse held-out kirtan slice.
+	$(MAKE) data \
+		DATA_DIR=training_data/v5b_mac_diverse \
+		DATA_SAMPLES=1000 \
+		DATA_MIN_SCORE=0.85 \
+		DATA_SHARDS=0-9 \
+		DATA_MAX_SCAN=20000 \
+		DATA_MIN_UNIQUE_VIDEOS=20 \
+		DATA_MIN_UNIQUE_SHABADS=100 \
+		DATA_FORCE=1
 
 .PHONY: smoke-manifest
 smoke-manifest: ## Build the 4-snippet smoke manifest (validates pipeline only).
