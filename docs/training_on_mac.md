@@ -38,7 +38,7 @@ For the Phase 2.5 diagnostic pull, prefer the diversity-gated target:
 make data-v5b
 ```
 
-This scans multiple parquet shards, keeps `min_score >= 0.85`, and fails unless the kept manifest has enough source-video and shabad-token diversity. Inspect `training_data/v5b_mac_diverse/data_card.md` before training.
+This scans multiple parquet shards, keeps `min_score >= 0.85`, and fails unless the kept manifest has enough source-video and shabad-token diversity. With diversity floors active, `DATA_SAMPLES` is a minimum rather than a hard cap; the pull can keep extra clips until the floors pass. Inspect `training_data/v5b_mac_diverse/data_card.md` before training.
 
 ## 2. Smoke-test the pipeline (~5 minutes)
 

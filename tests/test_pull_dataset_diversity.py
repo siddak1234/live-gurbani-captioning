@@ -15,6 +15,7 @@ from scripts.pull_dataset import (  # noqa: E402
     _check_diversity_floors,
     _diversity_counts,
     _parse_shards,
+    _pull_target_met,
 )
 
 
@@ -86,6 +87,45 @@ class TestDiversityFloors(unittest.TestCase):
     def test_zero_floors_are_noop(self):
         _, failures = _check_diversity_floors([], min_unique_videos=0, min_unique_shabads=0)
         self.assertEqual(failures, [])
+
+
+class TestPullTargetMet(unittest.TestCase):
+    def test_requires_sample_count_first(self):
+        manifest = [_rec("v1", "s1")]
+        self.assertFalse(_pull_target_met(
+            manifest,
+            num_samples=2,
+            min_unique_videos=1,
+            min_unique_shabads=1,
+        ))
+
+    def test_no_floors_means_sample_count_is_enough(self):
+        manifest = [_rec("v1", "s1"), _rec("v1", "s1")]
+        self.assertTrue(_pull_target_met(
+            manifest,
+            num_samples=2,
+            min_unique_videos=0,
+            min_unique_shabads=0,
+        ))
+
+    def test_active_floors_can_extend_beyond_num_samples(self):
+        # Reached num_samples=2, but only one video/shabad. Keep scanning.
+        manifest = [_rec("v1", "s1"), _rec("v1", "s1")]
+        self.assertFalse(_pull_target_met(
+            manifest,
+            num_samples=2,
+            min_unique_videos=2,
+            min_unique_shabads=2,
+        ))
+
+        # Extra clips satisfy the floors; now the pull can stop.
+        manifest.append(_rec("v2", "s2"))
+        self.assertTrue(_pull_target_met(
+            manifest,
+            num_samples=2,
+            min_unique_videos=2,
+            min_unique_shabads=2,
+        ))
 
 
 if __name__ == "__main__":
