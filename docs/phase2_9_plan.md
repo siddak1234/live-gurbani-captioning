@@ -113,18 +113,47 @@ guardrail, and OOS v1 is still owed.
 
 ### 2.9.C — loop-aware text-score aligner
 
-Build a first aligner over matcher score vectors, not frame-level CTC:
+Build a first aligner over matcher score vectors, not frame-level CTC. The
+2.9.B result narrows the first implementation: the biggest remaining miss is
+not another blind-ID failure and not weak line recognition; it is that sparse
+cold windows still force simran/filler audio into canonical lyric lines.
+
+The first 2.9.C probe is therefore intentionally small:
 
 - states are canonical line indices plus optional null;
-- default legal transitions: stay, next line, previous line;
-- add explicit refrain/rahao loop edges inferred from repeated line text and
-  nearby high-similarity lines;
-- allow rare larger jumps only with strong local evidence;
+- keep the existing stay-bias line path as the lyric-state baseline;
+- add a generic simran/null detector that suppresses chunks dominated by
+  repeated `ਵਾਹਿਗੁਰੂ` / `waheguru` tokens instead of forcing them into the
+  nearest pangti;
+- keep this rule shabad-agnostic and benchmark-agnostic;
+- do **not** introduce tuned penalty grids or case-specific timing rules;
 - no benchmark-case or shabad-ID route table.
+
+Why this is the right first move:
+
+- `phase2_9_retro_buffered` already scores **88.7%** and 12/12 locks correct;
+- `zOtIpxMT9hU_cold66` is the sole sub-60 case at **57.6%**;
+- the score lattice shows local best is correct on all 3 lyric-overlapping
+  chunks for that case;
+- the lost frames are mostly 10-second repeated-simran chunks that the current
+  smoother maps to line 3.
+
+If this clears the catastrophic-case guardrail, the next 2.9.C increment can
+add explicit refrain/rahao loop edges inferred from repeated line text and
+nearby high-similarity lines. If it does not, inspect the residual errors before
+adding complexity.
 
 This is deliberately less ambitious than Path B's CTC HMM. Past `pb1_hmm`
 showed MMS CTC frames are blank-dominated on slow kirtan, while Whisper chunk
 text is already discriminative. Start from the evidence that works.
+
+**Result:** `phase2_9_loop_align` scored **91.2%** (`3125/3425`) with 12/12
+correct locks. The only code-path change from `phase2_9_retro_buffered` is the
+simran-aware null state in `smooth_with_loop_align()`. It clears the paired
+score gate and the no-catastrophic-case guardrail:
+`zOtIpxMT9hU_cold66` improves from **57.6%** to **86.9%**. This validates the
+score-lattice diagnosis. It is still not production-promoted because OOS v1 is
+owed.
 
 ### 2.9.D — paired benchmark gate
 
@@ -135,6 +164,7 @@ HF_WINDOW_SECONDS=10 python3 scripts/run_idlock_path.py \
   --out-dir submissions/phase2_9_loop_align \
   --post-adapter-dir lora_adapters/v5b_mac_diverse \
   --post-context buffered \
+  --merge-policy retro-buffered \
   --pre-word-timestamps \
   --smoother loop_align
 ```
@@ -147,8 +177,9 @@ Promotion threshold for this phase:
 
 ### 2.9.E — decision
 
-If loop-aware text-score alignment beats `86.6%`, proceed to OOS v1 and then
-Phase 3 scale-up only if OOS is acceptable.
+`phase2_9_loop_align` beats `86.6%` and clears the paired guardrails. Proceed
+to OOS v1 now. Do **not** start Phase 3 scale-up until OOS v1 exists and this
+architecture is evaluated on held-out shabads outside the paired benchmark.
 
 If it fails, do not keep tuning per-chunk penalties. The next branch is a
 stronger acoustic timestamp/alignment model:

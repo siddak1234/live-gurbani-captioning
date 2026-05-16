@@ -8,7 +8,13 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from src.smoother import smooth, smooth_with_stay_bias, smooth_with_viterbi  # noqa: E402
+from src.smoother import (  # noqa: E402
+    is_simran_dominant,
+    smooth,
+    smooth_with_loop_align,
+    smooth_with_stay_bias,
+    smooth_with_viterbi,
+)
 
 
 class TestSmoother(unittest.TestCase):
@@ -95,6 +101,27 @@ class TestSmoother(unittest.TestCase):
                 (0.0, 1.0, [1.0, 2.0]),
                 (1.0, 2.0, [1.0]),
             ])
+
+    def test_simran_detector_requires_repeated_waheguru_tokens(self):
+        self.assertTrue(is_simran_dominant("ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ"))
+        self.assertFalse(is_simran_dominant("ਸੰਤ ਜੀਵਹਿ ਜਪਿ ਪ੍ਰਾਨ ਅਧਾਰਾ"))
+        self.assertFalse(is_simran_dominant("ਵਾਹਿਗੁਰੂ ਜੀ"))
+
+    def test_loop_align_nulls_simran_without_resetting_line_trajectory(self):
+        chunks = [
+            (0.0, 10.0, [0.0, 90.0, 10.0], "first line"),
+            (10.0, 20.0, [0.0, 48.0, 47.0], "ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ"),
+            (20.0, 30.0, [0.0, 84.0, 87.0], "first line still close"),
+        ]
+        segments = smooth_with_loop_align(
+            chunks,
+            stay_margin=5.0,
+            score_threshold=0.0,
+        )
+        self.assertEqual([(s.start, s.end, s.line_idx) for s in segments], [
+            (0.0, 10.0, 1),
+            (20.0, 30.0, 1),
+        ])
 
 
 if __name__ == "__main__":

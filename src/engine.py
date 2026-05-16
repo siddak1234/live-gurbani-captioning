@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from src.asr import transcribe
 from src.matcher import match_chunk, score_chunk, normalize, TfidfScorer
 from src.shabad_id import identify_shabad, per_chunk_global_match
-from src.smoother import smooth, smooth_with_stay_bias, smooth_with_viterbi
+from src.smoother import smooth, smooth_with_loop_align, smooth_with_stay_bias, smooth_with_viterbi
 
 
 @dataclass
@@ -183,10 +183,10 @@ def predict(
     if smoother_name == "auto":
         smoother_name = "stay_bias" if cfg.stay_bias > 0.0 else "basic"
 
-    if smoother_name not in ("basic", "stay_bias", "viterbi"):
+    if smoother_name not in ("basic", "stay_bias", "viterbi", "loop_align"):
         raise ValueError(f"unknown smoother: {cfg.smoother}")
 
-    if smoother_name in ("stay_bias", "viterbi"):
+    if smoother_name in ("stay_bias", "viterbi", "loop_align"):
         scored = [
             (c.start, c.end,
              score_chunk(c.text, lines, ratio=cfg.ratio, blend=cfg.blend, tfidf=tfidf))
@@ -196,7 +196,7 @@ def predict(
             smooth_segments = smooth_with_stay_bias(
                 scored, stay_margin=cfg.stay_bias, score_threshold=cfg.score_threshold,
             )
-        else:
+        elif smoother_name == "viterbi":
             smooth_segments = smooth_with_viterbi(
                 scored,
                 jump_penalty=cfg.viterbi_jump_penalty,
@@ -204,6 +204,16 @@ def predict(
                 score_threshold=cfg.score_threshold,
                 null_score=cfg.viterbi_null_score,
                 null_switch_penalty=cfg.viterbi_null_switch_penalty,
+            )
+        else:
+            scored_with_text = [
+                (start, end, scores, c.text)
+                for (start, end, scores), c in zip(scored, chunks)
+            ]
+            smooth_segments = smooth_with_loop_align(
+                scored_with_text,
+                stay_margin=cfg.stay_bias,
+                score_threshold=cfg.score_threshold,
             )
     else:
         raw = [

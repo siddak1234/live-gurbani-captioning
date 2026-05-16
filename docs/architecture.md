@@ -144,6 +144,15 @@ from `uem.start` after commit. This is generic state-based behavior and maps to
 a real live UI. It is not promoted yet because OOS is owed and
 `zOtIpxMT9hU_cold66` remains below the guardrail at `57.6%`.
 
+Phase 2.9's second architecture fix is the first null-aware alignment primitive:
+`phase2_9_loop_align` scores **91.2%** by adding `smooth_with_loop_align()` on
+top of the same retro-buffered ID-lock stack. The aligner preserves stay-bias
+for lyric chunks but emits null for chunks dominated by repeated simran
+(`ਵਾਹਿਗੁਰੂ` / `waheguru`). This is still generic Layer 1 text logic; no
+benchmark shabad ID, case name, or route table enters the rule. It clears the
+paired score and catastrophic-case guardrails, but OOS remains mandatory before
+promotion.
+
 ## Configuration surface
 
 Per-experiment settings live in `submissions/<run>/notes.md` (frozen historical record per CLAUDE.md convention). Per-pipeline reusable settings live in `configs/` (planned, M0.3 + M1.1): training hyperparameters, export quantization profiles, dataset registry.

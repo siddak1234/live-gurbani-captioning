@@ -109,6 +109,7 @@ Live causality is honor-system — the scorer can't tell. The output JSON looks 
 | `phase2_8_idlock_preword_viterbi` | runtime ID-lock + Viterbi smoother | 77.2% | **No — negative diagnostic.** Generic line-distance smoothing helps `IZOsmkdmmcg` but collapses refrain/loop-heavy cases. |
 | `phase2_8_idlock_preword_viterbi_null45` | runtime ID-lock + Viterbi null state | 77.1% | **No — negative diagnostic.** Null state drops useful weak evidence along with filler. |
 | `phase2_9_retro_buffered` | runtime ID-lock + retro-buffered finalization | **88.7%** | **Best current honest runtime, not promoted.** State-based merge policy lets locked-shabad post engine revise tentative pre-lock captions. Clears paired score gate, but `zOtIpxMT9hU_cold66` is still 57.6% and OOS is owed. |
+| `phase2_9_loop_align` | runtime ID-lock + retro-buffered + simran/null alignment | **91.2%** | **Best current honest runtime, not promoted.** Non-route-table architecture; 12/12 locks; no catastrophic case (`zOtIpxMT9hU_cold66` 86.9%). OOS v1 is mandatory before production promotion. |
 | `x7_surt_only` | blind + live | 68.6% | Yes — surt with longer blind buffer; didn't help (kept for negative-result record). |
 | `x8_pb_finetuned` | blind + offline | 72.9% (Path B) | **Yes — proof of production training path.** w2v-bert-punjabi + LoRA adapter from 50-step fine-tune on 30 real kirtan clips. +2.6 over Path B baseline; +6 to +14 per-shabad on 3 of 4 shabads. Validates the end-to-end training pipeline; tiny scale, far from saturated. |
 | `x5_ensemble` | blind + live | 91.2% | **No — benchmark-overfit.** Route table `{1341 → surt}` chosen from test-set scores. |
@@ -139,7 +140,7 @@ Numbered roughly by order, not by difficulty:
 
 1. **Establish honest evaluation hygiene.** Before claiming any new score, run on a held-out audio recording not used during tuning. Even just one new Sikhnet-Radio recording with a known-but-not-in-benchmark shabad lets us catch overfitting early.
 2. **Ship surt-small-v3 with better integration as the v0 production engine.** The standalone 74% is held back by ASR-vs-matcher chunk-granularity mismatch, not by the model itself. Investigate: word-level timestamps from the HF pipeline, custom decoding that respects line boundaries, or use surt's text + faster-whisper's timestamps as a hybrid.
-3. **Fine-tune surt-small-v3 on the 300h dataset (Mac-first).** Pipeline validated end-to-end on real data. `v5_mac_baseline` scored neutral (74.0%, same as `x4_pathA_surt`). `v5b_mac_diverse` scaled the data slice to 2,544 clips / 4.936h / 20 videos and scored **65.6%**, but Phase 2.6 showed the adapter is not globally worse: oracle-shabad/live0 rose to **87.4%** and a historical v3.2-ID-lock proxy scored **87.1%**. Phase 2.7 implemented the real runtime ID-lock path and scored **75.6%** because current blind-ID commits two kZhIA starts to the wrong shabad; additionally, the documented v3.2 command now repros at **73.5%**, not the archived **86.5%**. Phase 2.8 found `phase2_8_idlock_preword` (**86.6%**) by using word timestamps only for shabad ID, but generic post-lock smoothers regressed. Phase 2.9's retro-buffered finalization policy scores **88.7%**, the best current honest runtime, but it is not production-promoted because OOS is owed and one sparse cold case remains below guardrail. Real training runs locally on M-series Macs via PyTorch + MPS — see [`docs/training_on_mac.md`](docs/training_on_mac.md). Tools: `scripts/pull_dataset.py kirtan` (pulls from `surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical` with benchmark holdouts), `scripts/finetune_path_b.py --config configs/training/surt_lora_mac.yaml` (auto-detects Whisper vs CTC from `--model-id`; target_modules default to Whisper's `q_proj/k_proj/v_proj/out_proj` when `surt-small-v3` is the base). Cloud fallback (Colab/RunPod) documented in [`docs/cloud_training.md`](docs/cloud_training.md) for the day Mac wall-clock becomes the bottleneck.
+3. **Fine-tune surt-small-v3 on the 300h dataset (Mac-first).** Pipeline validated end-to-end on real data. `v5_mac_baseline` scored neutral (74.0%, same as `x4_pathA_surt`). `v5b_mac_diverse` scaled the data slice to 2,544 clips / 4.936h / 20 videos and scored **65.6%**, but Phase 2.6 showed the adapter is not globally worse: oracle-shabad/live0 rose to **87.4%** and a historical v3.2-ID-lock proxy scored **87.1%**. Phase 2.7 implemented the real runtime ID-lock path and scored **75.6%** because current blind-ID commits two kZhIA starts to the wrong shabad; additionally, the documented v3.2 command now repros at **73.5%**, not the archived **86.5%**. Phase 2.8 found `phase2_8_idlock_preword` (**86.6%**) by using word timestamps only for shabad ID, but generic post-lock smoothers regressed. Phase 2.9 now has a positive non-route-table runtime: `phase2_9_loop_align` scores **91.2%** by combining word-timestamp ID-lock, retro-buffered finalization, and simran-aware null alignment. It is still not production-promoted because OOS v1 is owed. Real training runs locally on M-series Macs via PyTorch + MPS — see [`docs/training_on_mac.md`](docs/training_on_mac.md). Tools: `scripts/pull_dataset.py kirtan` (pulls from `surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical` with benchmark holdouts), `scripts/finetune_path_b.py --config configs/training/surt_lora_mac.yaml` (auto-detects Whisper vs CTC from `--model-id`; target_modules default to Whisper's `q_proj/k_proj/v_proj/out_proj` when `surt-small-v3` is the base). Cloud fallback (Colab/RunPod) documented in [`docs/cloud_training.md`](docs/cloud_training.md) for the day Mac wall-clock becomes the bottleneck.
 4. **Move to forced alignment over the full shabad** (Path B done right) instead of per-chunk classification. Aligns the whole shabad text to the audio as one continuous problem; naturally handles line transitions including rapid ones. Architecture sketch is in `src/path_b/`.
 5. **Replace the route table with a learned dispatcher** — small classifier picking the engine based on audio features (tempo, vocal/instrumental ratio, etc.), not on shabad ID lookup. Makes ensembling honest by design.
 6. **Build the live deployment surface**: streaming audio in, captions out, Sewadar UI with confirm/reset buttons (matches the reference system's UX from karanbirsingh.com).
@@ -268,7 +269,7 @@ When working a given phase, *fully adopt the named role* — primary literature,
 ### Phase 2.9 — full-shabad alignment prototype
 **Role:** Alignment Engineer + ML Scientist.
 
-**Status:** next active phase — plan in [`docs/phase2_9_plan.md`](docs/phase2_9_plan.md).
+**Status:** paired benchmark gate passed; OOS gate pending — plan and results in [`docs/phase2_9_plan.md`](docs/phase2_9_plan.md).
 
 **Hypothesis:** once shabad ID is correct, the remaining miss is a sequence
 alignment problem over the locked shabad, not a training-scale problem and not a
@@ -286,14 +287,16 @@ equally.
 catastrophic case below `60%`, and OOS v1 exists before production promotion.
 
 **Initial result:** `phase2_9_retro_buffered` scores **88.7%** with 12/12 locks
-by allowing the locked post engine to revise tentative buffered captions. This
-clears the paired score threshold but is not promoted because
-`zOtIpxMT9hU_cold66` is **57.6%** and OOS v1 remains owed.
+by allowing the locked post engine to revise tentative buffered captions.
+`phase2_9_loop_align` then adds a generic simran/null alignment primitive and
+scores **91.2%**, with `zOtIpxMT9hU_cold66` improving to **86.9%**. This clears
+the paired score threshold and catastrophic-case guardrail, but is not promoted
+because OOS v1 remains owed.
 
 ### Phase 3 — Mac-scale real fine-tune
 **Role:** ML Scientist (acoustic modeling) (lead) + Optimization Engineer.
 
-**Precondition:** Phase 2.9 must produce a positive full-shabad alignment diagnostic and OOS v1 must exist. Do not spend the 3 × 24h budget while the best honest runtime is still `86.6%` and the current failure is alignment, not M4 Pro capacity.
+**Precondition:** Phase 2.9 has produced a positive full-shabad alignment diagnostic; OOS v1 must exist before Phase 3 promotion or scale-up. Do not spend the 3 × 24h budget on paired-benchmark confidence alone.
 
 **Hypothesis:** If Phase 2.8 shows positive movement, 50 h of curated kirtan + SpecAugment + cosine LR + LoRA r=32 + weight decay + 3 seeds should push surt-small-v3 to ≥ 85 % benchmark and ≥ 80 % OOS — within 24–48 h M4 Pro wall-clock per run.
 
