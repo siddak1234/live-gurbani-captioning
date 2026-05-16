@@ -75,7 +75,7 @@ If `v5b_mac_diverse` is still neutral and mostly transcript-identical to `x4_pat
 
 ## Current next step
 
-The diversity-aware pull has passed. Train `v5b_mac_diverse` next, then evaluate benchmark with `HF_WINDOW_SECONDS=10`. OOS v1 is still required before promoting a model-improvement claim. The execution plan is [`docs/phase2_5_plan.md`](phase2_5_plan.md).
+The diversity-aware pull passed, `v5b_mac_diverse` trained, and benchmark eval scored **65.6%**. This is below `x4_pathA_surt` / `v5_mac_baseline` at **74.0%**, so Phase 2.5 is a negative diagnostic. Do not start Phase 3 scale-up. The next step is a Phase 2.6 alignment diagnostic: separate oracle-shabad alignment quality from blind-ID routing, then decide whether to fix integration or pivot acoustic backbones. The execution plan is [`docs/phase2_5_plan.md`](phase2_5_plan.md).
 
 Implemented helpers:
 

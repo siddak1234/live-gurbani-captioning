@@ -102,6 +102,7 @@ Live causality is honor-system — the scorer can't tell. The output JSON looks 
 | `v4_mlx_large_v3` | blind + live | 83.8% | Yes — alternative ASR backend (Apple GPU). |
 | `x4_pathA_surt` | blind + live | 74.0% | **Yes — best designed for generalization.** Uses surindersinghssj/surt-small-v3 (Whisper-small fine-tuned on 660h of kirtan). Lower benchmark score is real, but reflects honest accuracy on out-of-set kirtan. |
 | `v5_mac_baseline` | blind + live | 74.0% | **Yes, but neutral.** First real Mac LoRA on `surt-small-v3` using 200 clips / 0.418h. Validates the MPS training + PEFT inference pipeline, but does not beat `x4_pathA_surt`; do not promote as a model improvement. |
+| `v5b_mac_diverse` | blind + live | 65.6% | **No — negative diagnostic.** 2,544 clips / 4.936h / 20 videos / 195 shabad tokens. Adapter changes transcripts but destabilizes blind-ID/cold-window behavior; pause Phase 3 and run alignment diagnostics. |
 | `x7_surt_only` | blind + live | 68.6% | Yes — surt with longer blind buffer; didn't help (kept for negative-result record). |
 | `x8_pb_finetuned` | blind + offline | 72.9% (Path B) | **Yes — proof of production training path.** w2v-bert-punjabi + LoRA adapter from 50-step fine-tune on 30 real kirtan clips. +2.6 over Path B baseline; +6 to +14 per-shabad on 3 of 4 shabads. Validates the end-to-end training pipeline; tiny scale, far from saturated. |
 | `x5_ensemble` | blind + live | 91.2% | **No — benchmark-overfit.** Route table `{1341 → surt}` chosen from test-set scores. |
@@ -132,7 +133,7 @@ Numbered roughly by order, not by difficulty:
 
 1. **Establish honest evaluation hygiene.** Before claiming any new score, run on a held-out audio recording not used during tuning. Even just one new Sikhnet-Radio recording with a known-but-not-in-benchmark shabad lets us catch overfitting early.
 2. **Ship surt-small-v3 with better integration as the v0 production engine.** The standalone 74% is held back by ASR-vs-matcher chunk-granularity mismatch, not by the model itself. Investigate: word-level timestamps from the HF pipeline, custom decoding that respects line boundaries, or use surt's text + faster-whisper's timestamps as a hybrid.
-3. **Fine-tune surt-small-v3 on the 300h dataset (Mac-first).** Pipeline validated end-to-end on real data: `v5_mac_baseline` trained and evaluated successfully, but scored neutral (74.0%, same as `x4_pathA_surt`) because the 200-clip slice was too small and too low-diversity. Next is **Phase 2.5**, not a blind 50h jump: curate OOS v1, then run a diversity-aware `v5b_mac_diverse` diagnostic pull. Real training runs locally on M-series Macs via PyTorch + MPS — see [`docs/training_on_mac.md`](docs/training_on_mac.md). Tools: `scripts/pull_dataset.py kirtan` (pulls from `surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical` with benchmark holdouts), `scripts/finetune_path_b.py --config configs/training/surt_lora_mac.yaml` (auto-detects Whisper vs CTC from `--model-id`; target_modules default to Whisper's `q_proj/k_proj/v_proj/out_proj` when `surt-small-v3` is the base). Cloud fallback (Colab/RunPod) documented in [`docs/cloud_training.md`](docs/cloud_training.md) for the day Mac wall-clock becomes the bottleneck.
+3. **Fine-tune surt-small-v3 on the 300h dataset (Mac-first).** Pipeline validated end-to-end on real data. `v5_mac_baseline` scored neutral (74.0%, same as `x4_pathA_surt`). `v5b_mac_diverse` scaled the data slice to 2,544 clips / 4.936h / 20 videos and scored **65.6%**, so the current failure is integration/alignment robustness, not "training cannot run." Next is **Phase 2.6**, not Phase 3: isolate oracle-shabad alignment from blind-ID routing, then decide whether to fix integration or pivot acoustic backbones. Real training runs locally on M-series Macs via PyTorch + MPS — see [`docs/training_on_mac.md`](docs/training_on_mac.md). Tools: `scripts/pull_dataset.py kirtan` (pulls from `surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical` with benchmark holdouts), `scripts/finetune_path_b.py --config configs/training/surt_lora_mac.yaml` (auto-detects Whisper vs CTC from `--model-id`; target_modules default to Whisper's `q_proj/k_proj/v_proj/out_proj` when `surt-small-v3` is the base). Cloud fallback (Colab/RunPod) documented in [`docs/cloud_training.md`](docs/cloud_training.md) for the day Mac wall-clock becomes the bottleneck.
 4. **Move to forced alignment over the full shabad** (Path B done right) instead of per-chunk classification. Aligns the whole shabad text to the audio as one continuous problem; naturally handles line transitions including rapid ones. Architecture sketch is in `src/path_b/`.
 5. **Replace the route table with a learned dispatcher** — small classifier picking the engine based on audio features (tempo, vocal/instrumental ratio, etc.), not on shabad ID lookup. Makes ensembling honest by design.
 6. **Build the live deployment surface**: streaming audio in, captions out, Sewadar UI with confirm/reset buttons (matches the reference system's UX from karanbirsingh.com).
@@ -194,15 +195,32 @@ When working a given phase, *fully adopt the named role* — primary literature,
 
 **Hypothesis:** `v5_mac_baseline` was neutral because the data slice was too small / too narrow (200 clips from 2 videos) and the benchmark failures are dominated by blind-ID + cold-window behavior, not because the training loop is broken.
 
+**Actual result:** `v5b_mac_diverse` trained successfully (2,544 clips, 4.936h, final logged loss 0.2486) but benchmark accuracy regressed to **65.6%**. More diverse LoRA changed transcripts (only 2/12 JSONs identical to `x4_pathA_surt`) but harmed blind-ID/cold-window routing.
+
 **Approach:**
 - Curate `oos_v1` (5 shabads, 3 representative + 2 stress) and establish v3.2 / x4 / v5 baselines.
 - Diversity-aware data pulling is now active and has passed for `v5b_mac_diverse`: 2,544 clips, 4.936 h, 20 source videos, 195 shabad tokens, `min_score >= 0.85`, shards 0-4, all three holdouts active with 0 benchmark video/content leaks.
-- Train `v5b_mac_diverse` with the same proven config next; change only data scale/diversity.
-- Evaluate benchmark with `HF_WINDOW_SECONDS=10`, OOS v1, and transcript deltas vs `x4_pathA_surt`.
+- `v5b_mac_diverse` trained with the same proven config; only data scale/diversity changed.
+- Benchmark eval used `HF_WINDOW_SECONDS=10`; OOS v1 remains owed before any future promotion claim.
 
-**Success criteria:** OOS v1 exists; `v5b_mac_diverse` clears `>= 75.0%` benchmark **or** shows positive OOS movement without catastrophic per-case regression; transcript deltas confirm the adapter is changing ASR behavior.
+**Success criteria:** failed. `v5b_mac_diverse` did not clear `>= 75.0%` benchmark and OOS v1 is not curated.
 
-**Failure mode:** if `v5b_mac_diverse` is still neutral and mostly transcript-identical to x4, pause Whisper-small LoRA scaling and pivot to integration/alignment work: blind-ID robustness, windowing, word timestamps, full-shabad forced alignment, or IndicConformer.
+**Failure mode:** observed. The adapter is not neutral; it changes transcripts, but the change destabilizes blind-ID/cold-window behavior. Pause Whisper-small LoRA scaling and pivot to integration/alignment work: blind-ID robustness, windowing, word timestamps, full-shabad forced alignment, or IndicConformer.
+
+### Phase 2.6 — Alignment diagnostic
+**Role:** ML Scientist + ASR Integration Engineer.
+
+**Status:** next.
+
+**Goal:** determine whether `v5b_mac_diverse` improves acoustic/oracle-shabad alignment while harming blind ID, or whether the adapter is globally worse.
+
+**Approach:**
+- Build a blind-ID evidence report across `x4_pathA_surt`, `v5_mac_baseline`, and `v5b_mac_diverse`.
+- Score `v5b_mac_diverse` under oracle shabad IDs or ground-truth-shabad-only matching.
+- Probe timestamp/window integration without retraining: shorter HF windows, word timestamps, surt text with faster-whisper timestamps, or a conservative two-pass ID-lock scheme.
+- Curate OOS v1 before any new model-improvement claim.
+
+**Decision:** if oracle-shabad alignment improves but blind ID worsens, keep the adapter path and fix integration. If oracle-shabad alignment is also neutral/worse, stop scaling Whisper-small LoRA and evaluate `surt-medium` or IndicConformer.
 
 **Cost:** ~1 day engineering + OOS curation labor + one diagnostic train/eval cycle.
 
