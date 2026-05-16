@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from src.engine import EngineConfig, PredictionResult, Segment
-from src.idlock_engine import merge_segments_at_commit, predict_idlocked
+from src.idlock_engine import merge_segments_at_commit, predict_idlocked, retro_buffer_segments
 
 
 def _seg(start: float, end: float, line_idx: int, shabad_id: int = 1) -> Segment:
@@ -44,6 +44,21 @@ class TestMergeSegmentsAtCommit(unittest.TestCase):
         merge_segments_at_commit(pre, post, commit_time=30.0)
         self.assertEqual((pre[0].start, pre[0].end), (10, 35))
         self.assertEqual((post[0].start, post[0].end), (20, 40))
+
+
+class TestRetroBufferSegments(unittest.TestCase):
+    def test_uses_post_segments_from_start_time(self):
+        post = [_seg(0, 10, 1), _seg(10, 35, 2), _seg(35, 45, 3)]
+        merged = retro_buffer_segments(post, start_time=12.5)
+        self.assertEqual(
+            [(s.start, s.end, s.line_idx) for s in merged],
+            [(12.5, 35, 2), (35, 45, 3)],
+        )
+
+    def test_does_not_mutate_input_segments(self):
+        post = [_seg(0, 10, 1)]
+        retro_buffer_segments(post, start_time=3.0)
+        self.assertEqual((post[0].start, post[0].end), (0, 10))
 
 
 class TestPredictIdlocked(unittest.TestCase):
@@ -105,6 +120,42 @@ class TestPredictIdlocked(unittest.TestCase):
             [(s.start, s.end, s.line_idx) for s in result.prediction.segments],
             [(0, 35, 1), (42.5, 55, 2)],
         )
+        self.assertEqual(result.merge_policy, "commit-cutover")
+
+    def test_retro_buffered_policy_revises_from_uem_start(self):
+        def fake_predict(audio, corpora, *, shabad_id, uem_start, config):
+            if shabad_id is None:
+                return PredictionResult(
+                    segments=[_seg(10, 35, 1, shabad_id=99)],
+                    shabad_id=99,
+                    n_chunks=6,
+                    blind_id_score=88.0,
+                    blind_runner_up_score=70.0,
+                )
+            return PredictionResult(
+                segments=[_seg(5, 25, 2, shabad_id=shabad_id),
+                          _seg(25, 55, 3, shabad_id=shabad_id)],
+                shabad_id=shabad_id,
+                n_chunks=7,
+            )
+
+        with patch("src.idlock_engine.predict", side_effect=fake_predict):
+            result = predict_idlocked(
+                pathlib.Path("case.wav"),
+                {99: []},
+                uem_start=12.5,
+                pre_config=EngineConfig(blind_lookback=30.0),
+                post_config=EngineConfig(),
+                post_context="buffered",
+                merge_policy="retro-buffered",
+            )
+
+        self.assertEqual(result.commit_time, 42.5)
+        self.assertEqual(result.merge_policy, "retro-buffered")
+        self.assertEqual(
+            [(s.start, s.end, s.line_idx) for s in result.prediction.segments],
+            [(12.5, 25, 2), (25, 55, 3)],
+        )
 
     def test_strict_live_mode_makes_post_lock_engine_causal(self):
         configs: list[EngineConfig] = []
@@ -134,6 +185,10 @@ class TestPredictIdlocked(unittest.TestCase):
     def test_rejects_unknown_post_context(self):
         with self.assertRaises(ValueError):
             predict_idlocked(pathlib.Path("case.wav"), {}, post_context="future")  # type: ignore[arg-type]
+
+    def test_rejects_unknown_merge_policy(self):
+        with self.assertRaises(ValueError):
+            predict_idlocked(pathlib.Path("case.wav"), {}, merge_policy="future")  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":

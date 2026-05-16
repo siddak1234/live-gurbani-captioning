@@ -24,7 +24,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.engine import EngineConfig  # noqa: E402
-from src.idlock_engine import PostContextMode, predict_idlocked  # noqa: E402
+from src.idlock_engine import MergePolicy, PostContextMode, predict_idlocked  # noqa: E402
 
 DEFAULT_GT_DIR = REPO_ROOT.parent / "live-gurbani-captioning-benchmark-v1" / "test"
 DEFAULT_AUDIO_DIR = REPO_ROOT / "audio"
@@ -60,6 +60,7 @@ def process_one(
     pre_config: EngineConfig,
     post_config: EngineConfig,
     post_context: PostContextMode,
+    merge_policy: MergePolicy,
 ) -> bool:
     gt = json.loads(gt_path.read_text())
     video_id = gt["video_id"]
@@ -77,6 +78,7 @@ def process_one(
             pre_config=pre_config,
             post_config=post_config,
             post_context=post_context,
+            merge_policy=merge_policy,
         )
     except ValueError as exc:
         print(f"  error: {exc}", file=sys.stderr)
@@ -162,6 +164,11 @@ def main() -> int:
                         default="buffered",
                         help="buffered uses pre-lock transcript as post-lock smoother context; "
                              "strict-live makes post-lock matching ignore pre-commit chunks.")
+    parser.add_argument("--merge-policy", choices=["commit-cutover", "retro-buffered"],
+                        default="commit-cutover",
+                        help="commit-cutover preserves tentative pre-lock segments before the "
+                             "ID commit; retro-buffered lets the locked post engine revise "
+                             "the buffered window from UEM start.")
     args = parser.parse_args()
 
     corpus_dir = args.corpus_dir.resolve()
@@ -225,7 +232,8 @@ def main() -> int:
         f"(pre={args.pre_backend}:{args.pre_model}, "
         f"post={args.post_backend}:{args.post_model}, "
         f"adapter={args.post_adapter_dir}, post_context={args.post_context}, "
-        f"lookback={args.blind_lookback}s, smoother={args.smoother})",
+        f"merge_policy={args.merge_policy}, lookback={args.blind_lookback}s, "
+        f"smoother={args.smoother})",
         flush=True,
     )
     failures: list[str] = []
@@ -238,6 +246,7 @@ def main() -> int:
             pre_config=pre_config,
             post_config=post_config,
             post_context=args.post_context,  # type: ignore[arg-type]
+            merge_policy=args.merge_policy,  # type: ignore[arg-type]
         )
         if not ok:
             failures.append(gt_file.stem)

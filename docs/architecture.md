@@ -135,7 +135,14 @@ Implementation split:
 
 Phase 2.7 result: the architecture was implemented cleanly, but `v5b_idlock_runtime` scored only `75.6%`. The failure was current runtime blind-ID, not the post-lock adapter: two `kZhIA8P6xWI` starts committed to the wrong shabad. The next architecture checkpoint is Phase 2.8: recover/pin ASR reproducibility, then prototype timestamp/alignment paths before more training scale.
 
-Phase 2.8 first signal: `phase2_8_idlock_preword` scores `86.6%` by using word timestamps only for the pre-lock ID window and v5b after lock. This restores correct shabad locks but still misses the promotion gate; the remaining architecture work is post-lock alignment/timing, not more route tables. Follow-up Viterbi smoother probes scored `77.2%` and `77.1%`, confirming that generic per-chunk smoothing is not enough; the next clean architecture is full-shabad alignment with explicit loop/refrain handling.
+Phase 2.8 first signal: `phase2_8_idlock_preword` scores `86.6%` by using word timestamps only for the pre-lock ID window and v5b after lock. This restores correct shabad locks but still misses the promotion gate; the remaining architecture work is post-lock alignment/timing, not more route tables. Follow-up Viterbi smoother probes scored `77.2%` and `77.1%`, confirming that generic per-chunk smoothing is not enough.
+
+Phase 2.9's first architecture fix is a merge-policy change, not a model change:
+`phase2_9_retro_buffered` scores **88.7%** by treating pre-lock captions as
+tentative and letting the locked-shabad post engine revise the buffered window
+from `uem.start` after commit. This is generic state-based behavior and maps to
+a real live UI. It is not promoted yet because OOS is owed and
+`zOtIpxMT9hU_cold66` remains below the guardrail at `57.6%`.
 
 ## Configuration surface
 
