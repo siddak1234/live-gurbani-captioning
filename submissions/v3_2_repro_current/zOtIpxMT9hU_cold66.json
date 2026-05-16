@@ -1,0 +1,45 @@
+{
+  "video_id": "zOtIpxMT9hU",
+  "segments": [
+    {
+      "start": 205.0,
+      "end": 221.0,
+      "line_idx": 6,
+      "shabad_id": 3712,
+      "verse_id": 42922,
+      "banidb_gurmukhi": "ਸੰਤ ਜੀਵਹਿ ਜਪਿ ਪ੍ਰਾਨ ਅਧਾਰਾ ॥"
+    },
+    {
+      "start": 221.0,
+      "end": 235.0,
+      "line_idx": 5,
+      "shabad_id": 3712,
+      "verse_id": 42921,
+      "banidb_gurmukhi": "ਭਗਤ ਜਨਾ ਕਾ ਰਾਖਣਹਾਰਾ ॥"
+    },
+    {
+      "start": 235.0,
+      "end": 271.0,
+      "line_idx": 5,
+      "shabad_id": 3712,
+      "verse_id": 42921,
+      "banidb_gurmukhi": "ਭਗਤ ਜਨਾ ਕਾ ਰਾਖਣਹਾਰਾ ॥"
+    },
+    {
+      "start": 271.0,
+      "end": 277.0,
+      "line_idx": 6,
+      "shabad_id": 3712,
+      "verse_id": 42922,
+      "banidb_gurmukhi": "ਸੰਤ ਜੀਵਹਿ ਜਪਿ ਪ੍ਰਾਨ ਅਧਾਰਾ ॥"
+    },
+    {
+      "start": 277.0,
+      "end": 289.0,
+      "line_idx": 5,
+      "shabad_id": 3712,
+      "verse_id": 42921,
+      "banidb_gurmukhi": "ਭਗਤ ਜਨਾ ਕਾ ਰਾਖਣਹਾਰਾ ॥"
+    }
+  ]
+}

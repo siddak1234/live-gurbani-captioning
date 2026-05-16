@@ -75,9 +75,11 @@ If `v5b_mac_diverse` is still neutral and mostly transcript-identical to `x4_pat
 
 ## Current next step
 
-The diversity-aware pull passed, `v5b_mac_diverse` trained, and benchmark eval scored **65.6%**. This is below `x4_pathA_surt` / `v5_mac_baseline` at **74.0%**, so Phase 2.5 is a negative diagnostic. Phase 2.6 then showed the adapter is not globally worse: oracle-shabad/live0 alignment scores **87.4%** for `v5b`, compared with **85.2%** for x4/v5, and a v3.2-ID-lock proxy scores **87.1%**.
+The diversity-aware pull passed, `v5b_mac_diverse` trained, and benchmark eval scored **65.6%**. This is below `x4_pathA_surt` / `v5_mac_baseline` at **74.0%**, so Phase 2.5 is a negative diagnostic. Phase 2.6 then showed the adapter is not globally worse: oracle-shabad/live0 alignment scores **87.4%** for `v5b`, compared with **85.2%** for x4/v5, and a historical v3.2-ID-lock proxy scores **87.1%**.
 
-Do not start Phase 3 scale-up. The next step is Phase 2.7: build a real runtime ID-lock integration, then evaluate paired benchmark plus OOS v1. The execution plan is [`docs/phase2_6_plan.md`](phase2_6_plan.md).
+Phase 2.7 implemented that real runtime ID-lock integration as `src/idlock_engine.py` + `scripts/run_idlock_path.py`, but it scored only **75.6%**. The failure is localized to runtime blind-ID: two `kZhIA8P6xWI` starts commit to the wrong shabad. A second checkpoint also found that the archived v3.2 result is not currently reproducible: the documented command now scores **73.5%**, not **86.5%**.
+
+Do not start Phase 3 scale-up. The next step is Phase 2.8: recover/pin ASR reproducibility and prototype timestamp/alignment fixes before any larger LoRA run. The execution plan is [`docs/phase2_8_plan.md`](phase2_8_plan.md).
 
 Implemented helpers:
 
