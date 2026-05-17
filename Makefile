@@ -57,6 +57,7 @@ SILVER_MIN_SCORE ?= 0.9
 SILVER_SAMPLE_STRATEGY ?= round_robin_video
 SILVER_WEAK_REPORT ?= diagnostics/phase2_10_silver_weak_slices.md
 SILVER_SOURCE_AUDIT ?= diagnostics/phase2_10_silver_source_audit.md
+M4PRO_AUDIT ?= diagnostics/m4pro_compute_audit.md
 DATA_SHARDS_ARG := $(if $(DATA_SHARDS),--shards $(DATA_SHARDS),--shard $(DATA_SHARD))
 SILVER_ADAPTER_ARG := $(if $(SILVER_ADAPTER_DIR),--adapter-dir $(SILVER_ADAPTER_DIR),)
 
@@ -102,6 +103,10 @@ doctor-dev: doctor-train ## Check Python + ffmpeg + paired benchmark repo (dev m
 # Back-compat: `make doctor` still works, alias to doctor-dev (the more thorough check).
 .PHONY: doctor
 doctor: doctor-dev ## Alias for doctor-dev.
+
+.PHONY: audit-m4pro
+audit-m4pro: ## Audit Apple Silicon/MPS utilization and current compute decision.
+	$(PYTHON) scripts/audit_m4pro_compute.py --out $(M4PRO_AUDIT)
 
 # -----------------------------------------------------------------------------
 # Setup

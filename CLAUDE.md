@@ -323,6 +323,13 @@ The first pull produced 8,306 clips / 16.70 h / 19 videos / 308 shabad tokens
 with 0 video overlap versus `v5b_mac_diverse`, so it is a useful silver ASR
 generalization set while gold OOS remains pending.
 
+**M4 Pro compute checkpoint:** the 48 GB M4 Pro is healthy and has been used for
+the approved training work (`v5b_mac_diverse` peaked at ~27 GB MPS driver
+memory). Current bottleneck is not compute or data volume; it is validation
+quality. Do not pull/train all 300h or start Phase 3 solely because memory
+headroom exists. See [`docs/m4pro_compute_policy.md`](docs/m4pro_compute_policy.md)
+and run `make audit-m4pro` for a current hardware/run-card report.
+
 ### Phase 3 — Mac-scale real fine-tune
 **Role:** ML Scientist (acoustic modeling) (lead) + Optimization Engineer.
 

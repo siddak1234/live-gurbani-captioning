@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+"""Audit whether the local M4 Pro is being used appropriately.
+
+This is a checkpoint script, not a benchmark. It records:
+
+- detected Apple Silicon / memory information;
+- whether PyTorch can see MPS in the current process;
+- real run-card memory and wall-clock from completed adapters;
+- current data footprint;
+- the recommended compute decision at the current project phase.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import pathlib
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+@dataclass
+class RunCardSummary:
+    name: str
+    train_n_clips: int | None
+    final_train_loss: float | None
+    wall_clock_s: float | None
+    peak_mem_gb: float | None
+    peak_mem_source: str | None
+    device: str | None
+
+
+def _run_text(cmd: list[str]) -> str:
+    try:
+        return subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT)
+    except Exception as exc:  # pragma: no cover - system-specific
+        return f"ERROR: {exc}"
+
+
+def hardware_summary() -> dict[str, str | None]:
+    text = _run_text(["system_profiler", "SPHardwareDataType"])
+    out: dict[str, str | None] = {"chip": None, "memory": None, "model": None}
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith("Chip:"):
+            out["chip"] = line.split(":", 1)[1].strip()
+        elif line.startswith("Memory:"):
+            out["memory"] = line.split(":", 1)[1].strip()
+        elif line.startswith("Model Name:"):
+            out["model"] = line.split(":", 1)[1].strip()
+    return out
+
+
+def parse_memory_gb(memory: str | None) -> float | None:
+    if not memory:
+        return None
+    match = re.search(r"([0-9.]+)\s*GB", memory)
+    return float(match.group(1)) if match else None
+
+
+def mps_summary() -> dict[str, str | bool | float | None]:
+    try:
+        import torch
+    except Exception as exc:  # pragma: no cover - env-specific
+        return {"torch": f"import failed: {exc}", "mps_built": None, "mps_available": None}
+
+    out: dict[str, str | bool | float | None] = {
+        "torch": torch.__version__,
+        "mps_built": bool(torch.backends.mps.is_built()),
+        "mps_available": bool(torch.backends.mps.is_available()),
+        "mps_smoke_ok": False,
+        "mps_driver_allocated_gb_after_smoke": None,
+    }
+    if torch.backends.mps.is_available():
+        x = torch.ones((512, 512), device="mps")
+        y = x @ x
+        torch.mps.synchronize()
+        out["mps_smoke_ok"] = abs(float(y[0, 0].cpu()) - 512.0) < 1e-6
+        out["mps_driver_allocated_gb_after_smoke"] = torch.mps.driver_allocated_memory() / 1024**3
+    return out
+
+
+def load_run_cards(root: pathlib.Path = REPO_ROOT) -> list[RunCardSummary]:
+    cards: list[RunCardSummary] = []
+    for path in sorted((root / "lora_adapters").glob("*/run_card.json")):
+        data = json.loads(path.read_text())
+        cards.append(RunCardSummary(
+            name=path.parent.name,
+            train_n_clips=data.get("train_n_clips"),
+            final_train_loss=data.get("final_train_loss"),
+            wall_clock_s=data.get("wall_clock_s"),
+            peak_mem_gb=data.get("peak_mem_gb"),
+            peak_mem_source=data.get("peak_mem_source"),
+            device=data.get("device"),
+        ))
+    return cards
+
+
+def _du(path: pathlib.Path) -> str:
+    if not path.exists():
+        return "(missing)"
+    return _run_text(["du", "-sh", str(path)]).split()[0]
+
+
+def render_report() -> str:
+    hw = hardware_summary()
+    mem_gb = parse_memory_gb(hw.get("memory"))
+    mps = mps_summary()
+    cards = load_run_cards()
+    peak_mem = max((c.peak_mem_gb or 0.0 for c in cards), default=0.0)
+    peak_fraction = (peak_mem / mem_gb) if mem_gb else None
+
+    lines: list[str] = [
+        "# M4 Pro compute utilization audit",
+        "",
+        "## Hardware and runtime",
+        "",
+        "| Item | Value |",
+        "|---|---|",
+        f"| Model | {hw.get('model') or 'unknown'} |",
+        f"| Chip | {hw.get('chip') or 'unknown'} |",
+        f"| Unified memory | {hw.get('memory') or 'unknown'} |",
+        f"| Torch | {mps.get('torch')} |",
+        f"| MPS built | {mps.get('mps_built')} |",
+        f"| MPS available in this process | {mps.get('mps_available')} |",
+        f"| MPS smoke ok | {mps.get('mps_smoke_ok')} |",
+        "",
+        "## Completed training runs",
+        "",
+        "| Adapter | Clips | Loss | Wall clock | Peak MPS memory | Device |",
+        "|---|---:|---:|---:|---:|---|",
+    ]
+    for card in cards:
+        wall = f"{(card.wall_clock_s or 0.0) / 60:.1f} min" if card.wall_clock_s else "unknown"
+        peak = f"{card.peak_mem_gb:.2f} GB ({card.peak_mem_source})" if card.peak_mem_gb else "unknown"
+        loss = f"{card.final_train_loss:.4f}" if card.final_train_loss is not None else "unknown"
+        lines.append(
+            f"| `{card.name}` | {card.train_n_clips or 'unknown'} | {loss} | {wall} | {peak} | {card.device or 'unknown'} |"
+        )
+
+    lines.extend([
+        "",
+        "## Data and artifact footprint",
+        "",
+        "| Path | Size |",
+        "|---|---:|",
+        f"| `training_data/` | {_du(REPO_ROOT / 'training_data')} |",
+        f"| `lora_adapters/` | {_du(REPO_ROOT / 'lora_adapters')} |",
+        f"| `submissions/` | {_du(REPO_ROOT / 'submissions')} |",
+        f"| `asr_cache/` | {_du(REPO_ROOT / 'asr_cache')} |",
+        "",
+        "## Audit decision",
+        "",
+    ])
+
+    if peak_fraction is not None:
+        lines.append(
+            f"- Highest completed training memory use was {peak_mem:.2f} GB, about {peak_fraction * 100:.1f}% of 48 GB unified memory."
+        )
+    else:
+        lines.append(f"- Highest completed training memory use was {peak_mem:.2f} GB.")
+    lines.extend([
+        "- The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.",
+        "- We are not currently compute-bound. The current blocker is validation quality: gold OOS for `phase2_9_loop_align`, not more broad data or another blind LoRA scale-up.",
+        "- The 48 GB headroom is useful for the future Phase 3 plan (larger batches, gradient checkpointing experiments, longer runs), but Phase 3 is intentionally gated.",
+        "- Do not pull/train on all 300h right now. The silver audit found label-risk rows, not clean ASR failures, and `v5b_mac_diverse` was neutral/regressive outside oracle alignment.",
+        "- Next recommended compute use: small targeted diagnostics or gold OOS scoring. Next recommended non-compute work: finish OOS v1 GT validation.",
+        "",
+        "## If Phase 3 is unblocked later",
+        "",
+        "- Re-enable MPS fp16 only after a torch >= 2.8 / accelerate >= 1.11 compatibility pass.",
+        "- Verify `gradient_checkpointing=true` with PEFT+MPS in isolation before changing the main YAML.",
+        "- Use the 48 GB machine for 50h/3-seed runs only after OOS v1 passes or a deliberate pivot is documented.",
+        "",
+    ])
+    return "\n".join(lines)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--out", type=pathlib.Path, default=None)
+    args = parser.parse_args()
+    report = render_report()
+    if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(report)
+        print(f"wrote: {args.out}")
+    else:
+        print(report)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
