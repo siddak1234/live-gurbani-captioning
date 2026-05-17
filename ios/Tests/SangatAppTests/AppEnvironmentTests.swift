@@ -40,21 +40,15 @@ final class AppEnvironmentTests: XCTestCase {
         XCTAssertEqual(env.preferences.mode, .sevadar)
     }
 
-    func testOnboardingFlagIsSessionOnly() {
-        // The Welcome screen is intentionally session-only — every cold
-        // start shows it again. Setting env.hasCompletedOnboarding must
-        // NOT write through to Preferences (that would re-introduce
-        // persistence). When M5.4's 4-card onboarding lands, this test
-        // flips to assert persistence again.
+    func testOnboardingFlagPersists() {
+        // M5.4 re-introduces persistence: completing onboarding (which now
+        // asks for mic permission and picks a role) must survive cold
+        // starts. The brief session-only window from `b63bd38` was a
+        // stopgap for the M5.1 placeholder.
         let env = AppEnvironment.preview(hasCompletedOnboarding: false)
         XCTAssertFalse(env.hasCompletedOnboarding)
-        XCTAssertFalse(env.preferences.hasCompletedOnboarding)
         env.hasCompletedOnboarding = true
-        XCTAssertTrue(env.hasCompletedOnboarding)
-        XCTAssertFalse(
-            env.preferences.hasCompletedOnboarding,
-            "Welcome flag must remain session-only until M5.4."
-        )
+        XCTAssertTrue(env.preferences.hasCompletedOnboarding)
     }
 
     func testReadingLayoutPersists() {

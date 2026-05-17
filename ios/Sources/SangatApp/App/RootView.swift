@@ -29,6 +29,12 @@ public struct RootView: View {
     @State private var env: AppEnvironment
     @State private var showSettings: Bool = false
 
+    /// Per-session gate flipped by the user tapping Begin on
+    /// `SessionStartView`. Resets to false on every cold start since
+    /// it's plain `@State`, which is exactly the behavior we want:
+    /// every cold start lands on Let's Begin before the Listen page.
+    @State private var didStartSession: Bool = false
+
     public init(env: AppEnvironment? = nil) {
         _env = State(initialValue: env ?? AppEnvironment.production())
     }
@@ -48,8 +54,9 @@ public struct RootView: View {
             // Top chrome row — Back (when running) + Settings gear. Lives
             // in the safe-area inset so the reading view's content always
             // sits below the chrome and the meta header never collides
-            // with the corner icons. The Welcome screen has no chrome.
-            if env.hasCompletedOnboarding {
+            // with the corner icons. Onboarding + Let's Begin are
+            // deliberately chrome-free to keep those moments gentle.
+            if env.hasCompletedOnboarding && didStartSession {
                 topChromeRow
             }
         }
@@ -76,7 +83,15 @@ public struct RootView: View {
     @ViewBuilder
     private var currentScreen: some View {
         if !env.hasCompletedOnboarding {
-            OnboardingPlaceholderView()
+            OnboardingFlow()
+        } else if !didStartSession {
+            // "Let's Begin" — per-session entry screen shown on every
+            // cold start once first-time onboarding has been completed.
+            // Tapping Begin flips `didStartSession` to true for the
+            // rest of this app process lifetime.
+            SessionStartView {
+                didStartSession = true
+            }
         } else if !env.captionModel.isRunning {
             IdleView()
         } else {
@@ -142,47 +157,6 @@ public struct RootView: View {
             AppLogger.app.error(
                 "RootView: caption source prepare failed — \(error.localizedDescription, privacy: .public)"
             )
-        }
-    }
-}
-
-// MARK: - Onboarding placeholder (replaced by M5.4)
-
-private struct OnboardingPlaceholderView: View {
-
-    @Environment(AppEnvironment.self) private var env
-    @Environment(\.themeTokens) private var tokens
-
-    var body: some View {
-        VStack(spacing: tokens.spacing.lg) {
-            Spacer()
-
-            Text("ਸ੍ਰਵਣ ਕਰੋ")
-                .font(tokens.type.gurmukhiHero)
-                .foregroundStyle(tokens.colors.ink)
-                .accessibilityAddTraits(.isHeader)
-
-            Text("Live Gurbani")
-                .font(tokens.type.sansCaps)
-                .tracking(0.8)
-                .foregroundStyle(tokens.colors.ink3)
-
-            Spacer()
-
-            Button {
-                env.haptics.play(.success)
-                env.hasCompletedOnboarding = true
-            } label: {
-                Text("Begin")
-                    .font(tokens.type.sans.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, tokens.spacing.md)
-                    .background(tokens.colors.ink, in: Capsule())
-                    .foregroundStyle(tokens.colors.bg)
-            }
-            .padding(.horizontal, tokens.spacing.edge)
-            .padding(.bottom, tokens.spacing.lg)
-            .accessibilityIdentifier("onboarding.begin")
         }
     }
 }
