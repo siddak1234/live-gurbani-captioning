@@ -155,3 +155,24 @@ At this checkpoint, these five shabads must stay outside training so they can
 tell us whether the 91.2% paired-benchmark architecture generalizes. If OOS v1
 passes, then scale training/evaluation; if it fails, diagnose by slice before
 spending the M4 Pro budget on Phase 3.
+
+## Phase 2.10 — automated silver OOS bridge
+
+The user correctly challenged the manual labeling bottleneck: public labeled
+data should be used before asking for more human work. The updated plan is
+[`docs/phase2_10_silver_oos_plan.md`](phase2_10_silver_oos_plan.md).
+
+Decision:
+
+- Keep `oos_v1` as the small **gold** OOS promotion gate.
+- Add `silver_kirtan_v2` as an automated **silver** OOS diagnostic from online
+  timestamped line-level data.
+- Use silver to compare ASR/canonical-text behavior across `surt-small-v3`,
+  `v5b_mac_diverse`, and baselines.
+- Do not treat silver as production promotion unless it is reconstructed into
+  full-shabad benchmark-shaped cases with verified canonical IDs.
+
+Current access note: the Hugging Face page for
+`surindersinghssj/gurbani-kirtan-dataset-v2` is visible, but the local HF API
+client returned 401 on 2026-05-16. Resolve access first; if blocked, construct a
+held-out silver split from the existing 300h canonical dataset.

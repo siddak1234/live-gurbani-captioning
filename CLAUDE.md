@@ -310,6 +310,13 @@ machine triage of the current drafts is in
 Do not train on these OOS recordings; they are the variance check for whether
 the 91.2% paired-benchmark architecture generalizes.
 
+**Silver-data checkpoint:** online timestamped kirtan labels do exist. Add
+Phase 2.10 as an automated silver-OOS bridge using
+`surindersinghssj/gurbani-kirtan-dataset-v2`; plan in
+[`docs/phase2_10_silver_oos_plan.md`](docs/phase2_10_silver_oos_plan.md). This
+lets us continue ASR/canonical-text diagnostics without waiting on all gold
+labels, but it does not replace the hand-corrected OOS promotion gate.
+
 ### Phase 3 — Mac-scale real fine-tune
 **Role:** ML Scientist (acoustic modeling) (lead) + Optimization Engineer.
 
