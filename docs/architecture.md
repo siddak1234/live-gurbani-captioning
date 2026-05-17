@@ -153,6 +153,15 @@ benchmark shabad ID, case name, or route table enters the rule. It clears the
 paired score and catastrophic-case guardrails, but OOS remains mandatory before
 promotion.
 
+Phase 2.10/2.11 exposes the next architecture gap: the lock policy itself is
+candidate-set sensitive. The assisted OOS diagnostic scored **29.5%** because
+only 2/5 OOS shabads locked correctly. The correct OOS corpora were present, so
+this is not a data-fetch issue. Two cases committed with zero lock evidence at
+the fixed 30s window; another confused a similar high-scoring shabad. The next
+Layer 2 change must therefore make shabad commit confidence-aware and
+delayable. A production-shaped streaming engine may emit tentative captions
+while waiting, but it must not commit a final shabad on all-zero evidence.
+
 ## Configuration surface
 
 Per-experiment settings live in `submissions/<run>/notes.md` (frozen historical record per CLAUDE.md convention). Per-pipeline reusable settings live in `configs/` (planned, M0.3 + M1.1): training hyperparameters, export quantization profiles, dataset registry.

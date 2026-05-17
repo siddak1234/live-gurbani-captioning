@@ -183,6 +183,30 @@ That path writes generated labels to `eval_data/oos_v1/assisted_test/` with
 gold review is likely worth finishing and whether Phase 3 scale-up is plausible;
 do not report it as the final OOS score.
 
+Assisted-OOS diagnostic result, 2026-05-17:
+
+- `make eval-oos-loop-align-assisted` completed.
+- Overall: **29.5%** frame accuracy (`260/880`) against machine-assisted labels.
+- Shabad locks: **2/5** correct.
+- Correct locks: case_002 (`906`) and case_003 (`2600`).
+- Wrong locks: case_001 (`2333 -> 1821`), case_004 (`4892 -> 906`), case_005
+  (`3297 -> 906`).
+
+This is a diagnostic failure, not a model-training failure. The correct OOS
+shabad corpora are present in `corpus_cache/`, so the failure is the blind
+shabad-lock policy under a broader candidate set. cases 004/005 had zero lock
+evidence at the fixed 30s commit point (`top=0.0`, `runner_up=0.0`) and still
+committed to an arbitrary candidate. case_001 shows shared-hook ambiguity: the
+current `chunk_vote` lock ties or confuses similar high-scoring lines across
+candidate shabads.
+
+Decision: do **not** start Phase 3 / all-300h training yet. The next phase is
+[`docs/phase2_11_shabad_lock_plan.md`](phase2_11_shabad_lock_plan.md): build a
+repeatable shabad-lock audit, add a no-zero-evidence commit rule, and prototype
+a confidence-gated delayed lock policy. This keeps the architecture honest:
+high paired-benchmark alignment is not useful if the runtime commits the wrong
+shabad outside the benchmark.
+
 Expert checkpoint on "more shabad variance": yes, the current paired benchmark
 is too small to judge production readiness, but the immediate fix is **held-out
 OOS validation**, not training on these five. The training path already has

@@ -51,6 +51,8 @@ OOS_TEST_DIR   ?= eval_data/oos_v1/test
 OOS_ASSISTED_TEST_DIR ?= eval_data/oos_v1/assisted_test
 OOS_REVIEW_DIR ?= eval_data/oos_v1/review
 OOS_ASSIST_REPORT ?= diagnostics/oos_v1_assisted_crosscheck.md
+OOS_LOCK_AUDIT ?= diagnostics/phase2_11_oos_assisted_lock_audit.md
+PAIRED_LOCK_AUDIT ?= diagnostics/phase2_11_paired_lock_audit.md
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
 SILVER_MODEL    ?= surindersinghssj/surt-small-v3
@@ -315,6 +317,20 @@ eval-oos-loop-align-assisted: prepare-oos-assisted ## Diagnostic OOS eval agains
 	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
 		--pred submissions/oos_v1_assisted_phase2_9_loop_align \
 		--gt   $(OOS_ASSISTED_TEST_DIR)
+
+.PHONY: audit-oos-lock-assisted
+audit-oos-lock-assisted: prepare-oos-assisted ## Audit OOS shabad-lock variants from cached ASR (diagnostic).
+	$(PYTHON) scripts/audit_shabad_lock.py \
+		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--asr-tag medium_word \
+		--out $(OOS_LOCK_AUDIT)
+
+.PHONY: audit-paired-lock
+audit-paired-lock: ## Audit paired-benchmark shabad-lock variants using the current corpus cache.
+	$(PYTHON) scripts/audit_shabad_lock.py \
+		--gt-dir $(BENCHMARK_DIR)/test \
+		--asr-tag medium_word \
+		--out $(PAIRED_LOCK_AUDIT)
 
 .PHONY: eval-silver-300h
 eval-silver-300h: data-silver-300h ## Silver ASR text eval on held-out 300h canonical shards (not promotion-grade).

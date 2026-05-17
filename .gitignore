@@ -27,6 +27,7 @@ eval_data/*/audio/*
 eval_data/*/review/
 eval_data/*/assisted_test/
 diagnostics/oos_v1_assisted_crosscheck.md
+submissions/oos_v1_assisted_*/
 
 # Caches
 .cache/
