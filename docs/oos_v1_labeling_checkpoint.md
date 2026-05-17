@@ -5,6 +5,9 @@ paired benchmark score for `phase2_9_loop_align` is promising (`91.2%`), but it
 is still only four shabads. These five cases are the first independent
 generalization check before Phase 3 scale-up or any promotion claim.
 
+For the machine triage of the current draft labels, see
+[`docs/oos_v1_machine_audit.md`](oos_v1_machine_audit.md).
+
 ## Expert decision
 
 Use these cases as **held-out evaluation**, not training data.
@@ -47,6 +50,9 @@ Decision rule:
 
 Recommended order is representatives first, then stress cases. That gives a
 quick read on whether failures are broad or concentrated in the harder slices.
+The machine audit refines the review order slightly: start with `case_002`
+because its expected opening line is absent from the draft, then review
+`case_003` / `case_004` for large gaps and backward jumps.
 
 ## Hand-correction protocol
 
