@@ -156,7 +156,7 @@ def render_index(
 </head>
 <body>
   <h1>OOS v1 GT Review Pack</h1>
-  <p>This page is a labeling aid. It does not create ground truth. Correct the JSON files manually under <code>eval_data/oos_v1/test/</code>, then run <code>make validate-oos-gt</code>.</p>
+  <p>This page is a labeling aid. It does not create ground truth. Run <code>make prepare-oos-review</code> to seed editable working copies under <code>eval_data/oos_v1/test/</code>, correct them against the audio, then run <code>make validate-oos-gt</code>.</p>
   <p>Current goal: prove whether <code>phase2_9_loop_align</code> generalizes beyond the four-shabad paired benchmark before promoting or scaling Phase 3.</p>
   {"".join(sections)}
   <script>

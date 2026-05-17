@@ -122,10 +122,12 @@ On the current dev Mac, Python 3.12, ffmpeg, yt-dlp, torch, transformers, PEFT, 
 5. **Review pack:** run `make oos-review-pack` and open
    `eval_data/oos_v1/review/index.html`. The page links the local clipped audio
    to each draft segment and shows the exact save path for the corrected GT.
-6. **Manual review:** open each draft JSON in your editor, listen along,
-   correct line boundaries, verify every `verse_id` / `banidb_gurmukhi`, add
-   `total_duration`, and set `curation_status: HUMAN_CORRECTED_V1`. Save the
-   corrected file under `eval_data/oos_v1/test/`.
+6. **Manual review workspace:** run `make prepare-oos-review` to seed editable
+   working files under `eval_data/oos_v1/test/`. They are marked
+   `NEEDS_HUMAN_CORRECTION` so scoring remains blocked. Open each working JSON
+   in your editor, listen along, correct line boundaries, verify every
+   `verse_id` / `banidb_gurmukhi`, add or fix `total_duration` as needed, and
+   set `curation_status: HUMAN_CORRECTED_V1` only after review.
 7. **Validate GT:** run `make validate-oos-gt`. This fails if any case is
    missing, still marked as a draft, missing canonical fields, or duration /
    segment boundaries are inconsistent with the local clipped audio.
