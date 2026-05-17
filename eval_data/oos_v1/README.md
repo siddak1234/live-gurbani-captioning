@@ -136,6 +136,8 @@ The script invokes the paired benchmark's `eval.py` as a subprocess — same sco
 Below 5 cases the numbers are too noisy. Above 10 the curation cost outweighs the marginal signal.
 
 For the selection rule (3 representative + 2 stress), candidate pool, labor estimate, and audit-style failure modes, see the curation playbook: [`docs/oos_v1_curation.md`](../../docs/oos_v1_curation.md).
+For the current five-case labeling queue, use the checkpoint worksheet:
+[`docs/oos_v1_labeling_checkpoint.md`](../../docs/oos_v1_labeling_checkpoint.md).
 
 ## Holdout discipline
 

@@ -138,7 +138,9 @@ Current next step: run `make oos-review-pack`, open
 `eval_data/oos_v1/test/case_001.json` through `case_005.json` against the
 fetched audio. Set `curation_status: HUMAN_CORRECTED_V1`, then run
 `make validate-oos-gt`. Do **not** claim an OOS score until those GT files are
-corrected, validated, and committed. Once they exist, run:
+corrected, validated, and committed. The step-by-step labeling checkpoint is
+[`docs/oos_v1_labeling_checkpoint.md`](oos_v1_labeling_checkpoint.md). Once
+they exist, run:
 
 ```bash
 make eval-oos-loop-align
