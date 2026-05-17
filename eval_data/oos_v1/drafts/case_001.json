@@ -1,6 +1,7 @@
 {
   "video_id": "case_001",
   "shabad_id": 2333,
+  "total_duration": 180.0,
   "uem": {
     "start": 0.0,
     "end": 180.0

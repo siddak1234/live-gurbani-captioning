@@ -131,6 +131,13 @@ bootstrap-oos-gt: ## Generate draft OOS GT JSONs under eval_data/oos_v1/drafts/ 
 		--cases $(OOS_CASES) \
 		--draft-dir $(OOS_DRAFT_DIR)
 
+.PHONY: validate-oos-gt
+validate-oos-gt: ## Validate hand-corrected OOS GT JSONs before scoring.
+	$(PYTHON) scripts/validate_oos_gt.py \
+		--cases $(OOS_CASES) \
+		--gt-dir eval_data/oos_v1/test \
+		--audio-dir eval_data/oos_v1/audio
+
 # -----------------------------------------------------------------------------
 # Data
 # -----------------------------------------------------------------------------
@@ -222,7 +229,7 @@ eval-oos: ## Out-of-set eval — the honest accuracy number.
 		--engine-config $(INFER_CFG)
 
 .PHONY: eval-oos-loop-align
-eval-oos-loop-align: ## OOS eval for current best runtime: Phase 2.9 loop-align ID-lock.
+eval-oos-loop-align: validate-oos-gt ## OOS eval for current best runtime: Phase 2.9 loop-align ID-lock.
 	HF_WINDOW_SECONDS=10 $(PYTHON) scripts/run_idlock_path.py \
 		--gt-dir eval_data/oos_v1/test \
 		--audio-dir eval_data/oos_v1/audio \
