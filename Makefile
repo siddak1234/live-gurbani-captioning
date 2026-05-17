@@ -47,6 +47,7 @@ OOS_URL        ?=
 OOS_CLIP       ?=
 OOS_CASES      ?= eval_data/oos_v1/cases.yaml
 OOS_DRAFT_DIR  ?= eval_data/oos_v1/drafts
+OOS_REVIEW_DIR ?= eval_data/oos_v1/review
 DATA_SHARDS_ARG := $(if $(DATA_SHARDS),--shards $(DATA_SHARDS),--shard $(DATA_SHARD))
 
 # -----------------------------------------------------------------------------
@@ -137,6 +138,13 @@ validate-oos-gt: ## Validate hand-corrected OOS GT JSONs before scoring.
 		--cases $(OOS_CASES) \
 		--gt-dir eval_data/oos_v1/test \
 		--audio-dir eval_data/oos_v1/audio
+
+.PHONY: oos-review-pack
+oos-review-pack: ## Build local HTML aid for hand-correcting OOS GT drafts.
+	$(PYTHON) scripts/render_oos_review.py \
+		--cases $(OOS_CASES) \
+		--draft-dir $(OOS_DRAFT_DIR) \
+		--out-dir $(OOS_REVIEW_DIR)
 
 # -----------------------------------------------------------------------------
 # Data

@@ -24,6 +24,7 @@ env/
 # OOS eval audio — gitignore raw recordings, keep GT JSONs in test/
 eval_data/*/audio/*
 !eval_data/*/audio/.gitkeep
+eval_data/*/review/
 
 # Caches
 .cache/

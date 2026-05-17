@@ -116,17 +116,20 @@ On the current dev Mac, Python 3.12, ffmpeg, yt-dlp, torch, transformers, PEFT, 
    the 4 paired-benchmark shabads; OOS needs explicit additions.
 3. **Fetch audio:** use `make fetch-oos-audio OOS_URL='case_001=https://...' OOS_CLIP='case_001=30-210'` for each selected recording. This writes `eval_data/oos_v1/audio/case_001_16k.wav`. Prefer 60-180s windows so v1 remains cheap to label and cheap to score.
 4. **After audio fetch:** bootstrap draft GT JSONs via `make bootstrap-oos-gt`. Drafts land in `eval_data/oos_v1/drafts/` and are explicitly marked `DRAFT_FROM_ORACLE_ENGINE__HAND_CORRECT_BEFORE_COMMIT`.
-5. **Manual review:** open each draft JSON in your editor, listen along,
+5. **Review pack:** run `make oos-review-pack` and open
+   `eval_data/oos_v1/review/index.html`. The page links the local clipped audio
+   to each draft segment and shows the exact save path for the corrected GT.
+6. **Manual review:** open each draft JSON in your editor, listen along,
    correct line boundaries, verify every `verse_id` / `banidb_gurmukhi`, add
    `total_duration`, and set `curation_status: HUMAN_CORRECTED_V1`. Save the
    corrected file under `eval_data/oos_v1/test/`.
-6. **Validate GT:** run `make validate-oos-gt`. This fails if any case is
+7. **Validate GT:** run `make validate-oos-gt`. This fails if any case is
    missing, still marked as a draft, missing canonical fields, or duration /
    segment boundaries are inconsistent with the local clipped audio.
-7. **Lock in:** add each recording's `video_id` (or equivalent source identifier) to `configs/datasets.yaml` → `holdout.video_ids` so it's never accidentally pulled into training.
-8. **Baseline:** run `eval_oos.py --engine-config configs/inference/v3_2.yaml` against the curated pack. The v3.2 score is the v0 OOS number. Phase 2 fine-tunes must beat this on average AND not regress catastrophically on any single case.
+8. **Lock in:** add each recording's `video_id` (or equivalent source identifier) to `configs/datasets.yaml` → `holdout.video_ids` so it's never accidentally pulled into training.
+9. **Baseline:** run `eval_oos.py --engine-config configs/inference/v3_2.yaml` against the curated pack. The v3.2 score is the v0 OOS number. Phase 2 fine-tunes must beat this on average AND not regress catastrophically on any single case.
 
-9. **Current architecture score:** run `make eval-oos-loop-align`. This scores
+10. **Current architecture score:** run `make eval-oos-loop-align`. This scores
    the same runtime stack as `phase2_9_loop_align` (word-timestamp ID-lock,
    retro-buffered finalization, simran-aware null alignment) against the curated
    OOS pack. This is the required production-promotion gate for the current

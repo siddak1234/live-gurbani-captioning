@@ -82,7 +82,12 @@ Required fields: `video_id`, `shabad_id`, `segments[*].{start, end, line_idx}`. 
      ```bash
      make bootstrap-oos-gt
      ```
-   - Open the resulting draft JSON in your editor.
+   - Build the local review page:
+     ```bash
+     make oos-review-pack
+     ```
+   - Open `eval_data/oos_v1/review/index.html` in a browser and the matching
+     draft JSON in your editor.
    - Hand-correct the line boundaries against the audio. This takes ~10-15 minutes per recording.
    - Remove the draft marker by setting `curation_status` to `HUMAN_CORRECTED_V1`.
    - Make sure the file includes `total_duration`, `uem`, and every segment's
