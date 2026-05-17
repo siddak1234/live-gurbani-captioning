@@ -168,7 +168,9 @@ def main() -> int:
     parser.add_argument("--min-lock-score", type=float, default=0.0,
                         help="Minimum blind-ID top score before committing prior to the final "
                              "lock window. Use >0 to avoid zero-evidence commits.")
-    parser.add_argument("--blind-aggregate", default="chunk_vote")
+    parser.add_argument("--blind-aggregate", default="chunk_vote",
+                        help='Blind lock aggregate: "chunk_vote", "tfidf", "topk:N", '
+                             'or experimental "fusion:tfidf_60+0.5*chunk_vote_90".')
     parser.add_argument("--blind-ratio", default="WRatio")
     parser.add_argument("--blind-blend", default="")
     parser.add_argument("--pre-word-timestamps", action="store_true",

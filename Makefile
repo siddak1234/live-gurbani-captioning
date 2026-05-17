@@ -54,6 +54,8 @@ OOS_ASSIST_REPORT ?= diagnostics/oos_v1_assisted_crosscheck.md
 OOS_LOCK_AUDIT ?= diagnostics/phase2_11_oos_assisted_lock_audit.md
 PAIRED_LOCK_AUDIT ?= diagnostics/phase2_11_paired_lock_audit.md
 LOCK_POLICY_REPORT ?= diagnostics/phase2_12_silver_lock_policy.md
+LOCK_FUSION_REPORT ?= diagnostics/phase2_13_lock_evidence_fusion.md
+LOCK_FUSION_AGG ?= fusion:tfidf_60+0.5*chunk_vote_90
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
 SILVER_MODEL    ?= surindersinghssj/surt-small-v3
@@ -319,6 +321,40 @@ eval-oos-loop-align-assisted: prepare-oos-assisted ## Diagnostic OOS eval agains
 		--pred submissions/oos_v1_assisted_phase2_9_loop_align \
 		--gt   $(OOS_ASSISTED_TEST_DIR)
 
+.PHONY: eval-oos-lock-fusion-assisted
+eval-oos-lock-fusion-assisted: prepare-oos-assisted ## Diagnostic OOS eval for Phase 2.13 fusion lock (silver labels).
+	HF_WINDOW_SECONDS=10 $(PYTHON) scripts/run_idlock_path.py \
+		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--audio-dir eval_data/oos_v1/audio \
+		--out-dir submissions/oos_v1_assisted_phase2_13_lock_fusion \
+		--post-adapter-dir lora_adapters/v5b_mac_diverse \
+		--post-context buffered \
+		--merge-policy retro-buffered \
+		--pre-word-timestamps \
+		--smoother loop_align \
+		--blind-lookback 90 \
+		--blind-aggregate "$(LOCK_FUSION_AGG)"
+	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
+		--pred submissions/oos_v1_assisted_phase2_13_lock_fusion \
+		--gt   $(OOS_ASSISTED_TEST_DIR)
+
+.PHONY: eval-paired-lock-fusion
+eval-paired-lock-fusion: ## Paired diagnostic eval for Phase 2.13 fusion lock.
+	HF_WINDOW_SECONDS=10 $(PYTHON) scripts/run_idlock_path.py \
+		--gt-dir $(BENCHMARK_DIR)/test \
+		--audio-dir audio \
+		--out-dir submissions/phase2_13_lock_fusion_paired \
+		--post-adapter-dir lora_adapters/v5b_mac_diverse \
+		--post-context buffered \
+		--merge-policy retro-buffered \
+		--pre-word-timestamps \
+		--smoother loop_align \
+		--blind-lookback 90 \
+		--blind-aggregate "$(LOCK_FUSION_AGG)"
+	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
+		--pred submissions/phase2_13_lock_fusion_paired \
+		--gt   $(BENCHMARK_DIR)/test
+
 .PHONY: audit-oos-lock-assisted
 audit-oos-lock-assisted: prepare-oos-assisted ## Audit OOS shabad-lock variants from cached ASR (diagnostic).
 	$(PYTHON) scripts/audit_shabad_lock.py \
@@ -340,6 +376,14 @@ tune-shabad-lock-policy: prepare-oos-assisted ## Tune lock policy on paired + as
 		--oos-gt-dir $(OOS_ASSISTED_TEST_DIR) \
 		--asr-tag medium_word \
 		--out $(LOCK_POLICY_REPORT)
+
+.PHONY: tune-lock-evidence-fusion
+tune-lock-evidence-fusion: prepare-oos-assisted ## Tune sparse lock-evidence fusion on paired + assisted-OOS silver labels.
+	$(PYTHON) scripts/tune_lock_evidence_fusion.py \
+		--paired-gt-dir $(BENCHMARK_DIR)/test \
+		--oos-gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--asr-tag medium_word \
+		--out $(LOCK_FUSION_REPORT)
 
 .PHONY: eval-silver-300h
 eval-silver-300h: data-silver-300h ## Silver ASR text eval on held-out 300h canonical shards (not promotion-grade).

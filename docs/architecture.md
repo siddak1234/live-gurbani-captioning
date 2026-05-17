@@ -168,8 +168,12 @@ Phase 2.12 then used paired labels + machine-assisted OOS labels as a silver
 learning set for lock-policy tuning. The best macro rule (`chunk_vote@45s`) is
 only 9/12 paired and 3/5 assisted OOS; the best OOS-only rule gets 5/5 assisted
 OOS but collapses paired to 3/12. That rules out a simple scorer/window switch.
-The next clean Layer 2 direction is candidate retrieval / lock-evidence
-modeling, while keeping the lock policy generic and opt-in.
+Phase 2.13 implements sparse lock-evidence fusion as an opt-in aggregate
+(`fusion:tfidf_60+0.5*chunk_vote_90`). It raises assisted OOS to 59.9% and
+5/5 locks, but paired drops to 79.7% because two `zOtIpxMT9hU` starts lock to
+shabad `4892`. This confirms the next clean Layer 2 direction is candidate
+retrieval / high-confidence false-candidate disambiguation, while keeping the
+policy generic and opt-in.
 
 ## Configuration surface
 

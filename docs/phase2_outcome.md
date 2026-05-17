@@ -244,6 +244,23 @@ candidate retrieval / lock-evidence modeling. Broad 300h training remains
 deferred because the current blocker is wrong shabad commitment, not raw ASR
 capacity.
 
+Phase 2.13 implemented that candidate-evidence step:
+
+- Plan: [`docs/phase2_13_candidate_retrieval_plan.md`](phase2_13_candidate_retrieval_plan.md)
+- Report: `diagnostics/phase2_13_lock_evidence_fusion.md`
+- Best fusion: `fusion:tfidf_60+0.5*chunk_vote_90`
+- Silver lock diagnostic: **9/12** paired, **5/5** assisted OOS, **87.5%**
+  macro lock objective
+- Full assisted-OOS frame diagnostic: **59.9%** with **5/5** locks
+- Full paired diagnostic: **79.7%**, with failures concentrated in
+  `zOtIpxMT9hU` / `zOtIpxMT9hU_cold33` locking to shabad `4892`
+
+Decision: Phase 2.13 confirms evidence fusion is the right learning direction
+and materially improves OOS lock behavior, but it is not a promotion candidate.
+The remaining architecture problem is high-confidence false-candidate
+disambiguation, especially `3712` vs `4892`, not M4 Pro utilization or lack of
+300h training data.
+
 Expert checkpoint on "more shabad variance": yes, the current paired benchmark
 is too small to judge production readiness, but the immediate fix is **held-out
 OOS validation**, not training on these five. The training path already has

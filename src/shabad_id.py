@@ -9,6 +9,8 @@ Two strategies:
     the candidate set, so distinctive tokens dominate and refrain/common
     tokens carry near-zero weight. The right tool when the candidate set
     contains shabads with overlapping superficial vocabulary.
+  - `aggregate="fusion:<spec>"`: experimental Phase 2.13 candidate-evidence
+    fusion. Example: `fusion:tfidf_60+0.5*chunk_vote_90`.
 """
 
 from __future__ import annotations
@@ -106,6 +108,146 @@ class ShabadDocTfidf:
         }
 
 
+def _parse_fusion_term(raw: str) -> tuple[float, str, float]:
+    """Parse ``[weight*]feature_window`` for experimental fusion aggregates."""
+    term = raw.strip()
+    if "*" in term:
+        weight_s, feature = term.split("*", 1)
+        weight = float(weight_s.strip())
+    else:
+        weight = 1.0
+        feature = term
+    feature = feature.strip()
+    if "_" not in feature:
+        raise ValueError(f"bad fusion term {raw!r}; expected feature_window")
+    name, window_s = feature.rsplit("_", 1)
+    aliases = {
+        "topk3": "topk:3",
+        "chunkvote": "chunk_vote",
+    }
+    aggregate = aliases.get(name, name)
+    if aggregate not in {"chunk_vote", "tfidf", "topk:3"}:
+        raise ValueError(f"bad fusion feature {name!r}; expected chunk_vote, tfidf, or topk3")
+    window = float(window_s)
+    if window <= 0:
+        raise ValueError("fusion windows must be positive")
+    return weight, aggregate, window
+
+
+def parse_fusion_spec(spec: str) -> list[tuple[float, str, float]]:
+    """Parse experimental fusion spec into ``(weight, aggregate, window)`` terms."""
+    terms = [_parse_fusion_term(part) for part in spec.split("+") if part.strip()]
+    if not terms:
+        raise ValueError("fusion spec must contain at least one term")
+    return terms
+
+
+def _chunk_vote_score_map(
+    asr_chunks,
+    corpora: dict[int, list[dict]],
+    *,
+    start_t: float,
+    lookback_seconds: float,
+    ratio: str,
+    blend: dict[str, float] | None,
+) -> dict[int, float]:
+    end_t = start_t + lookback_seconds
+    weights: dict[int, float] = {sid: 0.0 for sid in corpora}
+    for c in asr_chunks:
+        if c.start >= end_t:
+            break
+        if c.end <= start_t:
+            continue
+        best_sid: int | None = None
+        best_s = 0.0
+        for sid, lines in corpora.items():
+            scores = score_chunk(c.text, lines, ratio=ratio, blend=blend)
+            s = max(scores) if scores else 0.0
+            if s > best_s:
+                best_s = s
+                best_sid = sid
+        if best_sid is not None:
+            weights[best_sid] += best_s
+    return weights
+
+
+def _score_map_for_aggregate(
+    asr_chunks,
+    corpora: dict[int, list[dict]],
+    *,
+    start_t: float,
+    lookback_seconds: float,
+    ratio: str,
+    blend: dict[str, float] | None,
+    aggregate: str,
+    tfidf_scorer: ShabadDocTfidf | None = None,
+) -> dict[int, float]:
+    if aggregate == "chunk_vote":
+        return _chunk_vote_score_map(
+            asr_chunks,
+            corpora,
+            start_t=start_t,
+            lookback_seconds=lookback_seconds,
+            ratio=ratio,
+            blend=blend,
+        )
+    buf = buffer_text(asr_chunks, start_t=start_t, lookback_seconds=lookback_seconds)
+    if aggregate == "tfidf":
+        scorer = tfidf_scorer or ShabadDocTfidf(corpora)
+        return scorer.score(buf)
+    if aggregate.startswith("topk:"):
+        k = int(aggregate.split(":")[1])
+        out: dict[int, float] = {}
+        for sid, lines in corpora.items():
+            scores = score_chunk(buf, lines, ratio=ratio, blend=blend)
+            out[sid] = sum(sorted(scores, reverse=True)[:k]) if scores else 0.0
+        return out
+    out = {}
+    for sid, lines in corpora.items():
+        scores = score_chunk(buf, lines, ratio=ratio, blend=blend)
+        out[sid] = max(scores) if scores else 0.0
+    return out
+
+
+def identify_shabad_fusion(
+    asr_chunks,
+    corpora: dict[int, list[dict]],
+    *,
+    spec: str,
+    start_t: float = 0.0,
+    ratio: str = "WRatio",
+    blend: dict[str, float] | None = None,
+) -> ShabadIdResult:
+    """Pick a shabad with sparse normalized evidence fusion.
+
+    This is an opt-in experimental lock policy for Phase 2.13. Each term is
+    normalized by its per-case maximum before weighting so a high-magnitude
+    feature family (for example chunk-vote sums) cannot dominate by scale alone.
+    """
+    terms = parse_fusion_spec(spec)
+    tfidf_scorer = ShabadDocTfidf(corpora) if any(agg == "tfidf" for _, agg, _ in terms) else None
+    total: dict[int, float] = {sid: 0.0 for sid in corpora}
+    for weight, aggregate, window in terms:
+        raw = _score_map_for_aggregate(
+            asr_chunks,
+            corpora,
+            start_t=start_t,
+            lookback_seconds=window,
+            ratio=ratio,
+            blend=blend,
+            aggregate=aggregate,
+            tfidf_scorer=tfidf_scorer,
+        )
+        max_score = max(raw.values()) if raw else 0.0
+        for sid in corpora:
+            normalized = raw.get(sid, 0.0) / max_score if max_score > 0 else 0.0
+            total[sid] += weight * normalized
+    ranked = sorted(total.items(), key=lambda x: (-x[1], x[0]))
+    top = ranked[0]
+    runner_up = ranked[1] if len(ranked) > 1 else (None, 0.0)
+    return ShabadIdResult(top[0], top[1], runner_up[0], runner_up[1])
+
+
 def identify_shabad(
     asr_chunks,
     corpora: dict[int, list[dict]],
@@ -130,28 +272,29 @@ def identify_shabad(
         first = sorted(corpora)[0]
         return ShabadIdResult(first, 0.0, None, 0.0)
 
+    if aggregate.startswith("fusion:"):
+        return identify_shabad_fusion(
+            asr_chunks,
+            corpora,
+            spec=aggregate.split(":", 1)[1],
+            start_t=start_t,
+            ratio=ratio,
+            blend=blend,
+        )
+
     if aggregate == "chunk_vote":
         # Each ASR chunk in the window votes for its top-scoring shabad.
         # Vote weight = top1_score (so high-confidence chunks count more).
         # Repetition becomes additional votes for the same correct shabad,
         # which is robust to shared "kaa thaan"-style hooks across shabads.
-        end_t = start_t + lookback_seconds
-        weights: dict[int, float] = {sid: 0.0 for sid in corpora}
-        for c in asr_chunks:
-            if c.start >= end_t:
-                break
-            if c.end <= start_t:
-                continue
-            best_sid: int | None = None
-            best_s = 0.0
-            for sid, lines in corpora.items():
-                scores = score_chunk(c.text, lines, ratio=ratio, blend=blend)
-                s = max(scores) if scores else 0.0
-                if s > best_s:
-                    best_s = s
-                    best_sid = sid
-            if best_sid is not None:
-                weights[best_sid] += best_s
+        weights = _chunk_vote_score_map(
+            asr_chunks,
+            corpora,
+            start_t=start_t,
+            lookback_seconds=lookback_seconds,
+            ratio=ratio,
+            blend=blend,
+        )
         ranked = sorted(weights.items(), key=lambda x: -x[1])
     elif aggregate == "tfidf":
         if tfidf_scorer is None:
