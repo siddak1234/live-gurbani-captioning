@@ -122,6 +122,16 @@ The paired command currently scores `91.0%`; the assisted-OOS command currently
 scores `59.9%`. The next implementation should analyze why OOS remains weak
 despite `5/5` correct shabad locks.
 
+Current alignment-error reports show:
+
+- paired recency guard: wrong_line `63.2%` of remaining errors,
+  boundary_wrong `31.9%`, missing_pred `4.9%`;
+- assisted-OOS recency guard: wrong_line `56.4%`, unresolved_pred `37.1%`,
+  boundary_wrong `6.5%`.
+
+That makes the immediate next step a locked-shabad aligner/canonical-resolution
+diagnostic, not another broad data pull.
+
 Only after a generic runtime change improves paired/OOS frame accuracy, or a
 diagnostic proves the remaining errors are true held-out ASR misses, should the
 48 GB machine be used for the next larger training run.

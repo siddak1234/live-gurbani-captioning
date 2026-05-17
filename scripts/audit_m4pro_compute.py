@@ -119,6 +119,10 @@ def render_report() -> str:
     has_v6_oos = (REPO_ROOT / "submissions" / "oos_v1_assisted_phase3_v6_lock_fusion").exists()
     has_recency_paired = (REPO_ROOT / "submissions" / "phase3_recency_guard_paired").exists()
     has_recency_oos = (REPO_ROOT / "submissions" / "oos_v1_assisted_phase3_recency_guard").exists()
+    has_alignment_reports = (
+        (REPO_ROOT / "diagnostics" / "phase3_recency_guard_paired_alignment_errors.md").exists()
+        and (REPO_ROOT / "diagnostics" / "phase3_recency_guard_oos_assisted_alignment_errors.md").exists()
+    )
     peak_mem = max((c.peak_mem_gb or 0.0 for c in cards), default=0.0)
     peak_fraction = (peak_mem / mem_gb) if mem_gb else None
 
@@ -174,7 +178,16 @@ def render_report() -> str:
     lines.extend([
         "- The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.",
     ])
-    if has_recency_paired and has_recency_oos:
+    if has_recency_paired and has_recency_oos and has_alignment_reports:
+        lines.extend([
+            "- The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.",
+            "- A generic recency-consistency guarded fusion runtime lifted paired accuracy to 91.0% / 12-of-12 locks without assisted-OOS regression.",
+            "- Alignment-error reports show the active blocker: paired residual errors are mostly wrong-line/boundary issues; assisted-OOS is mostly wrong-line plus unresolved canonical predictions.",
+            "- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but full 300h / multi-seed training is not justified until OOS alignment/canonical resolution improves or diagnostics prove true ASR misses.",
+            "- Do not pull/train on all 300h right now. The next valid experiment is locked-shabad aligner/canonical-resolution diagnostics.",
+            "- Next recommended compute use: cached-output diagnostics on OOS unresolved predictions and loop-align wrong-line spans.",
+        ])
+    elif has_recency_paired and has_recency_oos:
         lines.extend([
             "- The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.",
             "- A generic recency-consistency guarded fusion runtime lifted paired accuracy to 91.0% / 12-of-12 locks without assisted-OOS regression.",

@@ -60,6 +60,8 @@ LOCK_EXTENDED_FUSION_REPORT ?= diagnostics/phase2_14_extended_lock_evidence_fusi
 LOCK_RECENCY_REPORT ?= diagnostics/phase3_v6_lock_recency_consistency.md
 LOCK_FUSION_AGG ?= fusion:tfidf_45+0.5*chunk_vote_90
 LOCK_RECENCY_AGG ?= guarded_fusion:tfidf_45+0.5*chunk_vote_90|offset=90|low=0.15|min=0.5
+ALIGN_PAIRED_REPORT ?= diagnostics/phase3_recency_guard_paired_alignment_errors.md
+ALIGN_OOS_REPORT ?= diagnostics/phase3_recency_guard_oos_assisted_alignment_errors.md
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
 SILVER_MODEL    ?= surindersinghssj/surt-small-v3
@@ -412,6 +414,20 @@ eval-oos-recency-guard-v6-assisted: prepare-oos-assisted ## Phase 3 assisted-OOS
 	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
 		--pred submissions/oos_v1_assisted_phase3_recency_guard \
 		--gt   $(OOS_ASSISTED_TEST_DIR)
+
+.PHONY: report-paired-recency-guard-alignment
+report-paired-recency-guard-alignment: ## Diagnose frame errors for Phase 3 recency-guard paired output.
+	$(PYTHON) scripts/report_alignment_errors.py \
+		--pred-dir submissions/phase3_recency_guard_paired \
+		--gt-dir $(BENCHMARK_DIR)/test \
+		--out $(ALIGN_PAIRED_REPORT)
+
+.PHONY: report-oos-recency-guard-alignment
+report-oos-recency-guard-alignment: prepare-oos-assisted ## Diagnose frame errors for Phase 3 recency-guard assisted-OOS output.
+	$(PYTHON) scripts/report_alignment_errors.py \
+		--pred-dir submissions/oos_v1_assisted_phase3_recency_guard \
+		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--out $(ALIGN_OOS_REPORT)
 
 .PHONY: audit-oos-lock-assisted
 audit-oos-lock-assisted: prepare-oos-assisted ## Audit OOS shabad-lock variants from cached ASR (diagnostic).

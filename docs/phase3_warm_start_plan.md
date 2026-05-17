@@ -316,3 +316,38 @@ It is generic, evidence-based, and it fixes the known full-start false lock
 without OOS lock regression. It does not solve OOS frame timing, so the next
 architecture target is the locked-shabad aligner: boundary offsets, repeated
 rahao/loop behavior, and low-confidence no-line spans under correct shabad ID.
+
+## Alignment-error checkpoint
+
+Command:
+
+```bash
+make report-paired-recency-guard-alignment
+make report-oos-recency-guard-alignment
+```
+
+Result, 2026-05-17:
+
+| Set | Accuracy | Error frames | Dominant remaining errors |
+|---|---:|---:|---|
+| Paired recency guard | 91.0% | 307 | wrong_line 63.2%, boundary_wrong 31.9%, missing_pred 4.9% |
+| Assisted OOS recency guard | 59.9% | 353 | wrong_line 56.4%, unresolved_pred 37.1%, boundary_wrong 6.5% |
+
+Interpretation:
+
+- Paired remaining errors are mostly wrong-line and boundary/timing issues, not
+  shabad-ID errors.
+- Assisted OOS remains weak despite 5/5 correct locks. The two biggest OOS
+  buckets are `wrong_line` and `unresolved_pred`, which points to locked-shabad
+  line resolution/alignment and assisted-GT/corpus canonical-ID consistency.
+- This is the evidence against launching the all-300h / 3-seed training run
+  immediately. A larger acoustic adapter may help some ASR text, but it will
+  not fix unresolved canonical IDs or loop-align line choices under the correct
+  shabad by itself.
+
+Next recommended implementation step: add a locked-shabad alignment diagnostic
+that compares predicted `verse_id`/`banidb_gurmukhi` against the case corpus and
+reports whether `unresolved_pred` is a corpus/GT ID mismatch or a true wrong
+line. If it is a resolution mismatch, fix canonical resolution first. If it is
+true wrong-line behavior, tune loop-align/Viterbi scoring on paired + assisted
+OOS before spending the next large-training budget.

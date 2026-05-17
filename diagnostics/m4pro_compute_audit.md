@@ -35,10 +35,10 @@
 - The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.
 - The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.
 - A generic recency-consistency guarded fusion runtime lifted paired accuracy to 91.0% / 12-of-12 locks without assisted-OOS regression.
-- Assisted-OOS remains flat at 59.9% despite 5-of-5 locks, so the active blocker is line timing/alignment under the correct shabad, not M4 Pro capacity.
-- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but full 300h / multi-seed training is not justified until OOS alignment improves or diagnostics prove true ASR misses.
-- Do not pull/train on all 300h right now. The next valid experiment is OOS/paired line-alignment error analysis under the recency-guarded runtime.
-- Next recommended compute use: cached-output alignment diagnostics on `submissions/phase3_recency_guard_paired` and `submissions/oos_v1_assisted_phase3_recency_guard`.
+- Alignment-error reports show the active blocker: paired residual errors are mostly wrong-line/boundary issues; assisted-OOS is mostly wrong-line plus unresolved canonical predictions.
+- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but full 300h / multi-seed training is not justified until OOS alignment/canonical resolution improves or diagnostics prove true ASR misses.
+- Do not pull/train on all 300h right now. The next valid experiment is locked-shabad aligner/canonical-resolution diagnostics.
+- Next recommended compute use: cached-output diagnostics on OOS unresolved predictions and loop-align wrong-line spans.
 
 ## If Phase 3 is unblocked later
 
