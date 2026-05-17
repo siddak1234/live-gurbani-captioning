@@ -67,9 +67,10 @@ Those remain gold-OOS questions.
 
 Try to access the dataset through `datasets` / `huggingface_hub`.
 
-Current machine note: the public page is visible in browser/search, but the
-local HF API client returned `401 Unauthorized` for the repo on 2026-05-16.
-Before coding against it, resolve one of:
+Current machine note: the public page is visible in browser/search and shows
+the expected columns, splits, and sample rows, but both the local HF API client
+and the public dataset-viewer API returned `401 Unauthorized` for the repo on
+2026-05-16. Before coding directly against it, resolve one of:
 
 - repo became private/gated;
 - HF API auth is required even though the viewer is public;
@@ -78,6 +79,36 @@ Before coding against it, resolve one of:
 
 Success criterion: print the first 3 rows of the `test` split with columns and
 audio payload shape.
+
+### 2.10.A2 — fallback silver from the existing 300h canonical dataset
+
+Because `gurbani-kirtan-dataset-v2` access is currently blocked by API auth,
+Phase 2.10 has an executable fallback using the already-accessible
+`surindersinghssj/gurbani-kirtan-yt-captions-300h-canonical` data.
+
+The key hygiene rule: do **not** score on the v5b training slice. `v5b_mac_diverse`
+trained on shards `0-9`, so the fallback pulls from shards `10-19`:
+
+```bash
+make data-silver-300h
+```
+
+This writes `training_data/silver_300h_holdout/manifest.json` with:
+
+- `min_score >= 0.9`
+- shards `10-19`
+- diversity floors: at least 15 source videos and 100 shabad tokens
+- the existing benchmark video/content holdouts still active
+
+This is still **silver**, not gold: labels are machine-aligned canonical
+matches. But it is broad, automatic, and not the same slice used to train the
+current adapter.
+
+Observed 2026-05-16/17 pull: shards `10-19` produced 8,306 clips, 16.70 h,
+19 source videos, 308 shabad tokens, and **0 video overlap** with
+`v5b_mac_diverse`. An earlier 20-video floor was too strict for this shard
+range; the floor is now 15 so the command reflects the empirical slice instead
+of failing a scientifically useful manifest.
 
 ### 2.10.B — silver segment-eval command
 
@@ -103,6 +134,22 @@ For each row:
 
 No `jiwer` dependency required for the first pass; use existing
 `src.matcher.normalize` + `rapidfuzz`.
+
+Implemented fallback command:
+
+```bash
+make eval-silver-300h \
+  SILVER_LIMIT=100 \
+  SILVER_ADAPTER_DIR=lora_adapters/v5b_mac_diverse \
+  SILVER_OUT=submissions/silver_300h_v5b.json
+```
+
+This runs `scripts/eval_silver_manifest.py` against the held-out 300h manifest.
+The script loads `surt-small-v3` once, optionally applies the LoRA adapter once,
+then scores each segment with normalized exact match plus RapidFuzz `ratio`,
+`token_sort_ratio`, and `WRatio`. Limited runs default to deterministic
+round-robin-by-video sampling so a smoke limit like `SILVER_LIMIT=25` is a
+small breadth check rather than the first 25 clips from one recording.
 
 ### 2.10.C — compare model variants
 
@@ -155,7 +202,29 @@ human-quality label pass.
 
 ## Next action
 
-Resolve HF access for `surindersinghssj/gurbani-kirtan-dataset-v2`, then build
-2.10.B. If HF access remains blocked, use the existing 300h canonical dataset to
-construct a **held-out video split** from never-trained shards as a fallback
-silver set.
+1. Use the existing `make eval-silver-300h` result to inspect the weak videos
+   (`iQAbsSM5FO8`, `PYUPZn6wiR8`, `2d_Wy2Vb6n4`).
+2. Keep trying to resolve direct HF access for
+   `surindersinghssj/gurbani-kirtan-dataset-v2`; when that unblocks, add the
+   same evaluator against its official test split.
+
+## First fallback result
+
+Artifacts:
+
+- `submissions/silver_300h_surt_base_100.json`
+- `submissions/silver_300h_v5b_100.json`
+- `submissions/silver_300h_notes.md`
+
+Result on 100 round-robin-by-video segments:
+
+| Run | mean WRatio | median WRatio | exact normalized |
+|---|---:|---:|---:|
+| `surt-small-v3` base | 96.29 | 100.00 | 75.0% |
+| `surt-small-v3 + v5b_mac_diverse` | 96.33 | 100.00 | 73.0% |
+
+Interpretation: the adapter is neutral on broad silver segment ASR. This
+supports the current architecture thesis: the 91.2% paired-benchmark lift is
+coming from runtime ID-lock / buffering / loop-aware alignment, not from a large
+raw-ASR gain. Do not scale adapter training as the next move without a more
+targeted acoustic failure diagnosis.
