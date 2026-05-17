@@ -33,6 +33,8 @@ DATA_SHARDS    ?=
 DATA_MIN_UNIQUE_VIDEOS  ?= 0
 DATA_MIN_UNIQUE_SHABADS ?= 0
 DATA_FORCE     ?= 0
+DATA_SPLIT_BY  ?= none
+DATA_SPLIT_RATIOS ?= 0.8,0.1,0.1
 SMOKE_OUT      ?= /tmp/lora_smoke
 TRAIN_OUT      ?= lora_adapters/surt_mac_v1
 TRAIN_CFG      ?= configs/training/surt_lora_mac.yaml
@@ -68,6 +70,9 @@ CONFIRMED_PAIRED_REPORT ?= diagnostics/phase3_recency_guard_confirmed_paired_lin
 CONFIRMED_OOS_REPORT ?= diagnostics/phase3_recency_guard_confirmed_oos_assisted_line_path.md
 CONFIRMED_PAIRED_OUT ?= submissions/phase3_recency_guard_confirmed_paired
 CONFIRMED_OOS_OUT ?= submissions/oos_v1_assisted_phase3_confirmed
+CONFIRMED_ADAPTER_DIR ?= lora_adapters/v6_mac_scale20
+LOOP_CONFIRM_CHUNKS ?= 2
+LOOP_HARD_JUMP_MARGIN ?= 15
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
 SILVER_MODEL    ?= surindersinghssj/surt-small-v3
@@ -80,7 +85,10 @@ SILVER_SOURCE_AUDIT ?= diagnostics/phase2_10_silver_source_audit.md
 M4PRO_AUDIT ?= diagnostics/m4pro_compute_audit.md
 PHASE3_DATA_DIR ?= training_data/v6_mac_scale20
 PHASE3_TRAIN_OUT ?= lora_adapters/v6_mac_scale20
+PHASE3_FULL_DATA_DIR ?= training_data/v7_mac_300h
+PHASE3_FULL_TRAIN_OUT ?= lora_adapters/v7_mac_300h_epoch1
 DATA_SHARDS_ARG := $(if $(DATA_SHARDS),--shards $(DATA_SHARDS),--shard $(DATA_SHARD))
+DATA_SPLIT_ARG := $(if $(filter-out none,$(DATA_SPLIT_BY)),--split-by $(DATA_SPLIT_BY) --split-ratios $(DATA_SPLIT_RATIOS),)
 SILVER_ADAPTER_ARG := $(if $(SILVER_ADAPTER_DIR),--adapter-dir $(SILVER_ADAPTER_DIR),)
 
 # -----------------------------------------------------------------------------
@@ -219,6 +227,7 @@ data: ## Pull a labeled kirtan slice from HuggingFace (idempotent — skips if m
 			--min-score $(DATA_MIN_SCORE) \
 			--max-scan $(DATA_MAX_SCAN) \
 			$(DATA_SHARDS_ARG) \
+			$(DATA_SPLIT_ARG) \
 			--min-unique-videos $(DATA_MIN_UNIQUE_VIDEOS) \
 			--min-unique-shabads $(DATA_MIN_UNIQUE_SHABADS); \
 	fi
@@ -286,6 +295,31 @@ train-v6-scale20: data-v6-scale20 ## Phase 3 warm-start LoRA train on the v6 lar
 		--config $(TRAIN_CFG) \
 		--manifest $(PHASE3_DATA_DIR)/manifest.json \
 		--output-dir $(PHASE3_TRAIN_OUT)
+
+.PHONY: data-v7-300h
+data-v7-300h: ## Phase 3 large acoustic-scaling pull from the full 300h canonical dataset.
+	$(MAKE) data \
+		DATA_DIR=$(PHASE3_FULL_DATA_DIR) \
+		DATA_SAMPLES=200000 \
+		DATA_MIN_SCORE=0.8 \
+		DATA_SHARDS=0-128 \
+		DATA_MAX_SCAN=250000 \
+		DATA_MIN_UNIQUE_VIDEOS=100 \
+		DATA_MIN_UNIQUE_SHABADS=1000 \
+		DATA_SPLIT_BY=shabad
+
+.PHONY: train-v7-300h-epoch1
+train-v7-300h-epoch1: data-v7-300h ## First 300h acoustic-scaling run: 1 epoch with shabad-level eval split.
+	$(PYTHON) scripts/finetune_path_b.py \
+		--config $(TRAIN_CFG) \
+		--manifest $(PHASE3_FULL_DATA_DIR)/manifest_train.json \
+		--eval-manifest $(PHASE3_FULL_DATA_DIR)/manifest_val.json \
+		--output-dir $(PHASE3_FULL_TRAIN_OUT) \
+		--epochs 1 \
+		--eval-strategy steps \
+		--eval-steps 1000 \
+		--save-steps 1000 \
+		--load-best-model-at-end
 
 # -----------------------------------------------------------------------------
 # Evaluation
@@ -393,7 +427,7 @@ eval-paired-recency-guard-v6: ## Phase 3 paired eval for v6 adapter + recency-gu
 		--gt-dir $(BENCHMARK_DIR)/test \
 		--audio-dir audio \
 		--out-dir submissions/phase3_recency_guard_paired \
-		--post-adapter-dir lora_adapters/v6_mac_scale20 \
+		--post-adapter-dir $(CONFIRMED_ADAPTER_DIR) \
 		--post-context buffered \
 		--merge-policy retro-buffered \
 		--pre-word-timestamps \
@@ -410,7 +444,7 @@ eval-oos-recency-guard-v6-assisted: prepare-oos-assisted ## Phase 3 assisted-OOS
 		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
 		--audio-dir eval_data/oos_v1/audio \
 		--out-dir submissions/oos_v1_assisted_phase3_recency_guard \
-		--post-adapter-dir lora_adapters/v6_mac_scale20 \
+		--post-adapter-dir $(CONFIRMED_ADAPTER_DIR) \
 		--post-context buffered \
 		--merge-policy retro-buffered \
 		--pre-word-timestamps \
@@ -427,11 +461,13 @@ eval-paired-recency-guard-confirmed-v6: ## Phase 3 paired eval for v6 + recency 
 		--gt-dir $(BENCHMARK_DIR)/test \
 		--audio-dir audio \
 		--out-dir $(CONFIRMED_PAIRED_OUT) \
-		--post-adapter-dir lora_adapters/v6_mac_scale20 \
+		--post-adapter-dir $(CONFIRMED_ADAPTER_DIR) \
 		--post-context buffered \
 		--merge-policy retro-buffered \
 		--pre-word-timestamps \
 		--smoother loop_align_confirmed \
+		--loop-confirm-chunks $(LOOP_CONFIRM_CHUNKS) \
+		--loop-hard-jump-margin $(LOOP_HARD_JUMP_MARGIN) \
 		--blind-lookback 180 \
 		--blind-aggregate "$(LOCK_RECENCY_AGG)"
 	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
@@ -444,11 +480,13 @@ eval-oos-recency-guard-confirmed-v6-assisted: prepare-oos-assisted ## Assisted-O
 		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
 		--audio-dir eval_data/oos_v1/audio \
 		--out-dir $(CONFIRMED_OOS_OUT) \
-		--post-adapter-dir lora_adapters/v6_mac_scale20 \
+		--post-adapter-dir $(CONFIRMED_ADAPTER_DIR) \
 		--post-context buffered \
 		--merge-policy retro-buffered \
 		--pre-word-timestamps \
 		--smoother loop_align_confirmed \
+		--loop-confirm-chunks $(LOOP_CONFIRM_CHUNKS) \
+		--loop-hard-jump-margin $(LOOP_HARD_JUMP_MARGIN) \
 		--blind-lookback 180 \
 		--blind-aggregate "$(LOCK_RECENCY_AGG)"
 	$(PYTHON) $(BENCHMARK_DIR)/eval.py \

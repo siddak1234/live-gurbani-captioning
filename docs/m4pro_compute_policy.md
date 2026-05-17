@@ -158,6 +158,16 @@ without more training. The next large 300h run should still wait: the remaining
 errors are line-path buckets (`adjacent_backtrack`, `outside_gt_line_set`), not
 M4 Pro underuse.
 
+Follow-up parameter sweep found a local confirmed-loop plateau:
+
+- `confirm_chunks=2`, `hard_jump_margin=12/15/18/20`: paired `92.8%`;
+- assisted-OOS at margins `12/15/20`: `60.8%`;
+- stricter guards (`margin=8`, `confirm_chunks=3`) regress paired.
+
+This means preparing the next large training run is now reasonable, but it
+should be framed as acoustic-scaling under the confirmed runtime, not as proof
+that the line-path problem is solved.
+
 Only after a generic runtime change improves paired/OOS frame accuracy, or a
 diagnostic proves the remaining errors are true held-out ASR misses, should the
 48 GB machine be used for the next larger training run.

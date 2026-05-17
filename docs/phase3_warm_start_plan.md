@@ -412,8 +412,26 @@ Promotion state:
 - assisted-OOS: `60.8%` (`535/880`), up from `59.9%`;
 - locks: still `12/12` paired and `5/5` assisted-OOS.
 
+Parameter sweep:
+
+| Confirm chunks | Hard jump margin | Paired | Assisted-OOS | Decision |
+|---:|---:|---:|---:|---|
+| 2 | 8 | 90.5% | not run | too strict |
+| 2 | 10 | 92.6% | not run | below plateau |
+| 2 | 12 | 92.8% | 60.8% | tied best |
+| 2 | 15 | 92.8% | 60.8% | current default |
+| 2 | 18 | 92.8% | not run | tied best paired |
+| 2 | 20 | 92.8% | 60.8% | tied best |
+| 3 | 10 | 92.0% | not run | too strict |
+| 3 | 15 | 90.9% | not run | too strict |
+
 Next target before the all-300h/3-seed run: reduce the remaining paired
 `adjacent_backtrack` and OOS `outside_gt_line_set` buckets. The confirmed
 smoother proves line-path logic can move the metric without more training; the
 next 300h compute should wait until this runtime lane stops producing generic
 gains.
+
+Checkpoint decision: the confirmed-loop parameter space has now hit a local
+plateau. It is reasonable to prepare the next large training run, as long as it
+is recorded as an acoustic-scaling experiment evaluated through the confirmed
+runtime gates, not as a guaranteed path to 95%.

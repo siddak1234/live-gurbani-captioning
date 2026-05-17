@@ -52,6 +52,8 @@ class EngineConfig:
     viterbi_backtrack_penalty: float = 8.0
     viterbi_null_score: float | None = None
     viterbi_null_switch_penalty: float = 0.0
+    loop_confirm_chunks: int = 2
+    loop_hard_jump_margin: float = 15.0
 
     # Blind shabad ID
     blind_lookback: float = 30.0
@@ -227,6 +229,8 @@ def predict(
                     scored_with_text,
                     stay_margin=cfg.stay_bias,
                     score_threshold=cfg.score_threshold,
+                    confirm_chunks=cfg.loop_confirm_chunks,
+                    hard_jump_margin=cfg.loop_hard_jump_margin,
                 )
     else:
         raw = [

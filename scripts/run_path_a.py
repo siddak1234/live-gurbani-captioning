@@ -185,6 +185,10 @@ def main() -> int:
                         help="Enable Viterbi no-line state with this constant local score.")
     parser.add_argument("--viterbi-null-switch-penalty", type=float, default=0.0,
                         help="Penalty for entering/exiting Viterbi no-line state.")
+    parser.add_argument("--loop-confirm-chunks", type=int, default=2,
+                        help="For loop_align_confirmed, non-adjacent jumps must persist this many chunks.")
+    parser.add_argument("--loop-hard-jump-margin", type=float, default=15.0,
+                        help="For loop_align_confirmed, allow a one-off non-adjacent jump if it beats previous line by this margin.")
     parser.add_argument("--blind", action="store_true",
                         help="Identify shabad from audio instead of using GT shabad_id")
     parser.add_argument("--blind-lookback", type=float, default=30.0,
@@ -233,6 +237,8 @@ def main() -> int:
         viterbi_backtrack_penalty=args.viterbi_backtrack_penalty,
         viterbi_null_score=args.viterbi_null_score,
         viterbi_null_switch_penalty=args.viterbi_null_switch_penalty,
+        loop_confirm_chunks=args.loop_confirm_chunks,
+        loop_hard_jump_margin=args.loop_hard_jump_margin,
         blind_lookback=args.blind_lookback,
         blind_aggregate=args.blind_aggregate,
         blind_ratio=args.blind_ratio,
