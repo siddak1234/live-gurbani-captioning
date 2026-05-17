@@ -73,8 +73,11 @@ coreml_export/
 ios/Sources/GurbaniCaptioning/Resources/shabads.json
 ios/.build/
 ios/.swiftpm/
+ios/build_check/
 ios/*.xcodeproj/xcuserdata/
 ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/**/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
 
 # macOS iCloud Drive conflict duplicates — pattern is `filename 2.ext`.
 # The repo lives under ~/Desktop/ which iCloud syncs; two-Mac workflow
