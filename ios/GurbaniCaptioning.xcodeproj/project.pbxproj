@@ -1,0 +1,364 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		152E73C998C92AE138DCBEC9 /* SangatApp in Frameworks */ = {isa = PBXBuildFile; productRef = F79403B83AD4A3FA882F3434 /* SangatApp */; };
+		3137315E85E22C99148FC3FE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86FAF2CAE27F7EAA1C977EA7 /* ContentView.swift */; };
+		6D88B9065056DDADC45A7548 /* GurbaniCaptioning in Frameworks */ = {isa = PBXBuildFile; productRef = 48FCF9C571DC799526D7C80E /* GurbaniCaptioning */; };
+		D9FE5057DD029DE3027F83BB /* GurbaniCaptioningApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7030BDF6E0AB28F4FF853445 /* GurbaniCaptioningApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		7030BDF6E0AB28F4FF853445 /* GurbaniCaptioningApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GurbaniCaptioningApp.swift; sourceTree = "<group>"; };
+		747FA69B9AC44801B6F0656A /* GurbaniCaptioningApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = GurbaniCaptioningApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		86FAF2CAE27F7EAA1C977EA7 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		CDA46C99D5A17868530C82A1 /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = .; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3B2E1C9FE3C1CBD2C2ED70D3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				152E73C998C92AE138DCBEC9 /* SangatApp in Frameworks */,
+				6D88B9065056DDADC45A7548 /* GurbaniCaptioning in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		5BB317E8AEE6500562F973D0 = {
+			isa = PBXGroup;
+			children = (
+				929ABDE73C831FF284E21726 /* Packages */,
+				62B6102579715EA646BD4428 /* Sources */,
+				D8257CE2584FFE299EFBAE33 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		62B6102579715EA646BD4428 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				D3F78FCD5A0FDEE13FE9E299 /* GurbaniCaptioningApp */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		929ABDE73C831FF284E21726 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				CDA46C99D5A17868530C82A1 /* ios */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		D3F78FCD5A0FDEE13FE9E299 /* GurbaniCaptioningApp */ = {
+			isa = PBXGroup;
+			children = (
+				86FAF2CAE27F7EAA1C977EA7 /* ContentView.swift */,
+				7030BDF6E0AB28F4FF853445 /* GurbaniCaptioningApp.swift */,
+			);
+			path = GurbaniCaptioningApp;
+			sourceTree = "<group>";
+		};
+		D8257CE2584FFE299EFBAE33 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				747FA69B9AC44801B6F0656A /* GurbaniCaptioningApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		CF3213332FA7F06966584A09 /* GurbaniCaptioningApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 759160CA0A293035BCB54408 /* Build configuration list for PBXNativeTarget "GurbaniCaptioningApp" */;
+			buildPhases = (
+				786F1A47EDAB30F5DCDF56DB /* Sources */,
+				3B2E1C9FE3C1CBD2C2ED70D3 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GurbaniCaptioningApp;
+			packageProductDependencies = (
+				F79403B83AD4A3FA882F3434 /* SangatApp */,
+				48FCF9C571DC799526D7C80E /* GurbaniCaptioning */,
+			);
+			productName = GurbaniCaptioningApp;
+			productReference = 747FA69B9AC44801B6F0656A /* GurbaniCaptioningApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		9061C8BC31B41C1CB9DA38B0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					CF3213332FA7F06966584A09 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 0FA6F09FC261417248804E47 /* Build configuration list for PBXProject "GurbaniCaptioning" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 5BB317E8AEE6500562F973D0;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0F95A59894CBDD99A73E2B89 /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D8257CE2584FFE299EFBAE33 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CF3213332FA7F06966584A09 /* GurbaniCaptioningApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		786F1A47EDAB30F5DCDF56DB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3137315E85E22C99148FC3FE /* ContentView.swift in Sources */,
+				D9FE5057DD029DE3027F83BB /* GurbaniCaptioningApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		30E526458F095E2D6058C8AD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/GurbaniCaptioningApp/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Sangat listens to live kirtan to caption the lines being sung.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sangat.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		71EE48856100AD05315212B8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		812613D60508DE6AF7F0FCFB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/GurbaniCaptioningApp/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Sangat listens to live kirtan to caption the lines being sung.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sangat.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A150C5FC84E0BDC5C5F41E4D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0FA6F09FC261417248804E47 /* Build configuration list for PBXProject "GurbaniCaptioning" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A150C5FC84E0BDC5C5F41E4D /* Debug */,
+				71EE48856100AD05315212B8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		759160CA0A293035BCB54408 /* Build configuration list for PBXNativeTarget "GurbaniCaptioningApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				812613D60508DE6AF7F0FCFB /* Debug */,
+				30E526458F095E2D6058C8AD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		0F95A59894CBDD99A73E2B89 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		48FCF9C571DC799526D7C80E /* GurbaniCaptioning */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GurbaniCaptioning;
+		};
+		F79403B83AD4A3FA882F3434 /* SangatApp */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SangatApp;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 9061C8BC31B41C1CB9DA38B0 /* Project object */;
+}
