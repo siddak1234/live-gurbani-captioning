@@ -27,6 +27,7 @@ import GurbaniCaptioning
 public struct RootView: View {
 
     @State private var env: AppEnvironment
+    @State private var showSettings: Bool = false
 
     public init(env: AppEnvironment? = nil) {
         _env = State(initialValue: env ?? AppEnvironment.production())
@@ -43,6 +44,22 @@ public struct RootView: View {
         .environment(\.theme, env.theme)
         .environment(\.themeTokens, env.theme.tokens)
         .environment(env)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            // Top chrome row — Back (when running) + Settings gear. Lives
+            // in the safe-area inset so the reading view's content always
+            // sits below the chrome and the meta header never collides
+            // with the corner icons. The Welcome screen has no chrome.
+            if env.hasCompletedOnboarding {
+                topChromeRow
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .environment(env)
+                .environment(\.theme, env.theme)
+                .environment(\.themeTokens, env.theme.tokens)
+                .preferredColorScheme(env.theme.isDark ? .dark : .light)
+        }
         .task {
             await prepareCaptionSource()
         }
@@ -65,6 +82,55 @@ public struct RootView: View {
         } else {
             ReadingHost()
         }
+    }
+
+    private var topChromeRow: some View {
+        HStack(spacing: 0) {
+            if env.captionModel.isRunning {
+                backButton
+            } else {
+                // Reserve symmetric space so the gear stays anchored to
+                // the right edge whether or not back is shown.
+                Color.clear.frame(width: 44, height: 44)
+            }
+
+            Spacer()
+
+            settingsGearButton
+        }
+        .padding(.horizontal, env.theme.tokens.spacing.edge - 10)
+        .padding(.top, env.theme.tokens.spacing.xs)
+        .padding(.bottom, env.theme.tokens.spacing.xs)
+    }
+
+    private var backButton: some View {
+        Button {
+            env.haptics.play(.selection)
+            env.captionModel.stop()
+        } label: {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(env.theme.tokens.colors.ink3)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Stop listening")
+        .accessibilityIdentifier("root.back")
+    }
+
+    private var settingsGearButton: some View {
+        Button {
+            env.haptics.play(.selection)
+            showSettings = true
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 22, weight: .regular))
+                .foregroundStyle(env.theme.tokens.colors.ink3)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Settings")
+        .accessibilityIdentifier("root.settings")
     }
 
     /// Prepare the caption source on appear — no automatic `start()` in
