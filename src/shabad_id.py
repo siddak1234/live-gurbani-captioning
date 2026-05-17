@@ -108,7 +108,7 @@ class ShabadDocTfidf:
         }
 
 
-def _parse_fusion_term(raw: str) -> tuple[float, str, float]:
+def _parse_fusion_term(raw: str) -> tuple[float, str, float, float]:
     """Parse ``[weight*]feature_window`` for experimental fusion aggregates."""
     term = raw.strip()
     if "*" in term:
@@ -118,6 +118,17 @@ def _parse_fusion_term(raw: str) -> tuple[float, str, float]:
         weight = 1.0
         feature = term
     feature = feature.strip()
+    if feature.startswith("tail_chunk_vote_"):
+        parts = feature.removeprefix("tail_chunk_vote_").split("_")
+        if len(parts) != 2:
+            raise ValueError(
+                f"bad tail fusion term {raw!r}; expected tail_chunk_vote_<tail>_<window>"
+            )
+        tail = float(parts[0])
+        window = float(parts[1])
+        if tail <= 0 or window <= 0 or tail > window:
+            raise ValueError("tail fusion windows must satisfy 0 < tail <= window")
+        return weight, "chunk_vote", tail, window - tail
     if "_" not in feature:
         raise ValueError(f"bad fusion term {raw!r}; expected feature_window")
     name, window_s = feature.rsplit("_", 1)
@@ -131,11 +142,11 @@ def _parse_fusion_term(raw: str) -> tuple[float, str, float]:
     window = float(window_s)
     if window <= 0:
         raise ValueError("fusion windows must be positive")
-    return weight, aggregate, window
+    return weight, aggregate, window, 0.0
 
 
-def parse_fusion_spec(spec: str) -> list[tuple[float, str, float]]:
-    """Parse experimental fusion spec into ``(weight, aggregate, window)`` terms."""
+def parse_fusion_spec(spec: str) -> list[tuple[float, str, float, float]]:
+    """Parse experimental fusion spec into ``(weight, aggregate, window, offset)`` terms."""
     terms = [_parse_fusion_term(part) for part in spec.split("+") if part.strip()]
     if not terms:
         raise ValueError("fusion spec must contain at least one term")
@@ -225,13 +236,13 @@ def identify_shabad_fusion(
     feature family (for example chunk-vote sums) cannot dominate by scale alone.
     """
     terms = parse_fusion_spec(spec)
-    tfidf_scorer = ShabadDocTfidf(corpora) if any(agg == "tfidf" for _, agg, _ in terms) else None
+    tfidf_scorer = ShabadDocTfidf(corpora) if any(agg == "tfidf" for _, agg, _, _ in terms) else None
     total: dict[int, float] = {sid: 0.0 for sid in corpora}
-    for weight, aggregate, window in terms:
+    for weight, aggregate, window, offset in terms:
         raw = _score_map_for_aggregate(
             asr_chunks,
             corpora,
-            start_t=start_t,
+            start_t=start_t + offset,
             lookback_seconds=window,
             ratio=ratio,
             blend=blend,

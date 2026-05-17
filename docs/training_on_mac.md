@@ -40,7 +40,34 @@ make data-v5b
 
 This scans multiple parquet shards, keeps `min_score >= 0.85`, and fails unless the kept manifest has enough source-video and shabad-token diversity. With diversity floors active, `DATA_SAMPLES` is a minimum rather than a hard cap; the pull can keep extra clips until the floors pass. Inspect `training_data/v5b_mac_diverse/data_card.md` before training.
 
-Current checkpoint: `v5b_mac_diverse` passed the data gate with `2,544` clips, `4.936 h`, `20` videos, `195` shabad tokens, and `0` benchmark video/content leaks. It trained successfully, but blind/live benchmark eval regressed to `65.6%`. Phase 2.6 found that oracle-shabad/live0 alignment improves to `87.4%` (x4/v5 oracle baseline: `85.2%`) and a v3.2-ID-lock proxy scores `87.1%`. Do not start Phase 3 from this result. The next step is a runtime ID-lock integration plus OOS validation, not another larger LoRA run.
+Current checkpoint: `v5b_mac_diverse` passed the data gate with `2,544` clips,
+`4.936 h`, `20` videos, `195` shabad tokens, and `0` benchmark video/content
+leaks. It trained successfully, but blind/live benchmark eval regressed to
+`65.6%`. Phase 2.6 found that oracle-shabad/live0 alignment improves to `87.4%`
+(x4/v5 oracle baseline: `85.2%`) and a v3.2-ID-lock proxy scores `87.1%`, so
+the problem moved to runtime ID-lock/alignment rather than "can the Mac train?"
+
+That runtime work has now produced `phase2_9_loop_align` at `91.2%` paired and
+Phase 2.13 evidence fusion with `5/5` assisted-OOS locks, `59.9%` assisted-OOS
+frame accuracy, and `84.1%` paired under the opt-in fusion policy. The remaining
+lock failure is full-start `zOtIpxMT9hU -> 4892`; tail-window overfits can fix it
+on paired but hurt OOS, so they are rejected.
+
+Therefore the next training step is a **controlled Phase 3 warm-start**, not
+all-300h training:
+
+```bash
+make data-v6-scale20
+make train-v6-scale20
+```
+
+`data-v6-scale20` pulls a large fresh slice from shards `20-49`, preserving
+shards `0-9` for prior v5b history and `10-19` for silver evaluation. It keeps
+`min_score >= 0.88` and requires at least 40 source videos and 300 shabad tokens
+before the pull is considered valid. Inspect
+`training_data/v6_mac_scale20/data_card.md` before training.
+The scientific gates and decision table live in
+[`phase3_warm_start_plan.md`](phase3_warm_start_plan.md).
 
 The completed train command was:
 

@@ -1,15 +1,15 @@
 # Phase 2.13 — candidate retrieval / lock-evidence fusion
 
-**Status:** active next step after Phase 2.12.
+**Status:** completed diagnostic; keep as opt-in runtime evidence.
 
 Phase 2.12 answered the "can we keep learning without hand validation?"
 question: yes, but only as a silver loop. The silver lock-policy tuner also
 showed that a simple scorer/window switch is not enough:
 
-- best paired-safe rule: `chunk_vote@45s|min=0`, **9/12** paired and **3/5**
+- best paired-safe rule: `chunk_vote@45s|min=0`, **11/12** paired and **3/5**
   assisted OOS;
 - best assisted-OOS-only rule: `tfidf_then_topk3@45s|min=0`, **5/5** assisted
-  OOS but only **3/12** paired.
+  OOS but only **7/12** paired.
 
 That is a structural signal. The lock problem is not "choose TF-IDF instead of
 chunk vote" or "wait 15 more seconds." It is candidate retrieval under ambiguous
@@ -17,13 +17,15 @@ early evidence.
 
 ## Expert decision
 
-Do **not** start broad Phase 3 / all-300h training yet.
+Do **not** jump straight to broad all-300h training.
 
-Reason: the current failure mode is wrong shabad commitment. More ASR training
-can make transcripts different, but it will not automatically teach the runtime
-which canonical shabad to lock when the candidate set contains superficially
-similar hooks. The 48 GB M4 Pro is being used properly for adapter training;
-compute is not the active bottleneck.
+Reason: the current failure mode is still wrong shabad commitment in one hard
+paired case, not inability to run larger training. More ASR training can improve
+acoustic evidence, but it will not automatically teach the runtime which
+canonical shabad to lock when the candidate set contains superficially similar
+hooks. The 48 GB M4 Pro is being used properly for adapter training; compute is
+healthy. The next training step should therefore be a controlled Phase 3
+warm-start slice with explicit silver/paired/OOS gates, not a blind all-data run.
 
 ## What Phase 2.13 tests
 
@@ -62,21 +64,27 @@ Command:
 make tune-lock-evidence-fusion
 ```
 
-Best fusion:
+Important audit correction: the first version of the tuner evaluated cold-start
+cases from `t=0` even though runtime starts its lock window at the case UEM start.
+That made the diagnostic too pessimistic for cold cases. The tuner now carries
+`uem.start` through the feature table; runtime behavior already did this.
+
+Corrected best fusion:
 
 ```text
-fusion:tfidf_60+0.5*chunk_vote_90
+fusion:tfidf_45+0.5*chunk_vote_90
 ```
 
 Silver lock result:
 
-- Paired lock accuracy: **9/12** (75.0%)
+- Paired lock accuracy: **11/12** (91.7%)
 - Assisted-OOS lock accuracy: **5/5** (100.0%)
-- Silver macro lock objective: **87.5%**
+- Silver macro lock objective: **95.8%**
 
-This is a material improvement over Phase 2.12's best balanced policy
-(`9/12` paired, `3/5` assisted OOS). It proves multi-feature evidence fusion is
-more promising than a single scorer/window switch.
+This is a material improvement over Phase 2.12's single-policy trade-off:
+`chunk_vote@45s` keeps paired safe but misses OOS, while `tfidf_then_topk3@45s`
+gets OOS but regresses paired. Multi-feature evidence fusion gets both sides
+near the guardrail.
 
 Full-frame diagnostic with the opt-in fusion aggregate:
 
@@ -88,12 +96,18 @@ make eval-paired-lock-fusion
 Results:
 
 - Assisted OOS silver: **59.9%** frame accuracy, **5/5** locks correct
-- Paired benchmark: **79.7%** frame accuracy
+- Paired benchmark: **84.1%** frame accuracy
 
-The paired drop is concentrated: `zOtIpxMT9hU` and `zOtIpxMT9hU_cold33` lock to
-shabad `4892` instead of `3712`; `zOtIpxMT9hU_cold66` locks correctly and scores
-86.9%. Fusion is therefore useful as a diagnostic, but not a promotion
-candidate.
+The paired drop is now concentrated in one case: full-start `zOtIpxMT9hU` locks
+to shabad `4892` instead of `3712`. The cold-start variants now lock correctly.
+Fusion is therefore useful as a diagnostic and opt-in runtime policy, but not a
+promotion candidate.
+
+Phase 2.14 tested longer windows and tail-window evidence to see whether later
+evidence can repair the full-start `zOtIpxMT9hU` false candidate. Longer windows
+and tail features reproduce the same 11/12 paired and 5/5 assisted-OOS lock
+result. Heavier tail weighting can force 12/12 paired, but it collapses
+assisted-OOS behavior; reject that as overfit.
 
 ## Decision rules
 
@@ -107,10 +121,14 @@ candidate.
 - If the GT candidate is often not near the top under any feature, expand or
   rebuild the corpus/retrieval layer before tuning alignment.
 
-Current decision: fusion beats Phase 2.12 on assisted OOS and is now available
-as an opt-in experimental aggregate, but it hurts paired frame accuracy too much
-to promote. Next targeted problem: disambiguate high-confidence false candidates
-like `3712` vs `4892` without losing the OOS gains.
+Current decision: fusion beats Phase 2.12 on assisted OOS and fixes most paired
+locks under the corrected UEM-aware diagnostic. Keep it opt-in and continue
+with two parallel tracks:
+
+1. controlled Phase 3 warm-start ASR training on fresh shards, to test whether
+   better acoustic evidence reduces lock ambiguity without wrecking OOS;
+2. continued lock/retrieval work for high-confidence false candidates like
+   `3712` vs `4892`.
 
 ## Architecture boundary
 

@@ -35,6 +35,7 @@ class Case:
     case_id: str
     video_id: str
     shabad_id: int
+    uem_start: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,7 @@ def load_cases(gt_dir: pathlib.Path) -> list[Case]:
             case_id=path.stem,
             video_id=str(payload["video_id"]),
             shabad_id=int(payload["shabad_id"]),
+            uem_start=float(payload.get("uem", {}).get("start", 0.0)),
         ))
     return cases
 
@@ -93,6 +95,7 @@ def identify_hybrid(
     chunks: list[AsrChunk],
     corpora: dict[int, list[dict]],
     *,
+    start_t: float = 0.0,
     lookback_seconds: float,
     tfidf_min_score: float,
     tfidf_min_margin: float,
@@ -101,7 +104,7 @@ def identify_hybrid(
     tfidf = identify_shabad(
         chunks,
         corpora,
-        start_t=0.0,
+        start_t=start_t,
         lookback_seconds=lookback_seconds,
         aggregate="tfidf",
         ratio="WRatio",
@@ -113,7 +116,7 @@ def identify_hybrid(
     topk = identify_shabad(
         chunks,
         corpora,
-        start_t=0.0,
+        start_t=start_t,
         lookback_seconds=lookback_seconds,
         aggregate="topk:3",
         ratio="WRatio",
@@ -152,6 +155,7 @@ def run_variant(
             result, mode = identify_hybrid(
                 chunks,
                 corpora,
+                start_t=case.uem_start,
                 lookback_seconds=lookback_seconds,
                 tfidf_min_score=tfidf_min_score,
                 tfidf_min_margin=tfidf_min_margin,
@@ -160,7 +164,7 @@ def run_variant(
             result = identify_shabad(
                 chunks,
                 corpora,
-                start_t=0.0,
+                start_t=case.uem_start,
                 lookback_seconds=lookback_seconds,
                 aggregate=aggregate,
                 ratio="WRatio",

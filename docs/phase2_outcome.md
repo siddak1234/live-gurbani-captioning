@@ -232,11 +232,12 @@ Executed Phase 2.12.A:
 
 - `make tune-shabad-lock-policy`
 - Report: `diagnostics/phase2_12_silver_lock_policy.md`
-- Best macro policy: `chunk_vote@45s|min=0`
-- Result: **67.5%** silver macro lock accuracy (**9/12** paired, **3/5**
+- Best macro policy after the UEM-aware diagnostic fix:
+  `tfidf_then_topk3@45s|min=0`
+- Result: **79.2%** silver macro lock accuracy (**7/12** paired, **5/5**
   assisted OOS)
-- Best OOS-only policy (`tfidf_then_topk3@45s|min=0`) reaches **5/5** assisted
-  OOS locks but collapses paired to **3/12**
+- Best paired-safe policy (`chunk_vote@45s|min=0`) reaches **11/12** paired but
+  only **3/5** assisted OOS
 
 Decision: silver labels let us continue learning, but this tuning run rejects a
 simple scorer/window switch as the next architecture. The next targeted step is
@@ -244,31 +245,48 @@ candidate retrieval / lock-evidence modeling. Broad 300h training remains
 deferred because the current blocker is wrong shabad commitment, not raw ASR
 capacity.
 
-Phase 2.13 implemented that candidate-evidence step:
+Phase 2.13 implemented that candidate-evidence step. The first pass had a
+diagnostic bug: cold-start cases were scored from audio time `0` instead of
+their `uem.start`. Runtime already uses the UEM start, so the tuner and audit
+scripts were corrected to match deployed behavior before interpreting the
+results.
 
 - Plan: [`docs/phase2_13_candidate_retrieval_plan.md`](phase2_13_candidate_retrieval_plan.md)
 - Report: `diagnostics/phase2_13_lock_evidence_fusion.md`
-- Best fusion: `fusion:tfidf_60+0.5*chunk_vote_90`
-- Silver lock diagnostic: **9/12** paired, **5/5** assisted OOS, **87.5%**
+- Best fusion: `fusion:tfidf_45+0.5*chunk_vote_90`
+- Silver lock diagnostic: **11/12** paired, **5/5** assisted OOS, **95.8%**
   macro lock objective
 - Full assisted-OOS frame diagnostic: **59.9%** with **5/5** locks
-- Full paired diagnostic: **79.7%**, with failures concentrated in
-  `zOtIpxMT9hU` / `zOtIpxMT9hU_cold33` locking to shabad `4892`
+- Full paired diagnostic: **84.1%**, with the remaining lock failure
+  concentrated in full-start `zOtIpxMT9hU` locking to shabad `4892`; the
+  cold-start variants now lock correctly
+
+Phase 2.14 then tested longer windows and tail-window evidence as a targeted
+repair for the full-start `zOtIpxMT9hU` false lock. Both reproduce the same
+11/12 paired and 5/5 assisted-OOS lock result. Heavier tail weighting can force
+the paired case to 12/12, but it damages assisted OOS, so that path is rejected
+as overfit.
 
 Decision: Phase 2.13 confirms evidence fusion is the right learning direction
 and materially improves OOS lock behavior, but it is not a promotion candidate.
 The remaining architecture problem is high-confidence false-candidate
-disambiguation, especially `3712` vs `4892`, not M4 Pro utilization or lack of
-300h training data.
+disambiguation, especially `3712` vs `4892`. The M4 Pro is healthy and can now
+be used for a controlled Phase 3 warm-start training slice, but not for a blind
+all-300h run or a promotion claim without the validation gates below.
 
 Expert checkpoint on "more shabad variance": yes, the current paired benchmark
 is too small to judge production readiness, but the immediate fix is **held-out
 OOS validation**, not training on these five. The training path already has
 large-scale shabad variance through the HuggingFace pulls and Phase 3/4 plans.
 At this checkpoint, these five shabads must stay outside training so they can
-tell us whether the 91.2% paired-benchmark architecture generalizes. If OOS v1
-passes, then scale training/evaluation; if it fails, diagnose by slice before
-spending the M4 Pro budget on Phase 3.
+tell us whether the 91.2% paired-benchmark architecture generalizes. The
+recommended next step is a **Phase 3 warm-start**, not full Phase 3 promotion:
+pull a large fresh slice from untouched HuggingFace shards, validate its
+data-card diversity/holdout numbers, train one adapter, and compare against the
+silver and paired gates. If it improves acoustic evidence without harming lock
+behavior, scale up; if it regresses like `v5b_mac_diverse`, stop and return to
+alignment/retrieval. The executable plan is
+[`docs/phase3_warm_start_plan.md`](phase3_warm_start_plan.md).
 
 ## Phase 2.10 — automated silver OOS bridge
 

@@ -34,10 +34,11 @@ Evidence:
 
 So the correct expert decision is:
 
-- Do not spend the M4 Pro budget on a broad 300h/3-seed run yet.
+- Do not spend the M4 Pro budget on a broad all-300h/3-seed run yet.
 - Do not scale adapter training just because we have 48 GB.
-- Use compute for targeted diagnostics and OOS scoring until the validation
-  gate is trustworthy.
+- Do use the machine for a controlled Phase 3 warm-start now that Phase 2.13 has
+  produced a better lock policy: fresh shards, strict data-card gates, one
+  adapter, then silver/paired/OOS comparison.
 
 ## How to audit the machine
 
@@ -87,7 +88,21 @@ Then the 48 GB plan is:
 
 ## Current next step
 
-The next step toward the high-accuracy goal remains gold OOS validation of
-`phase2_9_loop_align`. That is the gate that tells us whether the 91.2% paired
-benchmark architecture generalizes. Until that gate exists, more compute is
-more likely to produce a misleading number than a real production improvement.
+Begin the Phase 3 warm-start data pull:
+
+```bash
+make data-v6-scale20
+```
+
+This is not full Phase 3 promotion. It is the next educated compute use: a
+large, fresh, holdout-clean slice from shards `20-49` so we can test whether
+additional acoustic training improves the current lock/alignment architecture
+without repeating the `v5b_mac_diverse` regression. Only after the data-card
+passes should we run:
+
+```bash
+make train-v6-scale20
+```
+
+Promotion still requires OOS/gold validation; paired-benchmark gains alone are
+not enough.

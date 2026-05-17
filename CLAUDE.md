@@ -109,7 +109,7 @@ Live causality is honor-system — the scorer can't tell. The output JSON looks 
 | `phase2_8_idlock_preword_viterbi` | runtime ID-lock + Viterbi smoother | 77.2% | **No — negative diagnostic.** Generic line-distance smoothing helps `IZOsmkdmmcg` but collapses refrain/loop-heavy cases. |
 | `phase2_8_idlock_preword_viterbi_null45` | runtime ID-lock + Viterbi null state | 77.1% | **No — negative diagnostic.** Null state drops useful weak evidence along with filler. |
 | `phase2_9_retro_buffered` | runtime ID-lock + retro-buffered finalization | **88.7%** | **Best current honest runtime, not promoted.** State-based merge policy lets locked-shabad post engine revise tentative pre-lock captions. Clears paired score gate, but `zOtIpxMT9hU_cold66` is still 57.6% and OOS is owed. |
-| `phase2_9_loop_align` | runtime ID-lock + retro-buffered + simran/null alignment | **91.2%** | **Best paired-benchmark runtime, not promoted.** Non-route-table architecture; 12/12 paired locks; no catastrophic paired case (`zOtIpxMT9hU_cold66` 86.9%). Assisted OOS diagnostic later scored **29.5%** with only 2/5 locks. Phase 2.11's delayed zero-evidence guard improves assisted OOS to **40.5%** / 3/5 locks. Phase 2.12 rejects a simple scorer/window switch. Phase 2.13 evidence fusion improves assisted OOS to **59.9%** / 5/5 locks but paired drops to **79.7%** due `zOtIpxMT9hU` → `4892`; keep it opt-in only. Robust shabad-lock candidate retrieval / false-candidate disambiguation is the active blocker before Phase 3. |
+| `phase2_9_loop_align` | runtime ID-lock + retro-buffered + simran/null alignment | **91.2%** | **Best paired-benchmark runtime, not promoted.** Non-route-table architecture; 12/12 paired locks; no catastrophic paired case (`zOtIpxMT9hU_cold66` 86.9%). Assisted OOS diagnostic later scored **29.5%** with only 2/5 locks. Phase 2.11's delayed zero-evidence guard improves assisted OOS to **40.5%** / 3/5 locks. Phase 2.12 rejects a simple scorer/window switch. Phase 2.13 UEM-aware evidence fusion improves assisted OOS to **59.9%** / 5/5 locks and paired fusion to **84.1%**; only full-start `zOtIpxMT9hU` still locks to `4892`. Keep fusion opt-in. Phase 3 warm-start may begin as a controlled acoustic-scaling experiment, but promotion still requires OOS/gold gates. |
 | `x7_surt_only` | blind + live | 68.6% | Yes — surt with longer blind buffer; didn't help (kept for negative-result record). |
 | `x8_pb_finetuned` | blind + offline | 72.9% (Path B) | **Yes — proof of production training path.** w2v-bert-punjabi + LoRA adapter from 50-step fine-tune on 30 real kirtan clips. +2.6 over Path B baseline; +6 to +14 per-shabad on 3 of 4 shabads. Validates the end-to-end training pipeline; tiny scale, far from saturated. |
 | `x5_ensemble` | blind + live | 91.2% | **No — benchmark-overfit.** Route table `{1341 → surt}` chosen from test-set scores. |
@@ -325,15 +325,20 @@ generalization set while gold OOS remains pending.
 
 **M4 Pro compute checkpoint:** the 48 GB M4 Pro is healthy and has been used for
 the approved training work (`v5b_mac_diverse` peaked at ~27 GB MPS driver
-memory). Current bottleneck is not compute or data volume; it is validation
-quality. Do not pull/train all 300h or start Phase 3 solely because memory
-headroom exists. See [`docs/m4pro_compute_policy.md`](docs/m4pro_compute_policy.md)
+memory). Current bottleneck is still validation quality, not hardware. However,
+after the UEM-aware Phase 2.13 fusion audit, a controlled Phase 3 warm-start is
+now allowed: pull a large fresh slice from untouched HF shards, verify data-card
+diversity/holdouts, train one adapter, and compare silver/paired/OOS diagnostics.
+Do not pull/train all 300h or treat warm-start results as promotion solely
+because memory headroom exists. See [`docs/m4pro_compute_policy.md`](docs/m4pro_compute_policy.md)
 and run `make audit-m4pro` for a current hardware/run-card report.
 
 ### Phase 3 — Mac-scale real fine-tune
 **Role:** ML Scientist (acoustic modeling) (lead) + Optimization Engineer.
 
-**Precondition:** Phase 2.9 has produced a positive full-shabad alignment diagnostic; OOS v1 must exist before Phase 3 promotion or scale-up. Do not spend the 3 × 24h budget on paired-benchmark confidence alone.
+**Precondition:** Phase 2.9 has produced a positive full-shabad alignment diagnostic. Phase 2.13 has also improved assisted-OOS lock behavior via opt-in evidence fusion. A one-run Phase 3 warm-start is allowed for acoustic scaling, but OOS v1 or an audited silver substitute must exist before Phase 3 promotion/full 3-seed scale-up. Do not spend the full 3 × 24h budget on paired-benchmark confidence alone.
+
+Warm-start execution plan: [`docs/phase3_warm_start_plan.md`](docs/phase3_warm_start_plan.md).
 
 **Hypothesis:** If Phase 2.8 shows positive movement, 50 h of curated kirtan + SpecAugment + cosine LR + LoRA r=32 + weight decay + 3 seeds should push surt-small-v3 to ≥ 85 % benchmark and ≥ 80 % OOS — within 24–48 h M4 Pro wall-clock per run.
 

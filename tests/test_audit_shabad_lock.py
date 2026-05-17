@@ -11,8 +11,8 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from scripts.audit_shabad_lock import (  # noqa: E402
-    Case,
     load_cached_chunks,
+    load_cases,
     parse_csv,
     parse_lookbacks,
     render_markdown,
@@ -43,6 +43,20 @@ class TestAuditShabadLockHelpers(unittest.TestCase):
     def test_load_cached_chunks_missing_returns_none(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertIsNone(load_cached_chunks(Path(tmp), "missing", "medium_word"))
+
+    def test_load_cases_preserves_uem_start_for_cold_cases(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            gt_dir = Path(tmp)
+            (gt_dir / "case_cold.json").write_text(json.dumps({
+                "video_id": "video_x",
+                "shabad_id": 3712,
+                "uem": {"start": 96.7, "end": 292.9},
+                "segments": [],
+            }))
+            cases = load_cases(gt_dir)
+        self.assertEqual(len(cases), 1)
+        self.assertEqual(cases[0].case_id, "case_cold")
+        self.assertEqual(cases[0].uem_start, 96.7)
 
     def test_render_markdown_contains_summary_and_details(self):
         rows = {

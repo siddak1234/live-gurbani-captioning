@@ -55,7 +55,9 @@ OOS_LOCK_AUDIT ?= diagnostics/phase2_11_oos_assisted_lock_audit.md
 PAIRED_LOCK_AUDIT ?= diagnostics/phase2_11_paired_lock_audit.md
 LOCK_POLICY_REPORT ?= diagnostics/phase2_12_silver_lock_policy.md
 LOCK_FUSION_REPORT ?= diagnostics/phase2_13_lock_evidence_fusion.md
-LOCK_FUSION_AGG ?= fusion:tfidf_60+0.5*chunk_vote_90
+LOCK_TAIL_FUSION_REPORT ?= diagnostics/phase2_14_tail_lock_evidence_fusion.md
+LOCK_EXTENDED_FUSION_REPORT ?= diagnostics/phase2_14_extended_lock_evidence_fusion.md
+LOCK_FUSION_AGG ?= fusion:tfidf_45+0.5*chunk_vote_90
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
 SILVER_MODEL    ?= surindersinghssj/surt-small-v3
@@ -66,6 +68,8 @@ SILVER_SAMPLE_STRATEGY ?= round_robin_video
 SILVER_WEAK_REPORT ?= diagnostics/phase2_10_silver_weak_slices.md
 SILVER_SOURCE_AUDIT ?= diagnostics/phase2_10_silver_source_audit.md
 M4PRO_AUDIT ?= diagnostics/m4pro_compute_audit.md
+PHASE3_DATA_DIR ?= training_data/v6_mac_scale20
+PHASE3_TRAIN_OUT ?= lora_adapters/v6_mac_scale20
 DATA_SHARDS_ARG := $(if $(DATA_SHARDS),--shards $(DATA_SHARDS),--shard $(DATA_SHARD))
 SILVER_ADAPTER_ARG := $(if $(SILVER_ADAPTER_DIR),--adapter-dir $(SILVER_ADAPTER_DIR),)
 
@@ -232,6 +236,17 @@ data-silver-300h: ## Pull a non-training-shard silver eval slice from the 300h c
 		DATA_MIN_UNIQUE_VIDEOS=15 \
 		DATA_MIN_UNIQUE_SHABADS=100
 
+.PHONY: data-v6-scale20
+data-v6-scale20: ## Phase 3 warm-start pull: large fresh slice, preserving v5b + silver shards.
+	$(MAKE) data \
+		DATA_DIR=$(PHASE3_DATA_DIR) \
+		DATA_SAMPLES=10000 \
+		DATA_MIN_SCORE=0.88 \
+		DATA_SHARDS=20-49 \
+		DATA_MAX_SCAN=80000 \
+		DATA_MIN_UNIQUE_VIDEOS=40 \
+		DATA_MIN_UNIQUE_SHABADS=300
+
 .PHONY: smoke-manifest
 smoke-manifest: ## Build the 4-snippet smoke manifest (validates pipeline only).
 	$(PYTHON) scripts/build_smoke_manifest.py
@@ -254,6 +269,13 @@ train: data ## Full LoRA fine-tune of surt-small-v3 on $(DATA_DIR). Auto-pulls d
 		--config $(TRAIN_CFG) \
 		--manifest $(DATA_DIR)/manifest.json \
 		--output-dir $(TRAIN_OUT)
+
+.PHONY: train-v6-scale20
+train-v6-scale20: data-v6-scale20 ## Phase 3 warm-start LoRA train on the v6 large slice.
+	$(PYTHON) scripts/finetune_path_b.py \
+		--config $(TRAIN_CFG) \
+		--manifest $(PHASE3_DATA_DIR)/manifest.json \
+		--output-dir $(PHASE3_TRAIN_OUT)
 
 # -----------------------------------------------------------------------------
 # Evaluation
@@ -384,6 +406,24 @@ tune-lock-evidence-fusion: prepare-oos-assisted ## Tune sparse lock-evidence fus
 		--oos-gt-dir $(OOS_ASSISTED_TEST_DIR) \
 		--asr-tag medium_word \
 		--out $(LOCK_FUSION_REPORT)
+
+.PHONY: tune-lock-tail-evidence-fusion
+tune-lock-tail-evidence-fusion: prepare-oos-assisted ## Optional tail-window lock-fusion probe (diagnostic; not default).
+	$(PYTHON) scripts/tune_lock_evidence_fusion.py \
+		--paired-gt-dir $(BENCHMARK_DIR)/test \
+		--oos-gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--asr-tag medium_word \
+		--include-tail \
+		--out $(LOCK_TAIL_FUSION_REPORT)
+
+.PHONY: tune-lock-extended-evidence-fusion
+tune-lock-extended-evidence-fusion: prepare-oos-assisted ## Optional longer-window lock-fusion probe (diagnostic; not default).
+	$(PYTHON) scripts/tune_lock_evidence_fusion.py \
+		--paired-gt-dir $(BENCHMARK_DIR)/test \
+		--oos-gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--asr-tag medium_word \
+		--lookbacks 30,45,60,90,120,150,180 \
+		--out $(LOCK_EXTENDED_FUSION_REPORT)
 
 .PHONY: eval-silver-300h
 eval-silver-300h: data-silver-300h ## Silver ASR text eval on held-out 300h canonical shards (not promotion-grade).

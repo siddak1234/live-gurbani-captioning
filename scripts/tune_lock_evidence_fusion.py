@@ -48,6 +48,7 @@ class FeatureSpec:
     name: str
     aggregate: str
     window: float
+    offset: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -97,7 +98,7 @@ class FusionResult:
         return self.by_dataset.get("assisted_oos", DatasetScore(0, 0, 0)).accuracy
 
 
-def make_feature_specs(lookbacks: list[float]) -> list[FeatureSpec]:
+def make_feature_specs(lookbacks: list[float], *, include_tail: bool = False) -> list[FeatureSpec]:
     specs: list[FeatureSpec] = []
     for window in lookbacks:
         specs.extend([
@@ -105,6 +106,15 @@ def make_feature_specs(lookbacks: list[float]) -> list[FeatureSpec]:
             FeatureSpec(f"tfidf_{window:g}", "tfidf", window),
             FeatureSpec(f"topk3_{window:g}", "topk:3", window),
         ])
+        if include_tail:
+            for tail in (30.0, 45.0, 60.0):
+                if tail < window:
+                    specs.append(FeatureSpec(
+                        f"tail_chunk_vote_{tail:g}_{window:g}",
+                        "chunk_vote",
+                        tail,
+                        offset=window - tail,
+                    ))
     return specs
 
 
@@ -112,14 +122,15 @@ def chunk_vote_scores(
     chunks: list[AsrChunk],
     corpora: dict[int, list[dict]],
     *,
+    start_t: float,
     window: float,
 ) -> dict[int, float]:
-    end_t = float(window)
+    end_t = float(start_t) + float(window)
     scores: dict[int, float] = {sid: 0.0 for sid in corpora}
     for chunk in chunks:
         if float(chunk.start) >= end_t:
             break
-        if float(chunk.end) <= 0.0:
+        if float(chunk.end) <= float(start_t):
             continue
         best_sid: int | None = None
         best_score = 0.0
@@ -138,10 +149,11 @@ def topk_scores(
     chunks: list[AsrChunk],
     corpora: dict[int, list[dict]],
     *,
+    start_t: float,
     window: float,
     k: int = 3,
 ) -> dict[int, float]:
-    buf = buffer_text(chunks, start_t=0.0, lookback_seconds=window)
+    buf = buffer_text(chunks, start_t=start_t, lookback_seconds=window)
     out: dict[int, float] = {}
     for sid, lines in corpora.items():
         line_scores = score_chunk(buf, lines, ratio="WRatio")
@@ -153,9 +165,10 @@ def tfidf_scores(
     chunks: list[AsrChunk],
     tfidf_scorer: ShabadDocTfidf,
     *,
+    start_t: float,
     window: float,
 ) -> dict[int, float]:
-    buf = buffer_text(chunks, start_t=0.0, lookback_seconds=window)
+    buf = buffer_text(chunks, start_t=start_t, lookback_seconds=window)
     return tfidf_scorer.score(buf)
 
 
@@ -164,6 +177,7 @@ def build_feature_table(
     corpora: dict[int, list[dict]],
     specs: list[FeatureSpec],
     *,
+    start_t: float = 0.0,
     tfidf_scorer: ShabadDocTfidf | None = None,
 ) -> dict[int, dict[str, float]]:
     """Return sid -> feature_name -> per-case normalized score."""
@@ -171,11 +185,11 @@ def build_feature_table(
     tfidf_scorer = tfidf_scorer or ShabadDocTfidf(corpora)
     for spec in specs:
         if spec.aggregate == "chunk_vote":
-            raw = chunk_vote_scores(chunks, corpora, window=spec.window)
+            raw = chunk_vote_scores(chunks, corpora, start_t=start_t + spec.offset, window=spec.window)
         elif spec.aggregate == "tfidf":
-            raw = tfidf_scores(chunks, tfidf_scorer, window=spec.window)
+            raw = tfidf_scores(chunks, tfidf_scorer, start_t=start_t + spec.offset, window=spec.window)
         elif spec.aggregate == "topk:3":
-            raw = topk_scores(chunks, corpora, window=spec.window, k=3)
+            raw = topk_scores(chunks, corpora, start_t=start_t + spec.offset, window=spec.window, k=3)
         else:
             raise ValueError(f"unknown aggregate: {spec.aggregate}")
         max_score = max(raw.values()) if raw else 0.0
@@ -421,6 +435,9 @@ def main() -> int:
     parser.add_argument("--asr-cache-dir", type=pathlib.Path, default=DEFAULT_ASR_CACHE)
     parser.add_argument("--asr-tag", default="medium_word")
     parser.add_argument("--lookbacks", default="30,45,60,90")
+    parser.add_argument("--include-tail", action="store_true",
+                        help="Also test tail_chunk_vote_<tail>_<window> features. "
+                             "Kept opt-in because the tail-heavy variants can overfit paired cases.")
     parser.add_argument("--max-features", type=int, default=3)
     parser.add_argument("--top-n", type=int, default=12)
     parser.add_argument("--out", type=pathlib.Path, default=DEFAULT_OUT)
@@ -440,7 +457,7 @@ def main() -> int:
         print(f"error: no corpus files in {args.corpus_dir}", file=sys.stderr)
         return 1
 
-    feature_specs = make_feature_specs(parse_lookbacks(args.lookbacks))
+    feature_specs = make_feature_specs(parse_lookbacks(args.lookbacks), include_tail=args.include_tail)
     tfidf_scorer = ShabadDocTfidf(corpora)
     feature_tables: dict[tuple[str, str], dict[int, dict[str, float]]] = {}
     missing_cache: set[tuple[str, str]] = set()
@@ -455,6 +472,7 @@ def main() -> int:
                 chunks,
                 corpora,
                 feature_specs,
+                start_t=case.uem_start,
                 tfidf_scorer=tfidf_scorer,
             )
 

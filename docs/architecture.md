@@ -165,15 +165,19 @@ The first opt-in prototype adds exactly that guard (`lock_lookbacks` +
 `min_lock_score`) without changing historical defaults; it improves assisted
 OOS from 29.5% to 40.5%, but does not solve shared-hook candidate ambiguity.
 Phase 2.12 then used paired labels + machine-assisted OOS labels as a silver
-learning set for lock-policy tuning. The best macro rule (`chunk_vote@45s`) is
-only 9/12 paired and 3/5 assisted OOS; the best OOS-only rule gets 5/5 assisted
-OOS but collapses paired to 3/12. That rules out a simple scorer/window switch.
+learning set for lock-policy tuning. After correcting the diagnostic to respect
+`uem.start`, the best macro rule (`tfidf_then_topk3@45s`) gets 5/5 assisted OOS
+but only 7/12 paired; the best paired-safe rule (`chunk_vote@45s`) gets 11/12
+paired but only 3/5 assisted OOS. That rules out a simple scorer/window switch.
 Phase 2.13 implements sparse lock-evidence fusion as an opt-in aggregate
-(`fusion:tfidf_60+0.5*chunk_vote_90`). It raises assisted OOS to 59.9% and
-5/5 locks, but paired drops to 79.7% because two `zOtIpxMT9hU` starts lock to
-shabad `4892`. This confirms the next clean Layer 2 direction is candidate
-retrieval / high-confidence false-candidate disambiguation, while keeping the
-policy generic and opt-in.
+(`fusion:tfidf_45+0.5*chunk_vote_90`). After correcting the diagnostic to use
+each case's `uem.start` (matching runtime), the fusion lock objective is 11/12
+paired and 5/5 assisted OOS. Full-frame scoring is 84.1% paired and 59.9%
+assisted OOS; the remaining paired lock failure is full-start `zOtIpxMT9hU`
+locking to shabad `4892`, while the cold starts now lock correctly. Phase 2.14
+tail-window probes can overfit that one paired failure but hurt OOS, so the clean
+Layer 2 direction remains generic candidate retrieval / high-confidence
+false-candidate disambiguation. Fusion stays opt-in.
 
 ## Configuration surface
 

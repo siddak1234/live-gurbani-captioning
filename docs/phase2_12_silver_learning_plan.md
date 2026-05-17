@@ -69,13 +69,13 @@ Executed checkpoint:
 make tune-shabad-lock-policy
 ```
 
-Result: the best silver macro policy is `chunk_vote@45s|min=0`, with **67.5%**
-macro lock accuracy:
+Result after the UEM-aware diagnostic fix: the best silver macro policy is
+`tfidf_then_topk3@45s|min=0`, with **79.2%** macro lock accuracy:
 
-- Paired benchmark locks: **9/12** (75.0%)
-- Assisted-OOS locks: **3/5** (60.0%)
-- Best assisted-OOS-only policy: `tfidf_then_topk3@45s|min=0`, **5/5** OOS but
-  only **3/12** paired
+- Paired benchmark locks: **7/12** (58.3%)
+- Assisted-OOS locks: **5/5** (100.0%)
+- Best paired-safe policy: `chunk_vote@45s|min=0`, **11/12** paired but only
+  **3/5** assisted OOS
 
 This is a useful negative result. It says we can keep learning from silver
 labels, but a hand-tuned scorer/window switch is not enough and should not be

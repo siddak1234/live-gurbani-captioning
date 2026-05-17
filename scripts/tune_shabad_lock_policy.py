@@ -150,6 +150,7 @@ def _identify(
     *,
     chunks,
     corpora: dict[int, list[dict]],
+    start_t: float,
     lookback_seconds: float,
     aggregate: str,
     tfidf_min_score: float,
@@ -159,6 +160,7 @@ def _identify(
         return identify_hybrid(
             chunks,
             corpora,
+            start_t=start_t,
             lookback_seconds=lookback_seconds,
             tfidf_min_score=tfidf_min_score,
             tfidf_min_margin=tfidf_min_margin,
@@ -167,7 +169,7 @@ def _identify(
         identify_shabad(
             chunks,
             corpora,
-            start_t=0.0,
+            start_t=start_t,
             lookback_seconds=lookback_seconds,
             aggregate=aggregate,
             ratio="WRatio",
@@ -210,6 +212,7 @@ def decide_case(
         result, mode = _identify(
             chunks=chunks,
             corpora=corpora,
+            start_t=case.uem_start,
             lookback_seconds=window,
             aggregate=policy.aggregate,
             tfidf_min_score=tfidf_min_score,

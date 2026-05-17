@@ -18,8 +18,14 @@ def _line(text: str, idx: int = 0) -> dict:
 class TestFusionSpec(unittest.TestCase):
     def test_parse_weighted_terms(self):
         self.assertEqual(
-            parse_fusion_spec("tfidf_60+0.5*chunk_vote_90+2*topk3_45"),
-            [(1.0, "tfidf", 60.0), (0.5, "chunk_vote", 90.0), (2.0, "topk:3", 45.0)],
+            parse_fusion_spec("tfidf_45+0.5*chunk_vote_90+2*topk3_45"),
+            [(1.0, "tfidf", 45.0, 0.0), (0.5, "chunk_vote", 90.0, 0.0), (2.0, "topk:3", 45.0, 0.0)],
+        )
+
+    def test_parse_tail_term(self):
+        self.assertEqual(
+            parse_fusion_spec("2*tail_chunk_vote_30_90"),
+            [(2.0, "chunk_vote", 30.0, 60.0)],
         )
 
     def test_rejects_unknown_feature(self):

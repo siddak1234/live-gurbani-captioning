@@ -32,13 +32,20 @@
 
 - Highest completed training memory use was 27.05 GB, about 56.4% of 48 GB unified memory.
 - The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.
-- We are not currently compute-bound. The current blocker is validation quality: gold OOS for `phase2_9_loop_align`, not more broad data or another blind LoRA scale-up.
+- We are not currently compute-bound. The current blocker is still validation
+  quality, but Phase 2.13's UEM-aware evidence-fusion result is strong enough
+  to justify one controlled Phase 3 warm-start data/training run.
 - The 48 GB headroom is useful for the future Phase 3 plan (larger batches, gradient checkpointing experiments, longer runs), but Phase 3 is intentionally gated.
-- Do not pull/train on all 300h right now. The silver audit found label-risk rows, not clean ASR failures, and `v5b_mac_diverse` was neutral/regressive outside oracle alignment.
-- Next recommended compute use: small targeted diagnostics or gold OOS scoring. Next recommended non-compute work: finish OOS v1 GT validation.
+- Do not pull/train on all 300h right now. The silver audit found label-risk
+  rows, not clean ASR failures, and `v5b_mac_diverse` was neutral/regressive
+  outside oracle alignment.
+- Next recommended compute use: `make data-v6-scale20`, validate the data card,
+  then `make train-v6-scale20` if diversity/holdout gates pass. This is a
+  warm-start scaling experiment, not a promotion claim.
 
 ## If Phase 3 is unblocked later
 
 - Re-enable MPS fp16 only after a torch >= 2.8 / accelerate >= 1.11 compatibility pass.
 - Verify `gradient_checkpointing=true` with PEFT+MPS in isolation before changing the main YAML.
-- Use the 48 GB machine for 50h/3-seed runs only after OOS v1 passes or a deliberate pivot is documented.
+- Use the 48 GB machine for 50h/3-seed runs only after OOS v1 passes or a
+  deliberate pivot is documented.

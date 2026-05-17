@@ -1,0 +1,105 @@
+# Phase 3 warm-start plan
+
+**Status:** active next step after the UEM-aware Phase 2.13 checkpoint.
+
+This is not full Phase 3 promotion. It is the first large, controlled acoustic
+scaling run on the M4 Pro after the lock/alignment stack became strong enough to
+make more training worth measuring.
+
+## Why we are doing this now
+
+The last important checkpoints are:
+
+- `v5b_mac_diverse` proved the M4 Pro training path works, but blind/live score
+  regressed to `65.6%`.
+- Phase 2.9 loop-align reached `91.2%` paired using a generic runtime
+  architecture, but OOS was still weak.
+- Phase 2.13 evidence fusion, after fixing the diagnostic to respect
+  `uem.start`, gives **11/12 paired locks** and **5/5 assisted-OOS locks**.
+- Full-frame fusion scoring is **84.1% paired** and **59.9% assisted OOS**.
+  The remaining paired false lock is full-start `zOtIpxMT9hU -> 4892`.
+- Tail-window features can overfit that one paired miss but hurt OOS, so they
+  are rejected.
+
+Interpretation: the architecture is clean enough to test whether more diverse
+acoustic training improves the evidence available to the lock/aligner. It is
+not clean enough to spend the full all-300h / 3-seed budget or claim promotion.
+
+## Experiment
+
+Use a fresh slice of the HuggingFace canonical kirtan data that does not overlap
+the prior v5b slice or the silver-eval slice.
+
+```bash
+make data-v6-scale20
+```
+
+The target is idempotent: if `training_data/v6_mac_scale20/manifest.json`
+already exists, it skips. Use `make data-v6-scale20 DATA_FORCE=1` only when
+intentionally replacing the slice.
+
+Target:
+
+- output: `training_data/v6_mac_scale20/`
+- source shards: `20-49`
+- clips: `10000`
+- quality floor: `canonical_match_score >= 0.88`
+- max scan: `80000`
+- diversity gates: at least 40 source videos and 300 shabad tokens
+- holdouts: benchmark videos, benchmark shabads, benchmark canonical line text,
+  and OOS source videos from `configs/datasets.yaml`
+
+If the data-card fails diversity or holdout checks, do not train. Adjust the
+pull first.
+
+Then train one adapter:
+
+```bash
+make train-v6-scale20
+```
+
+Target:
+
+- output: `lora_adapters/v6_mac_scale20/`
+- config: `configs/training/surt_lora_mac.yaml`
+- expected size: roughly 15-25 h of audio depending on clip length
+- expected wall-clock: several hours on M4 Pro fp32 MPS
+
+## Validation gates
+
+Training success is not accuracy success. The run must pass the following gates
+before it can justify a bigger Phase 3 run.
+
+1. **Run-card gate.** `lora_adapters/v6_mac_scale20/run_card.json` has
+   `status=completed`, `device=mps`, stable config/data hashes, and no memory
+   pressure.
+2. **Data-card gate.** `training_data/v6_mac_scale20/data_card.md` confirms
+   no benchmark/OOS leakage and sufficient video/shabad diversity.
+3. **Silver ASR gate.** Evaluate on held-out silver shards `10-19`. The v6
+   adapter should beat or at least not regress from base `surt-small-v3` and
+   `v5b_mac_diverse` on the same silver slice.
+4. **Paired runtime gate.** Evaluate under the current best generic runtime
+   stack. A paired gain that breaks lock behavior is not a win.
+5. **OOS diagnostic gate.** Assisted OOS is still silver, not gold, but it must
+   not regress catastrophically. Gold OOS remains the promotion gate.
+
+## Decision table
+
+| Outcome | Decision |
+|---|---|
+| Silver improves and paired/OOS do not regress | Continue toward full Phase 3: larger slice, rank/modules/augmentation, then 3 seeds. |
+| Silver improves but paired/OOS regress | Acoustic adapter is useful but integration is brittle. Return to lock/alignment before scaling. |
+| Silver does not improve | Stop large training. The next bottleneck is architecture/data labels, not data volume. |
+| Data-card diversity/holdout fails | Fix data pull. Do not train. |
+
+## Architecture rule
+
+No route tables, no benchmark-specific shabad IDs, and no case-specific lock
+overrides. The runtime remains:
+
+```text
+audio -> ASR evidence -> generic shabad lock -> locked-shabad aligner
+```
+
+Large training is allowed only because it is now tied to this generic runtime
+stack and the validation gates above.

@@ -30,6 +30,10 @@ class TestLockEvidenceFusion(unittest.TestCase):
              "chunk_vote_45", "tfidf_45", "topk3_45"],
         )
 
+    def test_make_feature_specs_can_include_tail_features(self):
+        specs = make_feature_specs([30.0, 45.0], include_tail=True)
+        self.assertIn("tail_chunk_vote_30_45", [spec.name for spec in specs])
+
     def test_make_policy_grid_contains_sparse_fusions(self):
         specs = make_feature_specs([30.0])
         policies = make_policy_grid(specs, max_features=2)
