@@ -26,17 +26,18 @@
 |---|---:|
 | `training_data/` | 5.1G |
 | `lora_adapters/` | 577M |
-| `submissions/` | 3.8M |
+| `submissions/` | 3.9M |
 | `asr_cache/` | 260K |
 
 ## Audit decision
 
 - Highest completed training memory use was 27.24 GB, about 56.7% of 48 GB unified memory.
 - The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.
-- The controlled Phase 3 warm-start completed. We are not currently compute-bound; the active blocker is held-out validation quality for `v6_mac_scale20`.
-- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but more training is not justified until silver/OOS gates are checked.
-- Do not pull/train on all 300h right now. The next valid experiment is held-out silver evaluation of `lora_adapters/v6_mac_scale20` against base `surt-small-v3` and `v5b_mac_diverse`.
-- Next recommended compute use: `make eval-silver-300h SILVER_ADAPTER_DIR=lora_adapters/v6_mac_scale20 SILVER_OUT=submissions/silver_300h_v6_mac_scale20.json`.
+- The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.
+- We are not currently compute-bound; the active blocker is paired/OOS validation quality for `v6_mac_scale20` under the generic lock/alignment runtime.
+- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but more training is not justified until paired/OOS gates are checked.
+- Do not pull/train on all 300h right now. The next valid experiment is paired runtime evaluation of `lora_adapters/v6_mac_scale20` with the Phase 2.13 evidence-fusion lock policy.
+- Next recommended compute use: run `scripts/run_idlock_path.py` on the paired benchmark with `--post-adapter-dir lora_adapters/v6_mac_scale20`, `--post-context buffered`, `--merge-policy retro-buffered`, `--smoother loop_align`, and `--blind-aggregate fusion:tfidf_45+0.5*chunk_vote_90`.
 
 ## If Phase 3 is unblocked later
 

@@ -42,8 +42,9 @@ So the correct expert decision was:
   produced a better lock policy: fresh shards, strict data-card gates, one
   adapter, then silver/paired/OOS comparison.
 
-That warm-start completed on 2026-05-17. The next decision is not "train more";
-it is whether `v6_mac_scale20` improves held-out silver behavior.
+That warm-start completed on 2026-05-17. The silver gate is now passed, but only
+modestly: `v6_mac_scale20` scored 96.55 mean WRatio / 78.0% exact normalized on
+the deterministic 100-row silver slice, versus base 96.29 / 75.0%.
 
 ## How to audit the machine
 
@@ -93,14 +94,23 @@ Then the 48 GB plan is:
 
 ## Current next step
 
-Evaluate the Phase 3 warm-start adapter on held-out silver:
+Evaluate the Phase 3 warm-start adapter under the current generic paired
+runtime stack:
 
 ```bash
-make eval-silver-300h \
-  SILVER_ADAPTER_DIR=lora_adapters/v6_mac_scale20 \
-  SILVER_OUT=submissions/silver_300h_v6_mac_scale20.json
+HF_WINDOW_SECONDS=10 python3 scripts/run_idlock_path.py \
+  --gt-dir ../live-gurbani-captioning-benchmark-v1/test \
+  --audio-dir audio \
+  --out-dir submissions/phase3_v6_lock_fusion_paired \
+  --post-adapter-dir lora_adapters/v6_mac_scale20 \
+  --post-context buffered \
+  --merge-policy retro-buffered \
+  --pre-word-timestamps \
+  --smoother loop_align \
+  --blind-lookback 90 \
+  --blind-aggregate "fusion:tfidf_45+0.5*chunk_vote_90"
 ```
 
-Only if silver improves or at least does not regress should we spend runtime on
-paired benchmark and OOS diagnostics. Promotion still requires OOS/gold
+Only if paired runtime does not regress should we spend runtime on OOS
+diagnostics or a larger training slice. Promotion still requires OOS/gold
 validation; paired-benchmark gains alone are not enough.

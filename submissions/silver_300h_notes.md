@@ -29,6 +29,11 @@ make eval-silver-300h \
   SILVER_LIMIT=100 \
   SILVER_ADAPTER_DIR=lora_adapters/v5b_mac_diverse \
   SILVER_OUT=submissions/silver_300h_v5b_100.json
+
+make eval-silver-300h \
+  SILVER_LIMIT=100 \
+  SILVER_ADAPTER_DIR=lora_adapters/v6_mac_scale20 \
+  SILVER_OUT=submissions/silver_300h_v6_mac_scale20.json
 ```
 
 Rows are selected with deterministic round-robin-by-video sampling, so the
@@ -40,6 +45,7 @@ Rows are selected with deterministic round-robin-by-video sampling, so the
 |---|---:|---:|---:|---:|---:|---:|
 | `surt-small-v3` base | 100 | 19 | 28 | 96.29 | 100.00 | 75.0% |
 | `surt-small-v3 + v5b_mac_diverse` | 100 | 19 | 28 | 96.33 | 100.00 | 73.0% |
+| `surt-small-v3 + v6_mac_scale20` | 100 | 19 | 28 | 96.55 | 100.00 | 78.0% |
 
 ## Interpretation
 
@@ -77,7 +83,17 @@ Examples:
 - `iQAbsSM5FO8`: raw/model text `ਮਨਿ ਪਰਚਾਇਆ`; canonical final `ਧਨਿ ਰੁਚ ਇਆ`
   with low retrieval margin.
 
-Decision: silver failures do not justify broad adapter scaling. They mostly
-confirm that silver labels are useful for diagnostics but unsafe as a promotion
-gate. Keep gold OOS as the production gate and continue architecture-oriented
-work around ID-lock / buffering / loop-aware alignment.
+## Phase 3 warm-start update
+
+`v6_mac_scale20` is the 24.6 h warm-start trained on shards `20-49`, leaving
+this silver slice (`10-19`) held out. It modestly improves the same 100-row
+silver sample: +0.26 mean WRatio vs base, +0.22 vs `v5b_mac_diverse`, and
+exact normalized match rises to 78.0%.
+
+This is enough to clear the silver non-regression gate and justify paired
+runtime evaluation under the current generic lock/alignment stack. It is not a
+promotion result by itself: silver labels are still high-confidence dataset
+labels, not hand-corrected OOS gold.
+
+Decision: proceed to paired runtime gate with `v6_mac_scale20`. Do not scale to
+all 300h / 3 seeds until paired and OOS diagnostics show no regression.

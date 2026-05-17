@@ -111,9 +111,13 @@ before it can justify a bigger Phase 3 run.
    PASS** for the 2026-05-17 pull.
 3. **Silver ASR gate.** Evaluate on held-out silver shards `10-19`. The v6
    adapter should beat or at least not regress from base `surt-small-v3` and
-   `v5b_mac_diverse` on the same silver slice. **Status: next.**
+   `v5b_mac_diverse` on the same silver slice. **Status: PASS, modest.**
+   On the deterministic 100-row silver slice, `v6_mac_scale20` reached
+   `96.55` mean WRatio and `78.0%` exact normalized match, versus base
+   `96.29` / `75.0%` and `v5b_mac_diverse` `96.33` / `73.0%`.
 4. **Paired runtime gate.** Evaluate under the current best generic runtime
-   stack. A paired gain that breaks lock behavior is not a win.
+   stack. A paired gain that breaks lock behavior is not a win. **Status:
+   next.**
 5. **OOS diagnostic gate.** Assisted OOS is still silver, not gold, but it must
    not regress catastrophically. Gold OOS remains the promotion gate.
 
@@ -137,3 +141,31 @@ audio -> ASR evidence -> generic shabad lock -> locked-shabad aligner
 
 Large training is allowed only because it is now tied to this generic runtime
 stack and the validation gates above.
+
+## Silver result checkpoint
+
+Command:
+
+```bash
+make eval-silver-300h \
+  SILVER_ADAPTER_DIR=lora_adapters/v6_mac_scale20 \
+  SILVER_OUT=submissions/silver_300h_v6_mac_scale20.json
+```
+
+Result, 2026-05-17:
+
+| Run | n | videos | shabads | mean WRatio | median WRatio | exact normalized |
+|---|---:|---:|---:|---:|---:|---:|
+| `surt-small-v3` base | 100 | 19 | 28 | 96.29 | 100.00 | 75.0% |
+| `surt-small-v3 + v5b_mac_diverse` | 100 | 19 | 28 | 96.33 | 100.00 | 73.0% |
+| `surt-small-v3 + v6_mac_scale20` | 100 | 19 | 28 | 96.55 | 100.00 | 78.0% |
+
+Pairwise against the exact same rows:
+
+- `v6` vs base: `+0.264` mean WRatio, 7 rows improved, 2 rows regressed.
+- `v6` vs `v5b`: `+0.218` mean WRatio, 7 rows improved, 2 rows regressed.
+
+Interpretation: the 24.6 h warm-start produced a small but real held-out ASR
+gain. It is not the large jump needed for a direct path to 95%+, but it clears
+the "do not regress on silver" gate. The next experiment should test whether
+the stronger adapter helps or hurts the current generic lock/alignment runtime.

@@ -114,6 +114,7 @@ def render_report() -> str:
     cards = load_run_cards()
     card_names = {c.name for c in cards}
     has_v6 = "v6_mac_scale20" in card_names
+    has_v6_silver = (REPO_ROOT / "submissions" / "silver_300h_v6_mac_scale20.json").exists()
     peak_mem = max((c.peak_mem_gb or 0.0 for c in cards), default=0.0)
     peak_fraction = (peak_mem / mem_gb) if mem_gb else None
 
@@ -169,7 +170,15 @@ def render_report() -> str:
     lines.extend([
         "- The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.",
     ])
-    if has_v6:
+    if has_v6_silver:
+        lines.extend([
+            "- The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.",
+            "- We are not currently compute-bound; the active blocker is paired/OOS validation quality for `v6_mac_scale20` under the generic lock/alignment runtime.",
+            "- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but more training is not justified until paired/OOS gates are checked.",
+            "- Do not pull/train on all 300h right now. The next valid experiment is paired runtime evaluation of `lora_adapters/v6_mac_scale20` with the Phase 2.13 evidence-fusion lock policy.",
+            "- Next recommended compute use: run `scripts/run_idlock_path.py` on the paired benchmark with `--post-adapter-dir lora_adapters/v6_mac_scale20`, `--post-context buffered`, `--merge-policy retro-buffered`, `--smoother loop_align`, and `--blind-aggregate fusion:tfidf_45+0.5*chunk_vote_90`.",
+        ])
+    elif has_v6:
         lines.extend([
             "- The controlled Phase 3 warm-start completed. We are not currently compute-bound; the active blocker is held-out validation quality for `v6_mac_scale20`.",
             "- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but more training is not justified until silver/OOS gates are checked.",
