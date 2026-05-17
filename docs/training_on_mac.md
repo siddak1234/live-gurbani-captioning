@@ -53,7 +53,7 @@ frame accuracy, and `84.1%` paired under the opt-in fusion policy. The remaining
 lock failure is full-start `zOtIpxMT9hU -> 4892`; tail-window overfits can fix it
 on paired but hurt OOS, so they are rejected.
 
-Therefore the next training step is a **controlled Phase 3 warm-start**, not
+Therefore the next training step was a **controlled Phase 3 warm-start**, not
 all-300h training:
 
 ```bash
@@ -69,13 +69,18 @@ before the pull is considered valid. Inspect
 The scientific gates and decision table live in
 [`phase3_warm_start_plan.md`](phase3_warm_start_plan.md).
 
-The completed train command was:
+Current Phase 3 warm-start checkpoint, 2026-05-17:
 
-```bash
-make train \
-  DATA_DIR=training_data/v5b_mac_diverse \
-  TRAIN_OUT=lora_adapters/v5b_mac_diverse
-```
+- data: `12,216` clips, `24.593 h`, `524` shabad tokens, `40` source videos,
+  diversity gate `PASS`
+- adapter: `lora_adapters/v6_mac_scale20/`
+- training: `4,581` optimizer steps, `3.0` epochs, `3 h 46 m` wall-clock on MPS
+- memory: `27.24 GB` peak MPS driver memory on the 48 GB M4 Pro
+- losses: final logged train loss `0.028`; trainer mean `train_loss=0.1272`
+
+This confirms the 48 GB M4 Pro is being used correctly for the approved large
+warm-start. The low train loss is not an accuracy claim. The required next step
+is held-out silver evaluation before paired benchmark promotion.
 
 ## 2. Smoke-test the pipeline (~5 minutes)
 

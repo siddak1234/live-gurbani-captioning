@@ -10,6 +10,8 @@ run-card memory telemetry:
   peak MPS driver memory.
 - `v5b_mac_diverse`: 2,544 clips, 4.936 h, 3 epochs, 2,870 s wall-clock,
   27.05 GB peak MPS driver memory.
+- `v6_mac_scale20`: 12,216 clips, 24.593 h, 3 epochs, 13,568.6 s wall-clock,
+  27.24 GB peak MPS driver memory.
 
 That means the machine is not sitting unused because the training stack is
 misconfigured. It also means there is still memory headroom, but memory headroom
@@ -32,13 +34,16 @@ Evidence:
    the v5b adapter is neutral against the base model on held-out shards.
 5. The weak silver rows are mostly source-label risks, not clean ASR misses.
 
-So the correct expert decision is:
+So the correct expert decision was:
 
 - Do not spend the M4 Pro budget on a broad all-300h/3-seed run yet.
 - Do not scale adapter training just because we have 48 GB.
-- Do use the machine for a controlled Phase 3 warm-start now that Phase 2.13 has
+- Use the machine for exactly one controlled Phase 3 warm-start after Phase 2.13
   produced a better lock policy: fresh shards, strict data-card gates, one
   adapter, then silver/paired/OOS comparison.
+
+That warm-start completed on 2026-05-17. The next decision is not "train more";
+it is whether `v6_mac_scale20` improves held-out silver behavior.
 
 ## How to audit the machine
 
@@ -88,21 +93,14 @@ Then the 48 GB plan is:
 
 ## Current next step
 
-Begin the Phase 3 warm-start data pull:
+Evaluate the Phase 3 warm-start adapter on held-out silver:
 
 ```bash
-make data-v6-scale20
+make eval-silver-300h \
+  SILVER_ADAPTER_DIR=lora_adapters/v6_mac_scale20 \
+  SILVER_OUT=submissions/silver_300h_v6_mac_scale20.json
 ```
 
-This is not full Phase 3 promotion. It is the next educated compute use: a
-large, fresh, holdout-clean slice from shards `20-49` so we can test whether
-additional acoustic training improves the current lock/alignment architecture
-without repeating the `v5b_mac_diverse` regression. Only after the data-card
-passes should we run:
-
-```bash
-make train-v6-scale20
-```
-
-Promotion still requires OOS/gold validation; paired-benchmark gains alone are
-not enough.
+Only if silver improves or at least does not regress should we spend runtime on
+paired benchmark and OOS diagnostics. Promotion still requires OOS/gold
+validation; paired-benchmark gains alone are not enough.

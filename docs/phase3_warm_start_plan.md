@@ -1,6 +1,7 @@
 # Phase 3 warm-start plan
 
-**Status:** active next step after the UEM-aware Phase 2.13 checkpoint.
+**Status:** data and training completed; silver held-out evaluation is the
+active gate.
 
 This is not full Phase 3 promotion. It is the first large, controlled acoustic
 scaling run on the M4 Pro after the lock/alignment stack became strong enough to
@@ -52,6 +53,18 @@ Target:
 If the data-card fails diversity or holdout checks, do not train. Adjust the
 pull first.
 
+Actual data checkpoint, 2026-05-17:
+
+- output: `training_data/v6_mac_scale20/`
+- clips: `12,216`
+- hours: `24.593`
+- unique shabad tokens: `524`
+- unique source videos: `40`
+- data-card diversity gate: `PASS`
+- holdout rejections: `holdout_shabad=0`, `holdout_video=0`,
+  `holdout_content=0`
+- quality rejections: `score_low=16,956`, `dur_long=6`
+
 Then train one adapter:
 
 ```bash
@@ -65,6 +78,26 @@ Target:
 - expected size: roughly 15-25 h of audio depending on clip length
 - expected wall-clock: several hours on M4 Pro fp32 MPS
 
+Actual training checkpoint, 2026-05-17:
+
+- status: `completed`
+- optimizer steps: `4,581`
+- epochs: `3.0`
+- wall-clock: `13,568.6 s` (`3 h 46 m`)
+- train throughput: `0.338 steps/s`, `2.701 samples/s`
+- final logged train loss in `run_card.json`: `0.028`
+- trainer mean `train_loss`: `0.1272`
+- peak MPS driver memory: `27.24 GB`
+- device: `mps`
+- config hash:
+  `4e75d4e591280bb389cd31bbc16cedbbc1b88cbc2bcee19928bae04668a7acb4`
+- data hash:
+  `c6cd0479b65f58161b8cce2f7ded444e30e0dba59887448b819a179347850104`
+
+Interpretation: the Mac training stack and the 24.6 h data pull are healthy.
+The very low train loss is not a promotion signal by itself; it can indicate
+strong fitting or memorization. The next valid test is held-out silver ASR.
+
 ## Validation gates
 
 Training success is not accuracy success. The run must pass the following gates
@@ -72,12 +105,13 @@ before it can justify a bigger Phase 3 run.
 
 1. **Run-card gate.** `lora_adapters/v6_mac_scale20/run_card.json` has
    `status=completed`, `device=mps`, stable config/data hashes, and no memory
-   pressure.
+   pressure. **Status: PASS** for the 2026-05-17 run.
 2. **Data-card gate.** `training_data/v6_mac_scale20/data_card.md` confirms
-   no benchmark/OOS leakage and sufficient video/shabad diversity.
+   no benchmark/OOS leakage and sufficient video/shabad diversity. **Status:
+   PASS** for the 2026-05-17 pull.
 3. **Silver ASR gate.** Evaluate on held-out silver shards `10-19`. The v6
    adapter should beat or at least not regress from base `surt-small-v3` and
-   `v5b_mac_diverse` on the same silver slice.
+   `v5b_mac_diverse` on the same silver slice. **Status: next.**
 4. **Paired runtime gate.** Evaluate under the current best generic runtime
    stack. A paired gain that breaks lock behavior is not a win.
 5. **OOS diagnostic gate.** Assisted OOS is still silver, not gold, but it must
