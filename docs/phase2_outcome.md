@@ -140,3 +140,12 @@ those GT files are corrected and committed. Once they exist, run:
 ```bash
 make eval-oos-loop-align
 ```
+
+Expert checkpoint on "more shabad variance": yes, the current paired benchmark
+is too small to judge production readiness, but the immediate fix is **held-out
+OOS validation**, not training on these five. The training path already has
+large-scale shabad variance through the HuggingFace pulls and Phase 3/4 plans.
+At this checkpoint, these five shabads must stay outside training so they can
+tell us whether the 91.2% paired-benchmark architecture generalizes. If OOS v1
+passes, then scale training/evaluation; if it fails, diagnose by slice before
+spending the M4 Pro budget on Phase 3.

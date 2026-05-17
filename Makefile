@@ -45,6 +45,8 @@ HF_WINDOW_SECONDS ?= 10
 OOS_SHABAD_ID  ?=
 OOS_URL        ?=
 OOS_CLIP       ?=
+OOS_CASES      ?= eval_data/oos_v1/cases.yaml
+OOS_DRAFT_DIR  ?= eval_data/oos_v1/drafts
 DATA_SHARDS_ARG := $(if $(DATA_SHARDS),--shards $(DATA_SHARDS),--shard $(DATA_SHARD))
 
 # -----------------------------------------------------------------------------
@@ -122,6 +124,12 @@ fetch-oos-audio: ## Download one OOS URL: make fetch-oos-audio OOS_URL='case_001
 		--audio-dir eval_data/oos_v1/audio \
 		--url "$(OOS_URL)" \
 		$(if $(OOS_CLIP),--clip "$(OOS_CLIP)",)
+
+.PHONY: bootstrap-oos-gt
+bootstrap-oos-gt: ## Generate draft OOS GT JSONs under eval_data/oos_v1/drafts/ (not scored).
+	$(PYTHON) scripts/bootstrap_oos_gt.py \
+		--cases $(OOS_CASES) \
+		--draft-dir $(OOS_DRAFT_DIR)
 
 # -----------------------------------------------------------------------------
 # Data

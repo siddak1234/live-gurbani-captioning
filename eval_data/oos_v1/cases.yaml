@@ -1,0 +1,64 @@
+# OOS v1 case manifest.
+#
+# This file is source metadata only. It is committed because it documents where
+# the OOS audio comes from and which canonical shabad each case should align to.
+# Raw audio remains gitignored under eval_data/oos_v1/audio/. Machine-generated
+# draft labels go under eval_data/oos_v1/drafts/. Only human-corrected labels
+# belong under eval_data/oos_v1/test/.
+
+schema_version: 1
+cases:
+  - case_id: case_001
+    role: representative
+    shabad_id: 2333
+    opening_line: "ਮੇਰਾ ਬੈਦੁ ਗੁਰੂ ਗੋਵਿੰਦਾ ॥"
+    source_url: "https://www.youtube.com/watch?v=hhpYbZ9_jH4"
+    source_video_id: hhpYbZ9_jH4
+    source_title: "Mera Baid Guru Govinda - Bhai Navdeep Singh Ji Manawan"
+    clip_start_s: 30.0
+    clip_end_s: 210.0
+    rationale: "Clean Sorath shabad, short line set, common kirtan form."
+
+  - case_id: case_002
+    role: representative
+    shabad_id: 906
+    opening_line: "ਤੂ ਠਾਕੁਰੁ ਤੁਮ ਪਹਿ ਅਰਦਾਸਿ ॥"
+    source_url: "https://www.youtube.com/watch?v=ZdZ5sBLcjr0"
+    source_video_id: ZdZ5sBLcjr0
+    source_title: "Tu Thakur Tum Peh Ardas"
+    clip_start_s: 20.0
+    clip_end_s: 180.0
+    rationale: "Gauri, mainstream melody, strong ordinary-production input."
+
+  - case_id: case_003
+    role: representative
+    shabad_id: 2600
+    opening_line: "ਜੋ ਮਾਗਹਿ ਠਾਕੁਰ ਅਪੁਨੇ ਤੇ ਸੋਈ ਸੋਈ ਦੇਵੈ ॥"
+    source_url: "https://www.youtube.com/watch?v=9SNXYPEVE60"
+    source_video_id: 9SNXYPEVE60
+    source_title: "Jo Mange Thakur Apne Te - Bhai Sarabjit Singh Ji"
+    clip_start_s: 30.0
+    clip_end_s: 210.0
+    rationale: "Dhanaasree, well-known and mid-tempo; non-Sorath representative."
+
+  - case_id: case_004
+    role: acoustic_lexical_stress
+    shabad_id: 4892
+    opening_line: "ਅਵਲਿ ਅਲਹ ਨੂਰੁ ਉਪਾਇਆ ਕੁਦਰਤਿ ਕੇ ਸਭ ਬੰਦੇ ॥"
+    source_url: "https://www.youtube.com/watch?v=kZnV63eQOeM"
+    source_video_id: kZnV63eQOeM
+    source_title: "Awal Allah Noor Upaya - Bhai Jujhar Singh Ji"
+    clip_start_s: 45.0
+    clip_end_s: 225.0
+    rationale: "Kabeer/Prabhaatee with Arabic/Persian vocabulary; ASR lexical stress."
+
+  - case_id: case_005
+    role: matcher_stress
+    shabad_id: 3297
+    opening_line: "ਕੋਈ ਬੋਲੈ ਰਾਮ ਰਾਮ ਕੋਈ ਖੁਦਾਇ ॥"
+    source_url: "https://www.youtube.com/watch?v=yr6Y3gzjAu4"
+    source_video_id: yr6Y3gzjAu4
+    source_title: "Koi Bolei Ram Ram - Delhi Wale"
+    clip_start_s: 45.0
+    clip_end_s: 225.0
+    rationale: "Ramkali with repeated deity names; stresses canonical matching and loops."

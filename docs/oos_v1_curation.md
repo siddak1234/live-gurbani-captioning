@@ -87,7 +87,9 @@ Alternates already checked:
 | ਅਨੰਦੁ ਭਇਆ ਮੇਰੀ ਮਾਏ ਸਤਿਗੁਰੂ ਮੈ ਪਾਇਆ ॥ | 333375 | Long Anand Sahib recordings | We need a longer, highly familiar Ramkali stress case and can afford the curation time. |
 
 Do not claim an OOS result until the `test/case_00N.json` files are
-hand-corrected. The table above is a sourcing slate, not ground truth.
+hand-corrected. The table above is a sourcing slate, not ground truth. The
+same slate is encoded as `eval_data/oos_v1/cases.yaml` so audio fetch and draft
+GT bootstrapping are reproducible.
 
 ## Labor budget
 
@@ -113,8 +115,8 @@ On the current dev Mac, Python 3.12, ffmpeg, yt-dlp, torch, transformers, PEFT, 
    `make corpus-oos OOS_SHABAD_ID=<id>`. The default `make corpus` only caches
    the 4 paired-benchmark shabads; OOS needs explicit additions.
 3. **Fetch audio:** use `make fetch-oos-audio OOS_URL='case_001=https://...' OOS_CLIP='case_001=30-210'` for each selected recording. This writes `eval_data/oos_v1/audio/case_001_16k.wav`. Prefer 60-180s windows so v1 remains cheap to label and cheap to score.
-4. **After audio fetch:** bootstrap GT JSONs via `eval_oos.py --oracle` for each case.
-5. **Manual review:** open each bootstrap JSON in your editor, listen along, correct line boundaries. Save under `eval_data/oos_v1/test/`.
+4. **After audio fetch:** bootstrap draft GT JSONs via `make bootstrap-oos-gt`. Drafts land in `eval_data/oos_v1/drafts/` and are explicitly marked `DRAFT_FROM_ORACLE_ENGINE__HAND_CORRECT_BEFORE_COMMIT`.
+5. **Manual review:** open each draft JSON in your editor, listen along, correct line boundaries, and verify every `verse_id` / `banidb_gurmukhi`. Save the corrected file under `eval_data/oos_v1/test/`.
 6. **Lock in:** add each recording's `video_id` (or equivalent source identifier) to `configs/datasets.yaml` → `holdout.video_ids` so it's never accidentally pulled into training.
 7. **Baseline:** run `eval_oos.py --engine-config configs/inference/v3_2.yaml` against the curated pack. The v3.2 score is the v0 OOS number. Phase 2 fine-tunes must beat this on average AND not regress catastrophically on any single case.
 
