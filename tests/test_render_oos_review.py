@@ -55,6 +55,7 @@ class TestRenderOosReview(unittest.TestCase):
                         "shabad_id": 2333,
                         "total_duration": 180.0,
                         "curation_status": "DRAFT_FROM_ORACLE_ENGINE__HAND_CORRECT_BEFORE_COMMIT",
+                        "machine_review_notes": ["check this case carefully"],
                         "segments": [
                             {
                                 "start": 1.0,
@@ -81,6 +82,7 @@ class TestRenderOosReview(unittest.TestCase):
             self.assertIn("test/case_001.json", page)
             self.assertIn("playSegment('case_001',1.000,2.000)", page)
             self.assertIn("missing working GT file", page)
+            self.assertIn("check this case carefully", page)
 
     def test_render_index_prefers_working_gt_when_present(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -72,6 +72,22 @@ def validation_block(errors: list[str]) -> str:
 """
 
 
+def notes_block(notes) -> str:
+    if not notes:
+        return ""
+    if isinstance(notes, str):
+        notes = [notes]
+    items = "\n".join(f"<li>{html.escape(str(note))}</li>" for note in notes)
+    return f"""
+  <details open class="notes">
+    <summary>Machine review notes</summary>
+    <ul>
+      {items}
+    </ul>
+  </details>
+"""
+
+
 def render_case(
     case: OosCase,
     *,
@@ -86,6 +102,7 @@ def render_case(
     status = str(review_payload.get("curation_status", ""))
     segments = review_payload.get("segments") or []
     total_duration = review_payload.get("total_duration", review_payload.get("uem", {}).get("end", ""))
+    machine_notes = review_payload.get("machine_review_notes")
     return f"""
 <section class="case" id="{html.escape(case.case_id)}">
   <header>
@@ -100,6 +117,7 @@ def render_case(
     <code>draft: {html.escape(str(draft_path))}</code>
     <code>save corrected GT: {html.escape(str(test_path))}</code>
   </div>
+  {notes_block(machine_notes)}
   {validation_block(validation_errors)}
   <details open>
     <summary>Correction checklist</summary>
@@ -194,6 +212,7 @@ def render_index(
     .status {{ color: #7a3b00; }}
     .ok {{ color: #166534; }}
     .issues {{ background: #fff8ed; border: 1px solid #f0c38a; padding: 8px 12px; margin: 12px 0; }}
+    .notes {{ background: #eef6ff; border: 1px solid #9cc3ea; padding: 8px 12px; margin: 12px 0; }}
     .gurmukhi {{ font-size: 1.05rem; }}
   </style>
 </head>
