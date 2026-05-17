@@ -134,8 +134,10 @@ Checkpoint 2026-05-16:
   YouTube IDs so future training pulls cannot sample these eval recordings.
 
 Current next step: hand-curate `eval_data/oos_v1/test/case_001.json` through
-`case_005.json` against the fetched audio. Do **not** claim an OOS score until
-those GT files are corrected and committed. Once they exist, run:
+`case_005.json` against the fetched audio, set `curation_status:
+HUMAN_CORRECTED_V1`, and run `make validate-oos-gt`. Do **not** claim an OOS
+score until those GT files are corrected, validated, and committed. Once they
+exist, run:
 
 ```bash
 make eval-oos-loop-align

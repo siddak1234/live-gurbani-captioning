@@ -120,6 +120,7 @@ class TestDraftPayload(unittest.TestCase):
         payload = draft_payload(case, 180.0, [{"start": 0, "end": 1, "line_idx": 0}])
         self.assertEqual(payload["video_id"], "case_001")
         self.assertEqual(payload["shabad_id"], 2333)
+        self.assertEqual(payload["total_duration"], 180.0)
         self.assertEqual(payload["uem"], {"start": 0.0, "end": 180.0})
         self.assertIn("DRAFT", payload["curation_status"])
         self.assertEqual(payload["source_clip"], {"start_s": 30.0, "end_s": 210.0})

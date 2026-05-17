@@ -84,8 +84,12 @@ Required fields: `video_id`, `shabad_id`, `segments[*].{start, end, line_idx}`. 
      ```
    - Open the resulting draft JSON in your editor.
    - Hand-correct the line boundaries against the audio. This takes ~10-15 minutes per recording.
+   - Remove the draft marker by setting `curation_status` to `HUMAN_CORRECTED_V1`.
+   - Make sure the file includes `total_duration`, `uem`, and every segment's
+     `start`, `end`, `line_idx`, `verse_id`, and `banidb_gurmukhi`.
    - Save as `eval_data/oos_v1/test/case_NNN.json`.
-6. Re-run `eval_oos.py` without `--oracle` to get the real blind+live score.
+6. Run `make validate-oos-gt`. It must pass before any OOS score is trusted.
+7. Re-run `eval_oos.py` without `--oracle` to get the real blind+live score.
 
 Never score or publish from `drafts/`. The evaluator only reads `test/`, and
 `test/` is reserved for human-corrected ground truth.
@@ -99,7 +103,8 @@ ID-lock OOS target:
 make eval-oos-loop-align
 ```
 
-That command runs the same stack that scored 91.2% on the paired benchmark:
+That command first runs `make validate-oos-gt`, then runs the same stack that
+scored 91.2% on the paired benchmark:
 faster-whisper word timestamps for pre-lock shabad ID, `v5b_mac_diverse` for
 post-lock captions, retro-buffered finalization, and simran-aware null
 alignment.

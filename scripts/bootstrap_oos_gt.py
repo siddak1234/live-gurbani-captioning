@@ -128,6 +128,7 @@ def draft_payload(case: OosCase, duration_s: float, segments: list[dict]) -> dic
     return {
         "video_id": case.case_id,
         "shabad_id": case.shabad_id,
+        "total_duration": round(duration_s, 3),
         "uem": {"start": 0.0, "end": round(duration_s, 3)},
         "source_url": case.source_url,
         "source_video_id": case.source_video_id,
