@@ -150,7 +150,7 @@ def main() -> int:
     parser.add_argument("--blend", default="token_sort_ratio:0.5,WRatio:0.5")
     parser.add_argument("--stay-bias", type=float, default=6.0)
     parser.add_argument("--smoother", default="auto",
-                        choices=["auto", "basic", "stay_bias", "viterbi", "loop_align"],
+                        choices=["auto", "basic", "stay_bias", "viterbi", "loop_align", "loop_align_confirmed"],
                         help="Post/pre smoother implementation. auto preserves historical behavior: "
                              "stay_bias when --stay-bias > 0, otherwise basic.")
     parser.add_argument("--viterbi-jump-penalty", type=float, default=4.0,

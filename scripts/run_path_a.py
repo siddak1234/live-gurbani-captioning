@@ -174,7 +174,7 @@ def main() -> int:
     parser.add_argument("--stay-bias", type=float, default=0.0,
                         help="Stay-bias margin; if >0, prefer previous line when within margin")
     parser.add_argument("--smoother", default="auto",
-                        choices=["auto", "basic", "stay_bias", "viterbi", "loop_align"],
+                        choices=["auto", "basic", "stay_bias", "viterbi", "loop_align", "loop_align_confirmed"],
                         help="Smoother implementation. auto preserves historical behavior: "
                              "stay_bias when --stay-bias > 0, otherwise basic.")
     parser.add_argument("--viterbi-jump-penalty", type=float, default=4.0,

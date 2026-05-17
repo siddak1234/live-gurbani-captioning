@@ -149,9 +149,14 @@ Two cached probes also narrow the path:
 
 - existing Viterbi with tighter penalties + null state: paired `79.5%`;
 - loop-align with stay-bias `10`: paired `89.6%`.
+- global threshold `50`: paired `79.9%`;
+- confirmed non-adjacent loop-align: paired `92.8%`, assisted-OOS `60.8%`.
 
-Both miss the `>= 91.0%` paired non-regression gate. The next runtime work
-should be a new constrained loop-aware smoother, not a parameter-only retune.
+The confirmed loop-align smoother is now the active runtime checkpoint because
+it clears the `>= 91.0%` paired non-regression gate and improves assisted-OOS
+without more training. The next large 300h run should still wait: the remaining
+errors are line-path buckets (`adjacent_backtrack`, `outside_gt_line_set`), not
+M4 Pro underuse.
 
 Only after a generic runtime change improves paired/OOS frame accuracy, or a
 diagnostic proves the remaining errors are true held-out ASR misses, should the

@@ -64,6 +64,10 @@ ALIGN_PAIRED_REPORT ?= diagnostics/phase3_recency_guard_paired_alignment_errors.
 ALIGN_OOS_REPORT ?= diagnostics/phase3_recency_guard_oos_assisted_alignment_errors.md
 LINE_PATH_PAIRED_REPORT ?= diagnostics/phase3_recency_guard_paired_line_path.md
 LINE_PATH_OOS_REPORT ?= diagnostics/phase3_recency_guard_oos_assisted_line_path.md
+CONFIRMED_PAIRED_REPORT ?= diagnostics/phase3_recency_guard_confirmed_paired_line_path.md
+CONFIRMED_OOS_REPORT ?= diagnostics/phase3_recency_guard_confirmed_oos_assisted_line_path.md
+CONFIRMED_PAIRED_OUT ?= submissions/phase3_recency_guard_confirmed_paired
+CONFIRMED_OOS_OUT ?= submissions/oos_v1_assisted_phase3_confirmed
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
 SILVER_MODEL    ?= surindersinghssj/surt-small-v3
@@ -417,6 +421,40 @@ eval-oos-recency-guard-v6-assisted: prepare-oos-assisted ## Phase 3 assisted-OOS
 		--pred submissions/oos_v1_assisted_phase3_recency_guard \
 		--gt   $(OOS_ASSISTED_TEST_DIR)
 
+.PHONY: eval-paired-recency-guard-confirmed-v6
+eval-paired-recency-guard-confirmed-v6: ## Phase 3 paired eval for v6 + recency guard + confirmed loop-align smoother.
+	HF_WINDOW_SECONDS=10 $(PYTHON) scripts/run_idlock_path.py \
+		--gt-dir $(BENCHMARK_DIR)/test \
+		--audio-dir audio \
+		--out-dir $(CONFIRMED_PAIRED_OUT) \
+		--post-adapter-dir lora_adapters/v6_mac_scale20 \
+		--post-context buffered \
+		--merge-policy retro-buffered \
+		--pre-word-timestamps \
+		--smoother loop_align_confirmed \
+		--blind-lookback 180 \
+		--blind-aggregate "$(LOCK_RECENCY_AGG)"
+	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
+		--pred $(CONFIRMED_PAIRED_OUT) \
+		--gt   $(BENCHMARK_DIR)/test
+
+.PHONY: eval-oos-recency-guard-confirmed-v6-assisted
+eval-oos-recency-guard-confirmed-v6-assisted: prepare-oos-assisted ## Assisted-OOS eval for v6 + recency guard + confirmed loop-align smoother.
+	HF_WINDOW_SECONDS=10 $(PYTHON) scripts/run_idlock_path.py \
+		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--audio-dir eval_data/oos_v1/audio \
+		--out-dir $(CONFIRMED_OOS_OUT) \
+		--post-adapter-dir lora_adapters/v6_mac_scale20 \
+		--post-context buffered \
+		--merge-policy retro-buffered \
+		--pre-word-timestamps \
+		--smoother loop_align_confirmed \
+		--blind-lookback 180 \
+		--blind-aggregate "$(LOCK_RECENCY_AGG)"
+	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
+		--pred $(CONFIRMED_OOS_OUT) \
+		--gt   $(OOS_ASSISTED_TEST_DIR)
+
 .PHONY: report-paired-recency-guard-alignment
 report-paired-recency-guard-alignment: ## Diagnose frame errors for Phase 3 recency-guard paired output.
 	$(PYTHON) scripts/report_alignment_errors.py \
@@ -444,6 +482,20 @@ audit-oos-recency-guard-line-path: prepare-oos-assisted ## Diagnose locked-shaba
 		--pred-dir submissions/oos_v1_assisted_phase3_recency_guard \
 		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
 		--out $(LINE_PATH_OOS_REPORT)
+
+.PHONY: audit-paired-recency-guard-confirmed-line-path
+audit-paired-recency-guard-confirmed-line-path: ## Diagnose line-path errors for confirmed-loop paired output.
+	$(PYTHON) scripts/audit_line_path_errors.py \
+		--pred-dir $(CONFIRMED_PAIRED_OUT) \
+		--gt-dir $(BENCHMARK_DIR)/test \
+		--out $(CONFIRMED_PAIRED_REPORT)
+
+.PHONY: audit-oos-recency-guard-confirmed-line-path
+audit-oos-recency-guard-confirmed-line-path: prepare-oos-assisted ## Diagnose line-path errors for confirmed-loop assisted-OOS output.
+	$(PYTHON) scripts/audit_line_path_errors.py \
+		--pred-dir $(CONFIRMED_OOS_OUT) \
+		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--out $(CONFIRMED_OOS_REPORT)
 
 .PHONY: audit-oos-lock-assisted
 audit-oos-lock-assisted: prepare-oos-assisted ## Audit OOS shabad-lock variants from cached ASR (diagnostic).

@@ -153,6 +153,15 @@ benchmark shabad ID, case name, or route table enters the rule. It clears the
 paired score and catastrophic-case guardrails, but OOS remains mandatory before
 promotion.
 
+Phase 3's confirmed loop-align variant is the next Layer 1 refinement:
+`smooth_with_loop_align_confirmed()` keeps the same simran-null behavior but
+guards non-adjacent jumps/backtracks. A large jump must persist for two chunks
+unless the new line beats the previous line by a strong margin. This avoids the
+Phase 2.8 Viterbi failure mode (over-regularizing real refrain returns) while
+removing some one-off line-path noise. With the v6 adapter and recency-guarded
+lock, it scores **92.8%** paired and **60.8%** assisted-OOS, up from **91.0%**
+and **59.9%** for the unconfirmed loop-align recency-guard runtime.
+
 Phase 2.10/2.11 exposes the next architecture gap: the lock policy itself is
 candidate-set sensitive. The assisted OOS diagnostic scored **29.5%** because
 only 2/5 OOS shabads locked correctly. The correct OOS corpora were present, so

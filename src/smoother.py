@@ -156,6 +156,79 @@ def smooth_with_loop_align(
     return smooth(stripped)
 
 
+def smooth_with_loop_align_confirmed(
+    chunks_with_scores: list[tuple[float, float, list[float], str]],
+    *,
+    stay_margin: float = 5.0,
+    score_threshold: float = 0.0,
+    confirm_chunks: int = 2,
+    hard_jump_margin: float = 15.0,
+) -> list[Segment]:
+    """Loop-aware smoother with a guard against one-off large jumps.
+
+    Phase 3 diagnostics show the remaining errors under correct shabad locks are
+    often large jumps/backtracks inside the same shabad. A strict Viterbi path
+    over-regularizes real refrain/loop returns, so this variant keeps the
+    simple loop-align behavior but requires non-adjacent jumps to persist for
+    ``confirm_chunks`` chunks unless the new line beats the previous line by a
+    large margin.
+
+    This is deliberately conservative: adjacent transitions still pass through,
+    simran chunks still emit null, and sustained loops/refrains are allowed.
+    """
+    initial: list[tuple[float, float, int | None, list[float]]] = []
+    prev_for_stay: int | None = None
+
+    for start, end, scores, text in chunks_with_scores:
+        if is_simran_dominant(text) or not scores:
+            initial.append((start, end, None, scores))
+            continue
+
+        best_idx = max(range(len(scores)), key=lambda i: scores[i])
+        best_score = scores[best_idx]
+        chosen: int | None = best_idx
+        if (
+            prev_for_stay is not None
+            and prev_for_stay < len(scores)
+            and best_score - scores[prev_for_stay] < stay_margin
+        ):
+            chosen = prev_for_stay
+
+        if chosen is None or scores[chosen] < score_threshold:
+            initial.append((start, end, None, scores))
+            continue
+
+        initial.append((start, end, chosen, scores))
+        prev_for_stay = chosen
+
+    guarded: list[tuple[float, float, int | None]] = []
+    prev_final: int | None = None
+    for i, (start, end, chosen, scores) in enumerate(initial):
+        final = chosen
+        if (
+            prev_final is not None
+            and chosen is not None
+            and abs(chosen - prev_final) > 1
+            and prev_final < len(scores)
+        ):
+            jump_margin = scores[chosen] - scores[prev_final]
+            if jump_margin < hard_jump_margin:
+                same_run = 1
+                for _, _, future_choice, _ in initial[i + 1: i + confirm_chunks]:
+                    if future_choice == chosen:
+                        same_run += 1
+                    else:
+                        break
+                if same_run < confirm_chunks:
+                    final = prev_final
+
+        guarded.append((start, end, final))
+        if final is not None:
+            prev_final = final
+
+    return smooth(guarded)
+
+
 def _transition_score(
     prev: int | None,
     cur: int | None,

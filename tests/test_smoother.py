@@ -12,6 +12,7 @@ from src.smoother import (  # noqa: E402
     is_simran_dominant,
     smooth,
     smooth_with_loop_align,
+    smooth_with_loop_align_confirmed,
     smooth_with_stay_bias,
     smooth_with_viterbi,
 )
@@ -121,6 +122,39 @@ class TestSmoother(unittest.TestCase):
         self.assertEqual([(s.start, s.end, s.line_idx) for s in segments], [
             (0.0, 10.0, 1),
             (20.0, 30.0, 1),
+        ])
+
+    def test_loop_align_confirmed_suppresses_single_far_jump(self):
+        chunks = [
+            (0.0, 10.0, [0.0, 90.0, 10.0, 0.0, 0.0, 0.0], "line one"),
+            (10.0, 20.0, [0.0, 70.0, 10.0, 0.0, 0.0, 76.0], "noisy far line"),
+            (20.0, 30.0, [0.0, 88.0, 12.0, 0.0, 0.0, 0.0], "line one again"),
+        ]
+        segments = smooth_with_loop_align_confirmed(
+            chunks,
+            stay_margin=5.0,
+            confirm_chunks=2,
+            hard_jump_margin=15.0,
+        )
+        self.assertEqual([(s.start, s.end, s.line_idx) for s in segments], [
+            (0.0, 30.0, 1),
+        ])
+
+    def test_loop_align_confirmed_allows_sustained_far_jump(self):
+        chunks = [
+            (0.0, 10.0, [0.0, 90.0, 10.0, 0.0, 0.0, 0.0], "line one"),
+            (10.0, 20.0, [0.0, 65.0, 10.0, 0.0, 0.0, 82.0], "far line"),
+            (20.0, 30.0, [0.0, 60.0, 12.0, 0.0, 0.0, 84.0], "far line continues"),
+        ]
+        segments = smooth_with_loop_align_confirmed(
+            chunks,
+            stay_margin=5.0,
+            confirm_chunks=2,
+            hard_jump_margin=15.0,
+        )
+        self.assertEqual([(s.start, s.end, s.line_idx) for s in segments], [
+            (0.0, 10.0, 1),
+            (10.0, 30.0, 5),
         ])
 
 

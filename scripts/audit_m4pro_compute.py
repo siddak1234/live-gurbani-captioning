@@ -119,6 +119,12 @@ def render_report() -> str:
     has_v6_oos = (REPO_ROOT / "submissions" / "oos_v1_assisted_phase3_v6_lock_fusion").exists()
     has_recency_paired = (REPO_ROOT / "submissions" / "phase3_recency_guard_paired").exists()
     has_recency_oos = (REPO_ROOT / "submissions" / "oos_v1_assisted_phase3_recency_guard").exists()
+    has_confirmed_paired = (REPO_ROOT / "submissions" / "phase3_recency_guard_confirmed_paired").exists()
+    has_confirmed_oos = (REPO_ROOT / "submissions" / "oos_v1_assisted_phase3_confirmed").exists()
+    has_confirmed_reports = (
+        (REPO_ROOT / "diagnostics" / "phase3_recency_guard_confirmed_paired_line_path.md").exists()
+        and (REPO_ROOT / "diagnostics" / "phase3_recency_guard_confirmed_oos_assisted_line_path.md").exists()
+    )
     has_alignment_reports = (
         (REPO_ROOT / "diagnostics" / "phase3_recency_guard_paired_alignment_errors.md").exists()
         and (REPO_ROOT / "diagnostics" / "phase3_recency_guard_oos_assisted_alignment_errors.md").exists()
@@ -178,7 +184,17 @@ def render_report() -> str:
     lines.extend([
         "- The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.",
     ])
-    if has_recency_paired and has_recency_oos and has_alignment_reports:
+    if has_confirmed_paired and has_confirmed_oos and has_confirmed_reports:
+        lines.extend([
+            "- The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.",
+            "- A generic recency-consistency guarded fusion runtime lifted paired accuracy to 91.0% / 12-of-12 locks without assisted-OOS regression.",
+            "- The confirmed loop-align smoother now lifts paired accuracy to 92.8% and assisted-OOS to 60.8% without additional training.",
+            "- This proves the current bottleneck is still runtime line-path logic, not M4 Pro underuse.",
+            "- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but full 300h / multi-seed training is not justified until the line-path lane stops producing generic gains.",
+            "- Do not pull/train on all 300h right now. The next valid experiment is reducing remaining adjacent_backtrack and outside_gt_line_set errors under the confirmed loop-align runtime.",
+            "- Next recommended compute use: cached-output line-path diagnostics and targeted smoother changes, then re-run paired + assisted-OOS gates.",
+        ])
+    elif has_recency_paired and has_recency_oos and has_alignment_reports:
         lines.extend([
             "- The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.",
             "- A generic recency-consistency guarded fusion runtime lifted paired accuracy to 91.0% / 12-of-12 locks without assisted-OOS regression.",

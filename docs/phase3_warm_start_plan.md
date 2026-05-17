@@ -396,6 +396,24 @@ Immediate probes:
 |---|---:|---|
 | existing Viterbi smoother, tighter penalties + null state | 79.5% | reject; over-regularizes, consistent with Phase 2.8 history |
 | loop-align with stay-bias 10 | 89.6% | reject; helps some cases but regresses the paired gate |
+| global score threshold 50 | 79.9% | reject; blunt no-line guard drops useful evidence |
+| confirmed non-adjacent loop-align (`hard_jump_margin=15`) | 92.8% paired, 60.8% assisted-OOS | promote as next runtime checkpoint |
 
-Therefore the next implementation should be a new constrained loop-aware
-smoother, not a parameter-only retune of the existing Viterbi/stay-bias knobs.
+Therefore the next runtime checkpoint is `loop_align_confirmed`: keep the
+simple loop-aware smoother, but require non-adjacent jumps/backtracks to persist
+for two chunks unless the new line beats the previous line by a strong margin.
+This preserves real refrain returns better than Viterbi while removing some
+one-off jump noise. It is not enough for the final 95% target, but it is the
+right direction and it keeps the architecture clean.
+
+Promotion state:
+
+- paired: `92.8%` (`3180/3425`), up from `91.0%`;
+- assisted-OOS: `60.8%` (`535/880`), up from `59.9%`;
+- locks: still `12/12` paired and `5/5` assisted-OOS.
+
+Next target before the all-300h/3-seed run: reduce the remaining paired
+`adjacent_backtrack` and OOS `outside_gt_line_set` buckets. The confirmed
+smoother proves line-path logic can move the metric without more training; the
+next 300h compute should wait until this runtime lane stops producing generic
+gains.

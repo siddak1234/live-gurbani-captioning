@@ -1,0 +1,45 @@
+{
+  "video_id": "kchMJPK9Axs",
+  "segments": [
+    {
+      "start": 432.0,
+      "end": 450.0,
+      "line_idx": 8,
+      "shabad_id": 1341,
+      "verse_id": 15274,
+      "banidb_gurmukhi": "ਜੈਸਾ ਰੰਗੁ ਕਸੁੰਭ ਕਾ ਮਨ ਬਉਰਾ ਰੇ ਤਿਉ ਪਸਰਿਓ ਪਾਸਾਰੁ ॥੩॥"
+    },
+    {
+      "start": 450.0,
+      "end": 500.0,
+      "line_idx": 3,
+      "shabad_id": 1341,
+      "verse_id": 15269,
+      "banidb_gurmukhi": "ਬਿਖੈ ਬਾਚੁ ਹਰਿ ਰਾਚੁ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ॥"
+    },
+    {
+      "start": 500.0,
+      "end": 560.0,
+      "line_idx": 9,
+      "shabad_id": 1341,
+      "verse_id": 15275,
+      "banidb_gurmukhi": "ਨਾਵਨ ਕਉ ਤੀਰਥ ਘਨੇ ਮਨ ਬਉਰਾ ਰੇ ਪੂਜਨ ਕਉ ਬਹੁ ਦੇਵ ॥"
+    },
+    {
+      "start": 560.0,
+      "end": 610.0,
+      "line_idx": 10,
+      "shabad_id": 1341,
+      "verse_id": 15276,
+      "banidb_gurmukhi": "ਕਹੁ ਕਬੀਰ ਛੂਟਨੁ ਨਹੀ ਮਨ ਬਉਰਾ ਰੇ ਛੂਟਨੁ ਹਰਿ ਕੀ ਸੇਵ ॥੪॥੧॥੬॥੫੭॥"
+    },
+    {
+      "start": 610.0,
+      "end": 650.0,
+      "line_idx": 3,
+      "shabad_id": 1341,
+      "verse_id": 15269,
+      "banidb_gurmukhi": "ਬਿਖੈ ਬਾਚੁ ਹਰਿ ਰਾਚੁ ਸਮਝੁ ਮਨ ਬਉਰਾ ਰੇ ॥"
+    }
+  ]
+}
