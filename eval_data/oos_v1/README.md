@@ -86,13 +86,19 @@ Required fields: `video_id`, `shabad_id`, `segments[*].{start, end, line_idx}`. 
      ```bash
      make oos-review-pack
      ```
+   - Seed editable working copies under `test/`:
+     ```bash
+     make prepare-oos-review
+     ```
+     The files are intentionally marked `NEEDS_HUMAN_CORRECTION` so validation
+     still fails until review is complete.
    - Open `eval_data/oos_v1/review/index.html` in a browser and the matching
-     draft JSON in your editor.
+     `eval_data/oos_v1/test/case_NNN.json` file in your editor.
    - Hand-correct the line boundaries against the audio. This takes ~10-15 minutes per recording.
-   - Remove the draft marker by setting `curation_status` to `HUMAN_CORRECTED_V1`.
+   - Promote the file only after review by setting `curation_status` to
+     `HUMAN_CORRECTED_V1`.
    - Make sure the file includes `total_duration`, `uem`, and every segment's
      `start`, `end`, `line_idx`, `verse_id`, and `banidb_gurmukhi`.
-   - Save as `eval_data/oos_v1/test/case_NNN.json`.
 6. Run `make validate-oos-gt`. It must pass before any OOS score is trusted.
 7. Re-run `eval_oos.py` without `--oracle` to get the real blind+live score.
 

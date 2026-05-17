@@ -66,10 +66,24 @@ because its expected opening line is absent from the draft, then review
    make oos-review-pack
    ```
 
-2. Open `eval_data/oos_v1/review/index.html`.
+2. Seed editable working copies:
 
-3. For each case, copy the matching draft JSON from `eval_data/oos_v1/drafts/`
-   into `eval_data/oos_v1/test/`.
+   ```bash
+   make prepare-oos-review
+   ```
+
+   This copies the machine drafts into `eval_data/oos_v1/test/` and marks each
+   file:
+
+   ```json
+   "curation_status": "NEEDS_HUMAN_CORRECTION"
+   ```
+
+   That status is intentional. `make validate-oos-gt` will still fail until the
+   files are actually reviewed and promoted to `HUMAN_CORRECTED_V1`.
+
+3. Open `eval_data/oos_v1/review/index.html` and the matching
+   `eval_data/oos_v1/test/case_NNN.json` files in your editor.
 
 4. Listen to the full clipped audio once before editing.
 
@@ -82,7 +96,7 @@ because its expected opening line is absent from the draft, then review
    - verify `line_idx`, `verse_id`, and `banidb_gurmukhi` against the cached
      shabad corpus.
 
-6. Set:
+6. After correction, set:
 
    ```json
    "curation_status": "HUMAN_CORRECTED_V1"

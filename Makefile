@@ -47,6 +47,7 @@ OOS_URL        ?=
 OOS_CLIP       ?=
 OOS_CASES      ?= eval_data/oos_v1/cases.yaml
 OOS_DRAFT_DIR  ?= eval_data/oos_v1/drafts
+OOS_TEST_DIR   ?= eval_data/oos_v1/test
 OOS_REVIEW_DIR ?= eval_data/oos_v1/review
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
@@ -151,8 +152,15 @@ bootstrap-oos-gt: ## Generate draft OOS GT JSONs under eval_data/oos_v1/drafts/ 
 validate-oos-gt: ## Validate hand-corrected OOS GT JSONs before scoring.
 	$(PYTHON) scripts/validate_oos_gt.py \
 		--cases $(OOS_CASES) \
-		--gt-dir eval_data/oos_v1/test \
+		--gt-dir $(OOS_TEST_DIR) \
 		--audio-dir eval_data/oos_v1/audio
+
+.PHONY: prepare-oos-review
+prepare-oos-review: ## Seed editable OOS GT working files from drafts (still requires hand correction).
+	$(PYTHON) scripts/prepare_oos_review_workspace.py \
+		--cases $(OOS_CASES) \
+		--draft-dir $(OOS_DRAFT_DIR) \
+		--test-dir $(OOS_TEST_DIR)
 
 .PHONY: oos-review-pack
 oos-review-pack: ## Build local HTML aid for hand-correcting OOS GT drafts.
