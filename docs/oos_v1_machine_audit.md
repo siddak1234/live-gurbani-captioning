@@ -78,3 +78,21 @@ make eval-oos-loop-align
 ```
 
 Do not move to Phase 3 until this gate is scored and interpreted.
+
+## Workspace-prep checkpoint
+
+`make prepare-oos-review` now seeds editable working files under
+`eval_data/oos_v1/test/` from the machine drafts while preserving the gate:
+each file is marked `curation_status: NEEDS_HUMAN_CORRECTION`, so
+`make validate-oos-gt` still fails until review is complete.
+
+After seeding the five working files, validation no longer reports missing GT
+files. It reports:
+
+- all five cases still need `curation_status: HUMAN_CORRECTED_V1`;
+- `case_005` has `segments[10].end` beyond `total_duration` (`181.0s` vs a
+  `180.0s` clip), so the final repeated-line boundary must be corrected during
+  review.
+
+That is the expected state: the project has moved from "missing GT files" to
+"editable working GT exists, but gold correction is not yet complete."
