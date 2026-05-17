@@ -48,7 +48,15 @@ OOS_CLIP       ?=
 OOS_CASES      ?= eval_data/oos_v1/cases.yaml
 OOS_DRAFT_DIR  ?= eval_data/oos_v1/drafts
 OOS_REVIEW_DIR ?= eval_data/oos_v1/review
+SILVER_DATA_DIR ?= training_data/silver_300h_holdout
+SILVER_OUT      ?= submissions/silver_300h_v5b.json
+SILVER_MODEL    ?= surindersinghssj/surt-small-v3
+SILVER_ADAPTER_DIR ?= lora_adapters/v5b_mac_diverse
+SILVER_LIMIT    ?= 100
+SILVER_MIN_SCORE ?= 0.9
+SILVER_SAMPLE_STRATEGY ?= round_robin_video
 DATA_SHARDS_ARG := $(if $(DATA_SHARDS),--shards $(DATA_SHARDS),--shard $(DATA_SHARD))
+SILVER_ADAPTER_ARG := $(if $(SILVER_ADAPTER_DIR),--adapter-dir $(SILVER_ADAPTER_DIR),)
 
 # -----------------------------------------------------------------------------
 # Help
@@ -177,6 +185,17 @@ data-v5b: ## Phase 2.5 diagnostic pull: larger/diverse held-out kirtan slice.
 		DATA_MIN_UNIQUE_SHABADS=100 \
 		DATA_FORCE=1
 
+.PHONY: data-silver-300h
+data-silver-300h: ## Pull a non-training-shard silver eval slice from the 300h canonical dataset.
+	$(MAKE) data \
+		DATA_DIR=$(SILVER_DATA_DIR) \
+		DATA_SAMPLES=500 \
+		DATA_MIN_SCORE=$(SILVER_MIN_SCORE) \
+		DATA_SHARDS=10-19 \
+		DATA_MAX_SCAN=25000 \
+		DATA_MIN_UNIQUE_VIDEOS=15 \
+		DATA_MIN_UNIQUE_SHABADS=100
+
 .PHONY: smoke-manifest
 smoke-manifest: ## Build the 4-snippet smoke manifest (validates pipeline only).
 	$(PYTHON) scripts/build_smoke_manifest.py
@@ -250,6 +269,17 @@ eval-oos-loop-align: validate-oos-gt ## OOS eval for current best runtime: Phase
 	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
 		--pred submissions/oos_v1_phase2_9_loop_align \
 		--gt   eval_data/oos_v1/test
+
+.PHONY: eval-silver-300h
+eval-silver-300h: data-silver-300h ## Silver ASR text eval on held-out 300h canonical shards (not promotion-grade).
+	$(PYTHON) scripts/eval_silver_manifest.py \
+		--manifest $(SILVER_DATA_DIR)/manifest.json \
+		--model-id $(SILVER_MODEL) \
+		$(SILVER_ADAPTER_ARG) \
+		--limit $(SILVER_LIMIT) \
+		--min-score $(SILVER_MIN_SCORE) \
+		--sample-strategy $(SILVER_SAMPLE_STRATEGY) \
+		--out $(SILVER_OUT)
 
 # -----------------------------------------------------------------------------
 # iOS export

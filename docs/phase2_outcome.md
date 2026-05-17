@@ -114,10 +114,28 @@ The next step is to curate the 5-case OOS pack and score `phase2_9_loop_align`
 outside the paired benchmark before making any promotion or training-scale
 claim.
 
+Phase 2.10 adds an automated silver bridge so progress does not depend solely
+on manual OOS labeling. The preferred online timestamped dataset
+(`surindersinghssj/gurbani-kirtan-dataset-v2`) is visible in the browser but
+currently returns 401 from HF APIs, so the executable fallback uses the already
+accessible 300h canonical dataset on never-trained shards `10-19`.
+
+The fallback silver pull produced 8,306 clips / 16.70 h / 19 videos / 308
+shabad tokens, with **0 video overlap** versus `v5b_mac_diverse`. On a
+100-segment round-robin sample, `surt-small-v3` base scored mean WRatio
+**96.29** / exact normalized **75.0%**, and `surt-small-v3 + v5b_mac_diverse`
+scored mean WRatio **96.33** / exact normalized **73.0%**. This is effectively
+neutral for raw segment ASR, reinforcing the Phase 2.6-2.9 diagnosis: the lift
+is coming from runtime ID-lock / buffering / loop-aware alignment, not from a
+large ASR adapter gain. Do not scale adapter training as the next move without
+a more targeted acoustic failure diagnosis.
+
 Implemented helpers:
 
 1. `make fetch-oos-audio OOS_URL='case_001=https://...'` for OOS audio.
 2. `make data-v5b` for a diversity-gated diagnostic pull.
+3. `make data-silver-300h` and `make eval-silver-300h` for automated silver
+   ASR/canonical-text diagnostics on never-trained 300h shards.
 
 Checkpoint 2026-05-16:
 

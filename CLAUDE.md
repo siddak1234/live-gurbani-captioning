@@ -315,7 +315,13 @@ Phase 2.10 as an automated silver-OOS bridge using
 `surindersinghssj/gurbani-kirtan-dataset-v2`; plan in
 [`docs/phase2_10_silver_oos_plan.md`](docs/phase2_10_silver_oos_plan.md). This
 lets us continue ASR/canonical-text diagnostics without waiting on all gold
-labels, but it does not replace the hand-corrected OOS promotion gate.
+labels, but it does not replace the hand-corrected OOS promotion gate. Since
+the v2 HF APIs currently return 401 despite the public viewer being visible,
+the executable fallback is `make data-silver-300h` + `make eval-silver-300h`,
+which scores never-trained shards `10-19` from the 300h canonical dataset.
+The first pull produced 8,306 clips / 16.70 h / 19 videos / 308 shabad tokens
+with 0 video overlap versus `v5b_mac_diverse`, so it is a useful silver ASR
+generalization set while gold OOS remains pending.
 
 ### Phase 3 — Mac-scale real fine-tune
 **Role:** ML Scientist (acoustic modeling) (lead) + Optimization Engineer.
