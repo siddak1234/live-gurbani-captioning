@@ -55,6 +55,8 @@ SILVER_ADAPTER_DIR ?= lora_adapters/v5b_mac_diverse
 SILVER_LIMIT    ?= 100
 SILVER_MIN_SCORE ?= 0.9
 SILVER_SAMPLE_STRATEGY ?= round_robin_video
+SILVER_WEAK_REPORT ?= diagnostics/phase2_10_silver_weak_slices.md
+SILVER_SOURCE_AUDIT ?= diagnostics/phase2_10_silver_source_audit.md
 DATA_SHARDS_ARG := $(if $(DATA_SHARDS),--shards $(DATA_SHARDS),--shard $(DATA_SHARD))
 SILVER_ADAPTER_ARG := $(if $(SILVER_ADAPTER_DIR),--adapter-dir $(SILVER_ADAPTER_DIR),)
 
@@ -280,6 +282,20 @@ eval-silver-300h: data-silver-300h ## Silver ASR text eval on held-out 300h cano
 		--min-score $(SILVER_MIN_SCORE) \
 		--sample-strategy $(SILVER_SAMPLE_STRATEGY) \
 		--out $(SILVER_OUT)
+
+.PHONY: report-silver-weak-slices
+report-silver-weak-slices: ## Analyze weak rows from base vs v5b silver manifest evals.
+	$(PYTHON) scripts/report_silver_weak_slices.py \
+		--base submissions/silver_300h_surt_base_100.json \
+		--v5b submissions/silver_300h_v5b_100.json \
+		--out $(SILVER_WEAK_REPORT)
+
+.PHONY: audit-silver-source-rows
+audit-silver-source-rows: ## Inspect original parquet metadata for weak silver rows.
+	$(PYTHON) scripts/audit_silver_source_rows.py \
+		--base submissions/silver_300h_surt_base_100.json \
+		--v5b submissions/silver_300h_v5b_100.json \
+		--out $(SILVER_SOURCE_AUDIT)
 
 # -----------------------------------------------------------------------------
 # iOS export

@@ -54,3 +54,30 @@ Recommended next experiment: use the silver set to inspect weak videos
 (`iQAbsSM5FO8`, `PYUPZn6wiR8`, `2d_Wy2Vb6n4`) and decide whether failures are
 ASR omissions, label noise, or alignment/repetition artifacts. Do not scale
 adapter training solely from this result.
+
+## Weak-slice audit
+
+Follow-up reports:
+
+- `diagnostics/phase2_10_silver_weak_slices.md`
+- `diagnostics/phase2_10_silver_source_audit.md`
+
+Result: 11 / 100 rows were weak under `best(base, v5b) WRatio < 90`, and all 11
+look like silver-label risks after checking original parquet metadata.
+
+Breakdown:
+
+- 10 / 11: model prediction matches raw caption better than canonical final.
+- 1 / 11: heavy canonical fixes in the source row.
+
+Examples:
+
+- `PYUPZn6wiR8`: raw/model text `ਸਦਾ ਜਾਗੇ ਰਾਮ ਪਿਆਰੇ`; canonical final
+  `ਸੰਤ ਜਨਾ ਰਾਮ ਪਿਆਰੇ`.
+- `iQAbsSM5FO8`: raw/model text `ਮਨਿ ਪਰਚਾਇਆ`; canonical final `ਧਨਿ ਰੁਚ ਇਆ`
+  with low retrieval margin.
+
+Decision: silver failures do not justify broad adapter scaling. They mostly
+confirm that silver labels are useful for diagnostics but unsafe as a promotion
+gate. Keep gold OOS as the production gate and continue architecture-oriented
+work around ID-lock / buffering / loop-aware alignment.

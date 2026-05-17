@@ -228,3 +228,23 @@ supports the current architecture thesis: the 91.2% paired-benchmark lift is
 coming from runtime ID-lock / buffering / loop-aware alignment, not from a large
 raw-ASR gain. Do not scale adapter training as the next move without a more
 targeted acoustic failure diagnosis.
+
+## Weak-slice audit result
+
+Follow-up:
+
+- [`docs/phase2_10_weak_slice_audit.md`](phase2_10_weak_slice_audit.md)
+- [`diagnostics/phase2_10_silver_weak_slices.md`](../diagnostics/phase2_10_silver_weak_slices.md)
+- [`diagnostics/phase2_10_silver_source_audit.md`](../diagnostics/phase2_10_silver_source_audit.md)
+
+The 100-row silver sample had 11 weak rows under `best(base, v5b) WRatio < 90`.
+All 11 are source-label risks when checked against the original parquet
+metadata:
+
+- 10 / 11: prediction matches raw caption better than canonical final text.
+- 1 / 11: heavy canonical fixes.
+
+Decision: the silver failure rows are not a clean ASR-training target. Continue
+to use silver as a cheap diagnostic, but do not promote or scale from it. The
+next promotion-relevant step is still gold OOS validation of
+`phase2_9_loop_align`.
