@@ -353,3 +353,49 @@ line-state transitions, loop/refrain behavior, null/no-line penalties, and
 whether assisted-GT labels omit repeated lines that are actually sung. If this
 diagnostic improves OOS while preserving paired 91%+, then a larger training
 slice becomes justified again.
+
+## Locked-shabad line-path checkpoint
+
+Command:
+
+```bash
+make audit-paired-recency-guard-line-path
+make audit-oos-recency-guard-line-path
+```
+
+Result, 2026-05-17:
+
+| Set | Accuracy | Dominant line-path relations |
+|---|---:|---|
+| Paired recency guard | 91.0% | adjacent_backtrack 31.9%, predicted_during_unlabeled_gt 30.0%, future_jump 17.6% |
+| Assisted OOS recency guard | 59.9% | outside_gt_line_set 30.6%, future_jump 25.8%, adjacent_backtrack/backtrack_jump 24.4% combined |
+
+Interpretation:
+
+- The paired benchmark still has a plausible path to 95% without more acoustic
+  training: most residual errors are adjacent/backtrack/boundary behavior.
+- Assisted OOS is not primarily failing by choosing the wrong shabad. It often
+  stays in the correct shabad but chooses a pangti outside the clip's labeled
+  line set, or jumps several lines forward/back inside the same shabad.
+- A full 300h or 3-seed run is therefore not the next expert move. It would
+  improve ASR text slightly, but the current bottleneck is the line-state path
+  under a correct lock.
+
+Next recommended implementation step: add/tune a constrained locked-shabad line
+smoother that penalizes large jumps and backtracks more strongly, then add a
+no-line/end-of-clip guard for spans where the ASR evidence points to a corpus
+line outside the labeled clip. Promotion gate for the runtime change:
+
+- paired recency-guard score stays `>= 91.0%` and targets `>= 93%`;
+- assisted-OOS score improves over `59.9%`;
+- shabad locks remain `12/12` paired and `5/5` assisted-OOS.
+
+Immediate probes:
+
+| Probe | Paired accuracy | Decision |
+|---|---:|---|
+| existing Viterbi smoother, tighter penalties + null state | 79.5% | reject; over-regularizes, consistent with Phase 2.8 history |
+| loop-align with stay-bias 10 | 89.6% | reject; helps some cases but regresses the paired gate |
+
+Therefore the next implementation should be a new constrained loop-aware
+smoother, not a parameter-only retune of the existing Viterbi/stay-bias knobs.

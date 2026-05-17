@@ -133,6 +133,26 @@ That makes the immediate next step a locked-shabad aligner/canonical-resolution
 diagnostic, not another broad data pull. The OOS errors mostly stay inside the
 correct shabad; the problem is the line path chosen inside that shabad.
 
+Follow-up line-path audit:
+
+- paired recency guard: adjacent_backtrack `31.9%`,
+  predicted_during_unlabeled_gt `30.0%`, future_jump `17.6%`;
+- assisted-OOS recency guard: outside_gt_line_set `30.6%`,
+  future_jump `25.8%`, adjacent/backtrack jumps `24.4%` combined.
+
+So the next use of engineering time should be a constrained line-state smoother
+and no-line/end-of-clip guard, evaluated from cached predictions first. The next
+large 300h run is justified only after this runtime path either improves OOS or
+proves the remaining misses are genuinely acoustic.
+
+Two cached probes also narrow the path:
+
+- existing Viterbi with tighter penalties + null state: paired `79.5%`;
+- loop-align with stay-bias `10`: paired `89.6%`.
+
+Both miss the `>= 91.0%` paired non-regression gate. The next runtime work
+should be a new constrained loop-aware smoother, not a parameter-only retune.
+
 Only after a generic runtime change improves paired/OOS frame accuracy, or a
 diagnostic proves the remaining errors are true held-out ASR misses, should the
 48 GB machine be used for the next larger training run.

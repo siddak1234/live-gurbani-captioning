@@ -62,6 +62,8 @@ LOCK_FUSION_AGG ?= fusion:tfidf_45+0.5*chunk_vote_90
 LOCK_RECENCY_AGG ?= guarded_fusion:tfidf_45+0.5*chunk_vote_90|offset=90|low=0.15|min=0.5
 ALIGN_PAIRED_REPORT ?= diagnostics/phase3_recency_guard_paired_alignment_errors.md
 ALIGN_OOS_REPORT ?= diagnostics/phase3_recency_guard_oos_assisted_alignment_errors.md
+LINE_PATH_PAIRED_REPORT ?= diagnostics/phase3_recency_guard_paired_line_path.md
+LINE_PATH_OOS_REPORT ?= diagnostics/phase3_recency_guard_oos_assisted_line_path.md
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
 SILVER_MODEL    ?= surindersinghssj/surt-small-v3
@@ -428,6 +430,20 @@ report-oos-recency-guard-alignment: prepare-oos-assisted ## Diagnose frame error
 		--pred-dir submissions/oos_v1_assisted_phase3_recency_guard \
 		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
 		--out $(ALIGN_OOS_REPORT)
+
+.PHONY: audit-paired-recency-guard-line-path
+audit-paired-recency-guard-line-path: ## Diagnose locked-shabad line-path errors for Phase 3 paired recency-guard output.
+	$(PYTHON) scripts/audit_line_path_errors.py \
+		--pred-dir submissions/phase3_recency_guard_paired \
+		--gt-dir $(BENCHMARK_DIR)/test \
+		--out $(LINE_PATH_PAIRED_REPORT)
+
+.PHONY: audit-oos-recency-guard-line-path
+audit-oos-recency-guard-line-path: prepare-oos-assisted ## Diagnose locked-shabad line-path errors for Phase 3 assisted-OOS output.
+	$(PYTHON) scripts/audit_line_path_errors.py \
+		--pred-dir submissions/oos_v1_assisted_phase3_recency_guard \
+		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--out $(LINE_PATH_OOS_REPORT)
 
 .PHONY: audit-oos-lock-assisted
 audit-oos-lock-assisted: prepare-oos-assisted ## Audit OOS shabad-lock variants from cached ASR (diagnostic).
