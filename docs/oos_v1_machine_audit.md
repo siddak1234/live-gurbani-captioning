@@ -86,13 +86,15 @@ Do not move to Phase 3 until this gate is scored and interpreted.
 each file is marked `curation_status: NEEDS_HUMAN_CORRECTION`, so
 `make validate-oos-gt` still fails until review is complete.
 
-After seeding the five working files, validation no longer reports missing GT
-files. It reports:
+The first seed of the five working files moved validation from "missing GT" to
+"needs human correction." It also exposed one machine-fixable draft-boundary
+issue:
 
 - all five cases still need `curation_status: HUMAN_CORRECTED_V1`;
-- `case_005` has `segments[10].end` beyond `total_duration` (`181.0s` vs a
-  `180.0s` clip), so the final repeated-line boundary must be corrected during
-  review.
+- the raw `case_005` draft had `segments[10].end` beyond `total_duration`
+  (`181.0s` vs a `180.0s` clip). The local working copy was clamped to `180.0s`
+  as a structural cleanup, but that segment still needs audio review before it
+  can be trusted.
 
 That is the expected state: the project has moved from "missing GT files" to
 "editable working GT exists, but gold correction is not yet complete."
