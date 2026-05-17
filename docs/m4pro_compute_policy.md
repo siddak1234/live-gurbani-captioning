@@ -46,7 +46,7 @@ That warm-start completed on 2026-05-17. The silver gate passed, but only
 modestly: `v6_mac_scale20` scored 96.55 mean WRatio / 78.0% exact normalized on
 the deterministic 100-row silver slice, versus base 96.29 / 75.0%.
 
-The paired and assisted-OOS runtime gates were flat:
+The first paired and assisted-OOS runtime gates were flat:
 
 - paired runtime: `84.0%`, lock `11/12`, same full-start
   `zOtIpxMT9hU -> 4892` false lock as Phase 2.13;
@@ -55,6 +55,12 @@ The paired and assisted-OOS runtime gates were flat:
 Conclusion: the M4 Pro did useful work, but this checkpoint does not justify a
 full 300h / 3-seed run yet. More broad training is not the current highest
 leverage move.
+
+The next targeted architecture step did help: a generic recency-consistency
+guard lifted paired frame accuracy to `91.0%` and paired locks to `12/12` while
+assisted-OOS stayed flat at `59.9%` with `5/5` locks. That moves the project
+forward, but it also makes the remaining bottleneck clearer: correct-shabad
+line timing/alignment, especially on OOS.
 
 ## How to audit the machine
 
@@ -104,17 +110,17 @@ Then the 48 GB plan is:
 
 ## Current next step
 
-Run the recency-consistency lock diagnostic:
+Use the recency-guarded runtime as the current paired candidate, then audit
+line timing/alignment:
 
 ```bash
-make audit-lock-recency-consistency
+make eval-paired-recency-guard-v6
+make eval-oos-recency-guard-v6-assisted
 ```
 
-This is a cheap cached-ASR diagnostic, not another large train. It checks
-whether the current early lock winner loses support in a later validation
-window. If a generic recency/veto rule explains the `zOtIpxMT9hU -> 4892`
-failure without hurting OOS, implement and evaluate that architecture change.
-If it does not, move to line-alignment/timing error analysis.
+The paired command currently scores `91.0%`; the assisted-OOS command currently
+scores `59.9%`. The next implementation should analyze why OOS remains weak
+despite `5/5` correct shabad locks.
 
 Only after a generic runtime change improves paired/OOS frame accuracy, or a
 diagnostic proves the remaining errors are true held-out ASR misses, should the

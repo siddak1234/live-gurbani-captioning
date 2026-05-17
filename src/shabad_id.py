@@ -11,6 +11,10 @@ Two strategies:
     contains shabads with overlapping superficial vocabulary.
   - `aggregate="fusion:<spec>"`: experimental Phase 2.13 candidate-evidence
     fusion. Example: `fusion:tfidf_60+0.5*chunk_vote_90`.
+  - `aggregate="guarded_fusion:<spec>|offset=90|low=0.15|min=0.5"`:
+    Phase 3 opt-in recency guard. It keeps the prefix fusion winner unless a
+    later validation window strongly disagrees and the prefix winner has very
+    low later support.
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ class ShabadIdResult:
     score: float
     runner_up_id: int | None
     runner_up_score: float
+    score_by_shabad: dict[int, float] | None = None
 
 
 def buffer_text(asr_chunks, *, start_t: float, lookback_seconds: float) -> str:
@@ -235,6 +240,30 @@ def identify_shabad_fusion(
     normalized by its per-case maximum before weighting so a high-magnitude
     feature family (for example chunk-vote sums) cannot dominate by scale alone.
     """
+    total = fusion_score_map(
+        asr_chunks,
+        corpora,
+        spec=spec,
+        start_t=start_t,
+        ratio=ratio,
+        blend=blend,
+    )
+    ranked = sorted(total.items(), key=lambda x: (-x[1], x[0]))
+    top = ranked[0]
+    runner_up = ranked[1] if len(ranked) > 1 else (None, 0.0)
+    return ShabadIdResult(top[0], top[1], runner_up[0], runner_up[1], dict(total))
+
+
+def fusion_score_map(
+    asr_chunks,
+    corpora: dict[int, list[dict]],
+    *,
+    spec: str,
+    start_t: float = 0.0,
+    ratio: str = "WRatio",
+    blend: dict[str, float] | None = None,
+) -> dict[int, float]:
+    """Return normalized sparse-fusion scores for every candidate shabad."""
     terms = parse_fusion_spec(spec)
     tfidf_scorer = ShabadDocTfidf(corpora) if any(agg == "tfidf" for _, agg, _, _ in terms) else None
     total: dict[int, float] = {sid: 0.0 for sid in corpora}
@@ -253,10 +282,102 @@ def identify_shabad_fusion(
         for sid in corpora:
             normalized = raw.get(sid, 0.0) / max_score if max_score > 0 else 0.0
             total[sid] += weight * normalized
-    ranked = sorted(total.items(), key=lambda x: (-x[1], x[0]))
-    top = ranked[0]
-    runner_up = ranked[1] if len(ranked) > 1 else (None, 0.0)
-    return ShabadIdResult(top[0], top[1], runner_up[0], runner_up[1])
+    return total
+
+
+def _rank_score_map(scores: dict[int, float]) -> list[tuple[int, float]]:
+    return sorted(scores.items(), key=lambda x: (-x[1], x[0]))
+
+
+def _parse_guarded_fusion_spec(raw: str) -> tuple[str, float, float, float]:
+    """Parse ``<fusion>|offset=90|low=0.15|min=0.5``."""
+    parts = [part.strip() for part in raw.split("|") if part.strip()]
+    if not parts:
+        raise ValueError("guarded_fusion spec must include a prefix fusion policy")
+    prefix_spec = parts[0]
+    opts = {"offset": 90.0, "low": 0.15, "min": 0.5}
+    for part in parts[1:]:
+        if "=" not in part:
+            raise ValueError(f"bad guarded_fusion option {part!r}; expected key=value")
+        key, value = part.split("=", 1)
+        key = key.strip()
+        if key not in opts:
+            raise ValueError(f"unknown guarded_fusion option {key!r}")
+        opts[key] = float(value.strip())
+    if opts["offset"] <= 0:
+        raise ValueError("guarded_fusion offset must be positive")
+    if opts["low"] < 0 or opts["min"] < 0:
+        raise ValueError("guarded_fusion thresholds must be non-negative")
+    return prefix_spec, opts["offset"], opts["low"], opts["min"]
+
+
+def identify_shabad_guarded_fusion(
+    asr_chunks,
+    corpora: dict[int, list[dict]],
+    *,
+    spec: str,
+    start_t: float = 0.0,
+    ratio: str = "WRatio",
+    blend: dict[str, float] | None = None,
+) -> ShabadIdResult:
+    """Pick a shabad with prefix fusion plus a late-evidence veto guard.
+
+    The guard is generic:
+
+    1. choose the prefix winner using ``prefix_spec`` at ``start_t``;
+    2. score the same fusion policy again at ``start_t + offset``;
+    3. switch to the later winner only if it differs, the prefix winner's
+       late-window score is <= ``low``, and the late winner's score is >=
+       ``min``.
+
+    Runtime callers should set commit latency to cover the validation window
+    when using this aggregate. The function intentionally only changes the
+    candidate decision; timing/latency remains the caller's responsibility.
+    """
+    prefix_spec, offset, low_support, min_validation = _parse_guarded_fusion_spec(spec)
+    prefix_scores = fusion_score_map(
+        asr_chunks,
+        corpora,
+        spec=prefix_spec,
+        start_t=start_t,
+        ratio=ratio,
+        blend=blend,
+    )
+    validation_scores = fusion_score_map(
+        asr_chunks,
+        corpora,
+        spec=prefix_spec,
+        start_t=start_t + offset,
+        ratio=ratio,
+        blend=blend,
+    )
+    prefix_ranked = _rank_score_map(prefix_scores)
+    validation_ranked = _rank_score_map(validation_scores)
+    prefix_id, prefix_score = prefix_ranked[0]
+    validation_id, validation_score = validation_ranked[0]
+    prefix_late_score = validation_scores.get(prefix_id, 0.0)
+
+    if (
+        validation_id != prefix_id
+        and prefix_late_score <= low_support
+        and validation_score >= min_validation
+    ):
+        return ShabadIdResult(
+            validation_id,
+            validation_score,
+            prefix_id,
+            prefix_late_score,
+            dict(validation_scores),
+        )
+
+    runner_up = prefix_ranked[1] if len(prefix_ranked) > 1 else (None, 0.0)
+    return ShabadIdResult(
+        prefix_id,
+        prefix_score,
+        runner_up[0],
+        runner_up[1],
+        dict(prefix_scores),
+    )
 
 
 def identify_shabad(
@@ -281,10 +402,19 @@ def identify_shabad(
     buf = buffer_text(asr_chunks, start_t=start_t, lookback_seconds=lookback_seconds)
     if not buf:
         first = sorted(corpora)[0]
-        return ShabadIdResult(first, 0.0, None, 0.0)
+        return ShabadIdResult(first, 0.0, None, 0.0, {sid: 0.0 for sid in corpora})
 
     if aggregate.startswith("fusion:"):
         return identify_shabad_fusion(
+            asr_chunks,
+            corpora,
+            spec=aggregate.split(":", 1)[1],
+            start_t=start_t,
+            ratio=ratio,
+            blend=blend,
+        )
+    if aggregate.startswith("guarded_fusion:"):
+        return identify_shabad_guarded_fusion(
             asr_chunks,
             corpora,
             spec=aggregate.split(":", 1)[1],
@@ -326,4 +456,4 @@ def identify_shabad(
 
     top = ranked[0]
     runner_up = ranked[1] if len(ranked) > 1 else (None, 0.0)
-    return ShabadIdResult(top[0], top[1], runner_up[0], runner_up[1])
+    return ShabadIdResult(top[0], top[1], runner_up[0], runner_up[1], dict(ranked))

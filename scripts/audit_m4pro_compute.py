@@ -117,6 +117,8 @@ def render_report() -> str:
     has_v6_silver = (REPO_ROOT / "submissions" / "silver_300h_v6_mac_scale20.json").exists()
     has_v6_paired = (REPO_ROOT / "submissions" / "phase3_v6_lock_fusion_paired").exists()
     has_v6_oos = (REPO_ROOT / "submissions" / "oos_v1_assisted_phase3_v6_lock_fusion").exists()
+    has_recency_paired = (REPO_ROOT / "submissions" / "phase3_recency_guard_paired").exists()
+    has_recency_oos = (REPO_ROOT / "submissions" / "oos_v1_assisted_phase3_recency_guard").exists()
     peak_mem = max((c.peak_mem_gb or 0.0 for c in cards), default=0.0)
     peak_fraction = (peak_mem / mem_gb) if mem_gb else None
 
@@ -172,7 +174,16 @@ def render_report() -> str:
     lines.extend([
         "- The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.",
     ])
-    if has_v6_silver and has_v6_paired and has_v6_oos:
+    if has_recency_paired and has_recency_oos:
+        lines.extend([
+            "- The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.",
+            "- A generic recency-consistency guarded fusion runtime lifted paired accuracy to 91.0% / 12-of-12 locks without assisted-OOS regression.",
+            "- Assisted-OOS remains flat at 59.9% despite 5-of-5 locks, so the active blocker is line timing/alignment under the correct shabad, not M4 Pro capacity.",
+            "- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but full 300h / multi-seed training is not justified until OOS alignment improves or diagnostics prove true ASR misses.",
+            "- Do not pull/train on all 300h right now. The next valid experiment is OOS/paired line-alignment error analysis under the recency-guarded runtime.",
+            "- Next recommended compute use: cached-output alignment diagnostics on `submissions/phase3_recency_guard_paired` and `submissions/oos_v1_assisted_phase3_recency_guard`.",
+        ])
+    elif has_v6_silver and has_v6_paired and has_v6_oos:
         lines.extend([
             "- The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.",
             "- Paired and assisted-OOS runtime gates were flat: v6 did not regress, but it did not move frame accuracy toward the 95% target.",

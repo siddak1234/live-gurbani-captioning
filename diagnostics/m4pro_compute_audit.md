@@ -9,8 +9,8 @@
 | Unified memory | 48 GB |
 | Torch | 2.5.0 |
 | MPS built | True |
-| MPS available in this process | True |
-| MPS smoke ok | True |
+| MPS available in this process | False |
+| MPS smoke ok | False |
 
 ## Completed training runs
 
@@ -34,11 +34,11 @@
 - Highest completed training memory use was 27.24 GB, about 56.7% of 48 GB unified memory.
 - The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.
 - The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.
-- Paired and assisted-OOS runtime gates were flat: v6 did not regress, but it did not move frame accuracy toward the 95% target.
-- We are not currently compute-bound; the active blocker is generic lock/alignment quality, especially the persistent full-start zOtIpxMT9hU false lock and OOS timing weakness.
-- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but full 300h / multi-seed training is not justified from this checkpoint.
-- Do not pull/train on all 300h right now. The next valid experiment is cached-ASR lock recency-consistency analysis, followed by a generic runtime change only if it preserves paired + OOS behavior.
-- Next recommended compute use: `make audit-lock-recency-consistency`.
+- A generic recency-consistency guarded fusion runtime lifted paired accuracy to 91.0% / 12-of-12 locks without assisted-OOS regression.
+- Assisted-OOS remains flat at 59.9% despite 5-of-5 locks, so the active blocker is line timing/alignment under the correct shabad, not M4 Pro capacity.
+- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but full 300h / multi-seed training is not justified until OOS alignment improves or diagnostics prove true ASR misses.
+- Do not pull/train on all 300h right now. The next valid experiment is OOS/paired line-alignment error analysis under the recency-guarded runtime.
+- Next recommended compute use: cached-output alignment diagnostics on `submissions/phase3_recency_guard_paired` and `submissions/oos_v1_assisted_phase3_recency_guard`.
 
 ## If Phase 3 is unblocked later
 

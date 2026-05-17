@@ -170,7 +170,8 @@ def main() -> int:
                              "lock window. Use >0 to avoid zero-evidence commits.")
     parser.add_argument("--blind-aggregate", default="chunk_vote",
                         help='Blind lock aggregate: "chunk_vote", "tfidf", "topk:N", '
-                             'or experimental "fusion:tfidf_45+0.5*chunk_vote_90".')
+                             'experimental "fusion:tfidf_45+0.5*chunk_vote_90", '
+                             'or guarded "guarded_fusion:tfidf_45+0.5*chunk_vote_90|offset=90|low=0.15|min=0.5".')
     parser.add_argument("--blind-ratio", default="WRatio")
     parser.add_argument("--blind-blend", default="")
     parser.add_argument("--pre-word-timestamps", action="store_true",

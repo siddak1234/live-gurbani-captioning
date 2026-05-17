@@ -59,6 +59,7 @@ LOCK_TAIL_FUSION_REPORT ?= diagnostics/phase2_14_tail_lock_evidence_fusion.md
 LOCK_EXTENDED_FUSION_REPORT ?= diagnostics/phase2_14_extended_lock_evidence_fusion.md
 LOCK_RECENCY_REPORT ?= diagnostics/phase3_v6_lock_recency_consistency.md
 LOCK_FUSION_AGG ?= fusion:tfidf_45+0.5*chunk_vote_90
+LOCK_RECENCY_AGG ?= guarded_fusion:tfidf_45+0.5*chunk_vote_90|offset=90|low=0.15|min=0.5
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
 SILVER_MODEL    ?= surindersinghssj/surt-small-v3
@@ -377,6 +378,40 @@ eval-paired-lock-fusion: ## Paired diagnostic eval for Phase 2.13 fusion lock.
 	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
 		--pred submissions/phase2_13_lock_fusion_paired \
 		--gt   $(BENCHMARK_DIR)/test
+
+.PHONY: eval-paired-recency-guard-v6
+eval-paired-recency-guard-v6: ## Phase 3 paired eval for v6 adapter + recency-guarded fusion lock.
+	HF_WINDOW_SECONDS=10 $(PYTHON) scripts/run_idlock_path.py \
+		--gt-dir $(BENCHMARK_DIR)/test \
+		--audio-dir audio \
+		--out-dir submissions/phase3_recency_guard_paired \
+		--post-adapter-dir lora_adapters/v6_mac_scale20 \
+		--post-context buffered \
+		--merge-policy retro-buffered \
+		--pre-word-timestamps \
+		--smoother loop_align \
+		--blind-lookback 180 \
+		--blind-aggregate "$(LOCK_RECENCY_AGG)"
+	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
+		--pred submissions/phase3_recency_guard_paired \
+		--gt   $(BENCHMARK_DIR)/test
+
+.PHONY: eval-oos-recency-guard-v6-assisted
+eval-oos-recency-guard-v6-assisted: prepare-oos-assisted ## Phase 3 assisted-OOS eval for v6 adapter + recency guard.
+	HF_WINDOW_SECONDS=10 $(PYTHON) scripts/run_idlock_path.py \
+		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--audio-dir eval_data/oos_v1/audio \
+		--out-dir submissions/oos_v1_assisted_phase3_recency_guard \
+		--post-adapter-dir lora_adapters/v6_mac_scale20 \
+		--post-context buffered \
+		--merge-policy retro-buffered \
+		--pre-word-timestamps \
+		--smoother loop_align \
+		--blind-lookback 180 \
+		--blind-aggregate "$(LOCK_RECENCY_AGG)"
+	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
+		--pred submissions/oos_v1_assisted_phase3_recency_guard \
+		--gt   $(OOS_ASSISTED_TEST_DIR)
 
 .PHONY: audit-oos-lock-assisted
 audit-oos-lock-assisted: prepare-oos-assisted ## Audit OOS shabad-lock variants from cached ASR (diagnostic).

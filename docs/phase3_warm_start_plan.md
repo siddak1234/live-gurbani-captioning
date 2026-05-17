@@ -1,8 +1,10 @@
 # Phase 3 warm-start plan
 
-**Status:** v6 warm-start completed. Silver ASR improved modestly, but paired
-and assisted-OOS frame accuracy stayed flat. The next step is targeted
-lock/alignment architecture work, not a full 300h / multi-seed training run.
+**Status:** v6 warm-start completed, and the first targeted architecture fix
+after that run is validated. Silver ASR improved modestly; the original paired
+and assisted-OOS frame gates were flat; a generic recency-consistency lock guard
+then raised paired frame accuracy from `84.0%` to `91.0%` without assisted-OOS
+regression.
 
 This is not full Phase 3 promotion. It is the first large, controlled acoustic
 scaling run on the M4 Pro after the lock/alignment stack became strong enough to
@@ -139,11 +141,16 @@ before it can justify a bigger Phase 3 run.
 | Silver does not improve | Stop large training. The next bottleneck is architecture/data labels, not data volume. |
 | Data-card diversity/holdout fails | Fix data pull. Do not train. |
 
-Current outcome: silver improved, paired/OOS did not regress, but both frame
-accuracy gates were flat. Therefore the correct decision is **not** to launch
-the full 300h / 3-seed plan yet. The next work item is a generic
-recency-consistency lock diagnostic that explains the persistent full-start
-`zOtIpxMT9hU -> 4892` false lock without adding any benchmark-specific rule.
+Current outcome: silver improved, paired/OOS did not regress, but the original
+frame-accuracy gates were flat. The recency-consistency diagnostic then
+identified one safe-looking generic veto candidate: the full-start
+`zOtIpxMT9hU -> 4892` false lock. The opt-in guarded fusion runtime fixed that
+specific failure generically and moved paired accuracy to `91.0%`.
+
+This is a meaningful architecture gain. It is still not enough to launch the
+full 300h / 3-seed plan, because assisted-OOS frame accuracy remains `59.9%`
+even with all OOS locks correct. The next bottleneck is line timing/alignment,
+not shabad ID or raw acoustic scale alone.
 
 ## Architecture rule
 
@@ -275,3 +282,37 @@ The next large training run should be launched only after one of these is true:
 1. a generic lock/validation change improves paired/OOS frame accuracy, or
 2. diagnostics show the remaining errors are true held-out ASR misses that
    larger acoustic training is expected to fix.
+
+## Recency-guard runtime checkpoint
+
+The recency-consistency audit produced one flagged disagreement:
+
+| Dataset | Case | GT | Prefix pred | Late pred | Prefix late support |
+|---|---|---:|---:|---:|---:|
+| paired | `zOtIpxMT9hU` | 3712 | 4892 | 3712 | 0.090 |
+
+The opt-in runtime aggregate is:
+
+```text
+guarded_fusion:tfidf_45+0.5*chunk_vote_90|offset=90|low=0.15|min=0.5
+```
+
+Runtime command:
+
+```bash
+make eval-paired-recency-guard-v6
+make eval-oos-recency-guard-v6-assisted
+```
+
+Result, 2026-05-17:
+
+| Runtime | Paired frames | Paired locks | Assisted-OOS frames | Assisted-OOS locks |
+|---|---:|---:|---:|---:|
+| Phase 2.13 fusion + v6 adapter | 84.0% | 11/12 | 59.9% | 5/5 |
+| Phase 3 guarded fusion + v6 adapter | 91.0% | 12/12 | 59.9% | 5/5 |
+
+Interpretation: the guarded fusion rule is a legitimate next runtime candidate.
+It is generic, evidence-based, and it fixes the known full-start false lock
+without OOS lock regression. It does not solve OOS frame timing, so the next
+architecture target is the locked-shabad aligner: boundary offsets, repeated
+rahao/loop behavior, and low-confidence no-line spans under correct shabad ID.

@@ -3,10 +3,16 @@ from __future__ import annotations
 import unittest
 
 from src.asr import AsrChunk
-from src.shabad_id import identify_shabad, identify_shabad_fusion, parse_fusion_spec
+from src.shabad_id import (
+    fusion_score_map,
+    identify_shabad,
+    identify_shabad_fusion,
+    identify_shabad_guarded_fusion,
+    parse_fusion_spec,
+)
 
 
-def _line(text: str, idx: int = 0) -> dict:
+def _line(text: str, idx: int = 1) -> dict:
     return {
         "line_idx": idx,
         "verse_id": f"v{idx}",
@@ -59,6 +65,81 @@ class TestIdentifyShabadFusion(unittest.TestCase):
             corpora,
             aggregate="fusion:tfidf_30+chunk_vote_30",
             lookback_seconds=30.0,
+        )
+        self.assertEqual(result.shabad_id, 2)
+
+    def test_fusion_result_includes_score_map(self):
+        chunks = [AsrChunk(0.0, 2.0, "alpha beta")]
+        corpora = {
+            1: [_line("alpha beta")],
+            2: [_line("gamma delta")],
+        }
+        result = identify_shabad_fusion(chunks, corpora, spec="tfidf_30+0.5*chunk_vote_30")
+        self.assertEqual(set(result.score_by_shabad or {}), {1, 2})
+        self.assertAlmostEqual((result.score_by_shabad or {})[1], result.score)
+
+    def test_fusion_score_map_can_shift_later(self):
+        chunks = [
+            AsrChunk(0.0, 2.0, "alpha beta"),
+            AsrChunk(90.0, 92.0, "gamma delta"),
+        ]
+        corpora = {
+            1: [_line("alpha beta")],
+            2: [_line("gamma delta")],
+        }
+        prefix = fusion_score_map(chunks, corpora, spec="chunk_vote_30", start_t=0.0)
+        late = fusion_score_map(chunks, corpora, spec="chunk_vote_30", start_t=90.0)
+        self.assertGreater(prefix[1], prefix[2])
+        self.assertGreater(late[2], late[1])
+
+    def test_guarded_fusion_switches_when_prefix_loses_late_support(self):
+        chunks = [
+            AsrChunk(0.0, 2.0, "alpha beta"),
+            AsrChunk(90.0, 92.0, "gamma delta"),
+        ]
+        corpora = {
+            1: [_line("alpha beta")],
+            2: [_line("gamma delta")],
+        }
+        result = identify_shabad_guarded_fusion(
+            chunks,
+            corpora,
+            spec="chunk_vote_30|offset=90|low=0.15|min=0.5",
+        )
+        self.assertEqual(result.shabad_id, 2)
+        self.assertEqual(result.runner_up_id, 1)
+
+    def test_guarded_fusion_keeps_prefix_when_late_support_is_not_low(self):
+        chunks = [
+            AsrChunk(0.0, 2.0, "alpha beta"),
+            AsrChunk(90.0, 92.0, "alpha beta"),
+            AsrChunk(93.0, 95.0, "gamma delta"),
+        ]
+        corpora = {
+            1: [_line("alpha beta")],
+            2: [_line("gamma delta")],
+        }
+        result = identify_shabad_guarded_fusion(
+            chunks,
+            corpora,
+            spec="chunk_vote_30|offset=90|low=0.15|min=0.5",
+        )
+        self.assertEqual(result.shabad_id, 1)
+
+    def test_identify_shabad_accepts_guarded_fusion_aggregate(self):
+        chunks = [
+            AsrChunk(0.0, 2.0, "alpha beta"),
+            AsrChunk(90.0, 92.0, "gamma delta"),
+        ]
+        corpora = {
+            1: [_line("alpha beta")],
+            2: [_line("gamma delta")],
+        }
+        result = identify_shabad(
+            chunks,
+            corpora,
+            aggregate="guarded_fusion:chunk_vote_30|offset=90|low=0.15|min=0.5",
+            lookback_seconds=180.0,
         )
         self.assertEqual(result.shabad_id, 2)
 
