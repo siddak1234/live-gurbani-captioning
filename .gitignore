@@ -75,3 +75,9 @@ ios/.build/
 ios/.swiftpm/
 ios/*.xcodeproj/xcuserdata/
 ios/*.xcworkspace/xcuserdata/
+
+# macOS iCloud Drive conflict duplicates — pattern is `filename 2.ext`.
+# The repo lives under ~/Desktop/ which iCloud syncs; two-Mac workflow
+# regularly produces these stale copies. See memory/project_icloud_drive_repo.md
+* 2.*
+* 2/
