@@ -25,6 +25,8 @@ env/
 eval_data/*/audio/*
 !eval_data/*/audio/.gitkeep
 eval_data/*/review/
+eval_data/*/assisted_test/
+diagnostics/oos_v1_assisted_crosscheck.md
 
 # Caches
 .cache/

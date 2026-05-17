@@ -48,6 +48,7 @@ OOS_CLIP       ?=
 OOS_CASES      ?= eval_data/oos_v1/cases.yaml
 OOS_DRAFT_DIR  ?= eval_data/oos_v1/drafts
 OOS_TEST_DIR   ?= eval_data/oos_v1/test
+OOS_ASSISTED_TEST_DIR ?= eval_data/oos_v1/assisted_test
 OOS_REVIEW_DIR ?= eval_data/oos_v1/review
 OOS_ASSIST_REPORT ?= diagnostics/oos_v1_assisted_crosscheck.md
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
@@ -177,6 +178,13 @@ audit-oos-assist: ## Cross-check OOS working GT with corpus, ASR cache, and onli
 		--gt-dir $(OOS_TEST_DIR) \
 		--out $(OOS_ASSIST_REPORT)
 
+.PHONY: prepare-oos-assisted
+prepare-oos-assisted: audit-oos-assist ## Write machine-assisted OOS proposal labels (diagnostic, not gold).
+	$(PYTHON) scripts/propose_oos_assisted_gt.py \
+		--cases $(OOS_CASES) \
+		--input-dir $(OOS_TEST_DIR) \
+		--out-dir $(OOS_ASSISTED_TEST_DIR)
+
 # -----------------------------------------------------------------------------
 # Data
 # -----------------------------------------------------------------------------
@@ -292,6 +300,21 @@ eval-oos-loop-align: validate-oos-gt ## OOS eval for current best runtime: Phase
 	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
 		--pred submissions/oos_v1_phase2_9_loop_align \
 		--gt   eval_data/oos_v1/test
+
+.PHONY: eval-oos-loop-align-assisted
+eval-oos-loop-align-assisted: prepare-oos-assisted ## Diagnostic OOS eval against machine-assisted labels (not promotion-grade).
+	HF_WINDOW_SECONDS=10 $(PYTHON) scripts/run_idlock_path.py \
+		--gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--audio-dir eval_data/oos_v1/audio \
+		--out-dir submissions/oos_v1_assisted_phase2_9_loop_align \
+		--post-adapter-dir lora_adapters/v5b_mac_diverse \
+		--post-context buffered \
+		--merge-policy retro-buffered \
+		--pre-word-timestamps \
+		--smoother loop_align
+	$(PYTHON) $(BENCHMARK_DIR)/eval.py \
+		--pred submissions/oos_v1_assisted_phase2_9_loop_align \
+		--gt   $(OOS_ASSISTED_TEST_DIR)
 
 .PHONY: eval-silver-300h
 eval-silver-300h: data-silver-300h ## Silver ASR text eval on held-out 300h canonical shards (not promotion-grade).

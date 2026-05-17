@@ -94,12 +94,24 @@ because its expected opening line is absent from the draft, then review
    triage report: it can identify likely mismatches, unlabeled sung regions, and
    suspicious line choices; it does not certify gold labels.
 
-4. Open `eval_data/oos_v1/review/index.html` and the matching
+4. Optional diagnostic only: generate and score the machine-assisted proposal:
+
+   ```bash
+   make prepare-oos-assisted
+   make eval-oos-loop-align-assisted
+   ```
+
+   This writes generated labels under `eval_data/oos_v1/assisted_test/` with
+   `curation_status=MACHINE_ASSISTED_V1_NOT_GOLD`. Treat this as a silver
+   diagnostic: it can tell us whether the current architecture is likely worth
+   gold review / Phase 3 scale-up, but it is not a promotion score.
+
+5. Open `eval_data/oos_v1/review/index.html` and the matching
    `eval_data/oos_v1/test/case_NNN.json` files in your editor.
 
-5. Listen to the full clipped audio once before editing.
+6. Listen to the full clipped audio once before editing.
 
-6. For every draft segment:
+7. For every draft segment:
 
    - adjust `start` / `end` to the actually sung line;
    - delete hallucinated or duplicated rows;
@@ -108,19 +120,19 @@ because its expected opening line is absent from the draft, then review
    - verify `line_idx`, `verse_id`, and `banidb_gurmukhi` against the cached
      shabad corpus.
 
-7. After correction, set:
+8. After correction, set:
 
    ```json
    "curation_status": "HUMAN_CORRECTED_V1"
    ```
 
-8. Run:
+9. Run:
 
    ```bash
    make validate-oos-gt
    ```
 
-9. Only after validation passes, run:
+10. Only after validation passes, run:
 
    ```bash
    make eval-oos-loop-align

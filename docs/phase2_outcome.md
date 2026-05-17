@@ -169,6 +169,20 @@ files pass validation, run:
 make eval-oos-loop-align
 ```
 
+To keep engineering moving without pretending machine labels are gold, there is
+also a silver diagnostic path:
+
+```bash
+make prepare-oos-assisted
+make eval-oos-loop-align-assisted
+```
+
+That path writes generated labels to `eval_data/oos_v1/assisted_test/` with
+`curation_status=MACHINE_ASSISTED_V1_NOT_GOLD` and scores the current
+`phase2_9_loop_align` runtime against them. Use the result to decide whether
+gold review is likely worth finishing and whether Phase 3 scale-up is plausible;
+do not report it as the final OOS score.
+
 Expert checkpoint on "more shabad variance": yes, the current paired benchmark
 is too small to judge production readiness, but the immediate fix is **held-out
 OOS validation**, not training on these five. The training path already has
