@@ -26,18 +26,19 @@
 |---|---:|
 | `training_data/` | 5.1G |
 | `lora_adapters/` | 577M |
-| `submissions/` | 3.9M |
-| `asr_cache/` | 260K |
+| `submissions/` | 4.0M |
+| `asr_cache/` | 308K |
 
 ## Audit decision
 
 - Highest completed training memory use was 27.24 GB, about 56.7% of 48 GB unified memory.
 - The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.
 - The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.
-- We are not currently compute-bound; the active blocker is paired/OOS validation quality for `v6_mac_scale20` under the generic lock/alignment runtime.
-- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but more training is not justified until paired/OOS gates are checked.
-- Do not pull/train on all 300h right now. The next valid experiment is paired runtime evaluation of `lora_adapters/v6_mac_scale20` with the Phase 2.13 evidence-fusion lock policy.
-- Next recommended compute use: run `scripts/run_idlock_path.py` on the paired benchmark with `--post-adapter-dir lora_adapters/v6_mac_scale20`, `--post-context buffered`, `--merge-policy retro-buffered`, `--smoother loop_align`, and `--blind-aggregate fusion:tfidf_45+0.5*chunk_vote_90`.
+- Paired and assisted-OOS runtime gates were flat: v6 did not regress, but it did not move frame accuracy toward the 95% target.
+- We are not currently compute-bound; the active blocker is generic lock/alignment quality, especially the persistent full-start zOtIpxMT9hU false lock and OOS timing weakness.
+- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but full 300h / multi-seed training is not justified from this checkpoint.
+- Do not pull/train on all 300h right now. The next valid experiment is cached-ASR lock recency-consistency analysis, followed by a generic runtime change only if it preserves paired + OOS behavior.
+- Next recommended compute use: `make audit-lock-recency-consistency`.
 
 ## If Phase 3 is unblocked later
 

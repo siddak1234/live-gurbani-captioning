@@ -1,11 +1,16 @@
 # Phase 3 warm-start plan
 
-**Status:** data and training completed; silver held-out evaluation is the
-active gate.
+**Status:** v6 warm-start completed. Silver ASR improved modestly, but paired
+and assisted-OOS frame accuracy stayed flat. The next step is targeted
+lock/alignment architecture work, not a full 300h / multi-seed training run.
 
 This is not full Phase 3 promotion. It is the first large, controlled acoustic
 scaling run on the M4 Pro after the lock/alignment stack became strong enough to
-make more training worth measuring.
+make more training worth measuring. It answered a specific question: does a
+24.6 h fresh-slice LoRA adapter improve the evidence available to the current
+generic lock/alignment runtime?
+
+Answer: **slightly on held-out ASR, not on frame accuracy yet.**
 
 ## Why we are doing this now
 
@@ -117,18 +122,28 @@ before it can justify a bigger Phase 3 run.
    `96.29` / `75.0%` and `v5b_mac_diverse` `96.33` / `73.0%`.
 4. **Paired runtime gate.** Evaluate under the current best generic runtime
    stack. A paired gain that breaks lock behavior is not a win. **Status:
-   next.**
+   PASS/FLAT.** `v6_mac_scale20` scored `84.0%` overall under the Phase 2.13
+   generic fusion-lock runtime. Lock accuracy stayed `11/12`; the same
+   full-start `zOtIpxMT9hU -> 4892` false lock remains.
 5. **OOS diagnostic gate.** Assisted OOS is still silver, not gold, but it must
-   not regress catastrophically. Gold OOS remains the promotion gate.
+   not regress catastrophically. Gold OOS remains the promotion gate. **Status:
+   PASS/FLAT.** `v6_mac_scale20` kept assisted-OOS lock accuracy at `5/5`
+   and frame accuracy at `59.9%`, matching the Phase 2.13 diagnostic.
 
 ## Decision table
 
 | Outcome | Decision |
 |---|---|
-| Silver improves and paired/OOS do not regress | Continue toward full Phase 3: larger slice, rank/modules/augmentation, then 3 seeds. |
+| Silver improves and paired/OOS do not regress | Continue only if frame accuracy improves or a clear architecture bottleneck is isolated. |
 | Silver improves but paired/OOS regress | Acoustic adapter is useful but integration is brittle. Return to lock/alignment before scaling. |
 | Silver does not improve | Stop large training. The next bottleneck is architecture/data labels, not data volume. |
 | Data-card diversity/holdout fails | Fix data pull. Do not train. |
+
+Current outcome: silver improved, paired/OOS did not regress, but both frame
+accuracy gates were flat. Therefore the correct decision is **not** to launch
+the full 300h / 3-seed plan yet. The next work item is a generic
+recency-consistency lock diagnostic that explains the persistent full-start
+`zOtIpxMT9hU -> 4892` false lock without adding any benchmark-specific rule.
 
 ## Architecture rule
 
@@ -169,3 +184,94 @@ Interpretation: the 24.6 h warm-start produced a small but real held-out ASR
 gain. It is not the large jump needed for a direct path to 95%+, but it clears
 the "do not regress on silver" gate. The next experiment should test whether
 the stronger adapter helps or hurts the current generic lock/alignment runtime.
+
+## Paired runtime checkpoint
+
+Command:
+
+```bash
+HF_WINDOW_SECONDS=10 python3 scripts/run_idlock_path.py \
+  --gt-dir ../live-gurbani-captioning-benchmark-v1/test \
+  --audio-dir audio \
+  --out-dir submissions/phase3_v6_lock_fusion_paired \
+  --post-adapter-dir lora_adapters/v6_mac_scale20 \
+  --post-context buffered \
+  --merge-policy retro-buffered \
+  --pre-word-timestamps \
+  --smoother loop_align \
+  --blind-lookback 90 \
+  --blind-aggregate "fusion:tfidf_45+0.5*chunk_vote_90"
+python3 ../live-gurbani-captioning-benchmark-v1/eval.py \
+  --pred submissions/phase3_v6_lock_fusion_paired \
+  --gt ../live-gurbani-captioning-benchmark-v1/test
+```
+
+Result, 2026-05-17:
+
+- overall paired frame accuracy: `84.0%`
+- lock accuracy: `11/12`
+- correct full/cold locks: all except full-start `zOtIpxMT9hU`
+- remaining false lock: `zOtIpxMT9hU -> 4892` (GT `3712`)
+- comparison to Phase 2.13 paired diagnostic: effectively flat (`84.1%` -> `84.0%`)
+
+Interpretation: v6 does not fix the known paired lock failure and does not
+create a new paired regression. The next valid gate is assisted OOS diagnostic
+under the same runtime. If OOS is flat/improved, v6 can be treated as a small
+ASR improvement but not a route to 95% by itself. If OOS regresses, stop
+adapter scaling and return to lock/alignment or gold-label quality.
+
+## Assisted-OOS diagnostic checkpoint
+
+Command:
+
+```bash
+HF_WINDOW_SECONDS=10 python3 scripts/run_idlock_path.py \
+  --gt-dir eval_data/oos_v1/assisted_test \
+  --audio-dir eval_data/oos_v1/audio \
+  --out-dir submissions/oos_v1_assisted_phase3_v6_lock_fusion \
+  --post-adapter-dir lora_adapters/v6_mac_scale20 \
+  --post-context buffered \
+  --merge-policy retro-buffered \
+  --pre-word-timestamps \
+  --smoother loop_align \
+  --blind-lookback 90 \
+  --blind-aggregate "fusion:tfidf_45+0.5*chunk_vote_90"
+python3 ../live-gurbani-captioning-benchmark-v1/eval.py \
+  --pred submissions/oos_v1_assisted_phase3_v6_lock_fusion \
+  --gt eval_data/oos_v1/assisted_test
+```
+
+Result, 2026-05-17:
+
+- overall assisted-OOS frame accuracy: `59.9%`
+- lock accuracy: `5/5`
+- case scores: `case_001=47.2%`, `case_002=60.0%`, `case_003=75.0%`,
+  `case_004=58.3%`, `case_005=58.9%`
+- comparison to Phase 2.13 assisted-OOS diagnostic: flat (`59.9%`)
+
+Interpretation: the v6 acoustic adapter does not improve OOS frame alignment,
+but it also does not break OOS shabad locking. The limiting factor for the
+95%+ goal is now the generic runtime architecture around shabad lock
+confidence, delayed evidence, and line-level timing/loop alignment, not simply
+more broad acoustic training.
+
+## Current next step
+
+Run and maintain the Phase 3 recency-consistency diagnostic:
+
+```bash
+make audit-lock-recency-consistency
+```
+
+This compares the current early lock policy (`tfidf_45 + 0.5*chunk_vote_90`)
+with a later validation window. A useful next runtime change would be a generic
+delay/veto rule only if it catches the known false lock while preserving paired
+and assisted-OOS behavior. If the diagnostic shows that any such rule would
+hurt OOS or other paired starts, do not implement it; move to line-alignment
+error analysis instead.
+
+The next large training run should be launched only after one of these is true:
+
+1. a generic lock/validation change improves paired/OOS frame accuracy, or
+2. diagnostics show the remaining errors are true held-out ASR misses that
+   larger acoustic training is expected to fix.

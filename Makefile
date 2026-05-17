@@ -57,6 +57,7 @@ LOCK_POLICY_REPORT ?= diagnostics/phase2_12_silver_lock_policy.md
 LOCK_FUSION_REPORT ?= diagnostics/phase2_13_lock_evidence_fusion.md
 LOCK_TAIL_FUSION_REPORT ?= diagnostics/phase2_14_tail_lock_evidence_fusion.md
 LOCK_EXTENDED_FUSION_REPORT ?= diagnostics/phase2_14_extended_lock_evidence_fusion.md
+LOCK_RECENCY_REPORT ?= diagnostics/phase3_v6_lock_recency_consistency.md
 LOCK_FUSION_AGG ?= fusion:tfidf_45+0.5*chunk_vote_90
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
@@ -424,6 +425,16 @@ tune-lock-extended-evidence-fusion: prepare-oos-assisted ## Optional longer-wind
 		--asr-tag medium_word \
 		--lookbacks 30,45,60,90,120,150,180 \
 		--out $(LOCK_EXTENDED_FUSION_REPORT)
+
+.PHONY: audit-lock-recency-consistency
+audit-lock-recency-consistency: prepare-oos-assisted ## Phase 3 diagnostic: early lock vs later evidence consistency.
+	$(PYTHON) scripts/audit_lock_recency_consistency.py \
+		--paired-gt-dir $(BENCHMARK_DIR)/test \
+		--oos-gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--asr-tag medium_word \
+		--policy "tfidf_45+0.5*chunk_vote_90" \
+		--validation-offset 90 \
+		--out $(LOCK_RECENCY_REPORT)
 
 .PHONY: eval-silver-300h
 eval-silver-300h: data-silver-300h ## Silver ASR text eval on held-out 300h canonical shards (not promotion-grade).

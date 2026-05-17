@@ -42,9 +42,19 @@ So the correct expert decision was:
   produced a better lock policy: fresh shards, strict data-card gates, one
   adapter, then silver/paired/OOS comparison.
 
-That warm-start completed on 2026-05-17. The silver gate is now passed, but only
+That warm-start completed on 2026-05-17. The silver gate passed, but only
 modestly: `v6_mac_scale20` scored 96.55 mean WRatio / 78.0% exact normalized on
 the deterministic 100-row silver slice, versus base 96.29 / 75.0%.
+
+The paired and assisted-OOS runtime gates were flat:
+
+- paired runtime: `84.0%`, lock `11/12`, same full-start
+  `zOtIpxMT9hU -> 4892` false lock as Phase 2.13;
+- assisted-OOS runtime: `59.9%`, lock `5/5`, same frame accuracy as Phase 2.13.
+
+Conclusion: the M4 Pro did useful work, but this checkpoint does not justify a
+full 300h / 3-seed run yet. More broad training is not the current highest
+leverage move.
 
 ## How to audit the machine
 
@@ -94,23 +104,18 @@ Then the 48 GB plan is:
 
 ## Current next step
 
-Evaluate the Phase 3 warm-start adapter under the current generic paired
-runtime stack:
+Run the recency-consistency lock diagnostic:
 
 ```bash
-HF_WINDOW_SECONDS=10 python3 scripts/run_idlock_path.py \
-  --gt-dir ../live-gurbani-captioning-benchmark-v1/test \
-  --audio-dir audio \
-  --out-dir submissions/phase3_v6_lock_fusion_paired \
-  --post-adapter-dir lora_adapters/v6_mac_scale20 \
-  --post-context buffered \
-  --merge-policy retro-buffered \
-  --pre-word-timestamps \
-  --smoother loop_align \
-  --blind-lookback 90 \
-  --blind-aggregate "fusion:tfidf_45+0.5*chunk_vote_90"
+make audit-lock-recency-consistency
 ```
 
-Only if paired runtime does not regress should we spend runtime on OOS
-diagnostics or a larger training slice. Promotion still requires OOS/gold
-validation; paired-benchmark gains alone are not enough.
+This is a cheap cached-ASR diagnostic, not another large train. It checks
+whether the current early lock winner loses support in a later validation
+window. If a generic recency/veto rule explains the `zOtIpxMT9hU -> 4892`
+failure without hurting OOS, implement and evaluate that architecture change.
+If it does not, move to line-alignment/timing error analysis.
+
+Only after a generic runtime change improves paired/OOS frame accuracy, or a
+diagnostic proves the remaining errors are true held-out ASR misses, should the
+48 GB machine be used for the next larger training run.
