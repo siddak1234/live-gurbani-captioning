@@ -301,9 +301,10 @@ and their source YouTube IDs are in `configs/datasets.yaml` holdout lists. The
 same slate is encoded in `eval_data/oos_v1/cases.yaml`; `make bootstrap-oos-gt`
 creates draft labels under `eval_data/oos_v1/drafts/`; `make validate-oos-gt`
 guards against scoring draft or malformed labels. The remaining gate is
-hand-corrected GT JSONs under `eval_data/oos_v1/test/`, validated by
-`make validate-oos-gt`, then `make eval-oos-loop-align`. Do not train on these
-OOS recordings; they are the variance check for whether the 91.2%
+`make oos-review-pack`, hand-corrected GT JSONs under
+`eval_data/oos_v1/test/`, validation by `make validate-oos-gt`, then
+`make eval-oos-loop-align`. Do not train on these OOS recordings; they are the
+variance check for whether the 91.2%
 paired-benchmark architecture generalizes.
 
 ### Phase 3 — Mac-scale real fine-tune

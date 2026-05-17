@@ -133,11 +133,12 @@ Checkpoint 2026-05-16:
 - `configs/datasets.yaml` holdout video IDs now include the five OOS source
   YouTube IDs so future training pulls cannot sample these eval recordings.
 
-Current next step: hand-curate `eval_data/oos_v1/test/case_001.json` through
-`case_005.json` against the fetched audio, set `curation_status:
-HUMAN_CORRECTED_V1`, and run `make validate-oos-gt`. Do **not** claim an OOS
-score until those GT files are corrected, validated, and committed. Once they
-exist, run:
+Current next step: run `make oos-review-pack`, open
+`eval_data/oos_v1/review/index.html`, and hand-curate
+`eval_data/oos_v1/test/case_001.json` through `case_005.json` against the
+fetched audio. Set `curation_status: HUMAN_CORRECTED_V1`, then run
+`make validate-oos-gt`. Do **not** claim an OOS score until those GT files are
+corrected, validated, and committed. Once they exist, run:
 
 ```bash
 make eval-oos-loop-align
