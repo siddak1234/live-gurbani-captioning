@@ -2,6 +2,9 @@
 
 Companion to [`eval_data/oos_v1/README.md`](../eval_data/oos_v1/README.md). The README explains *what* the OOS pack looks like (directory layout, JSON schema, eval workflow). This doc explains *how to pick what goes into it* so the resulting accuracy number is interpretable, not a random sample.
 
+For the current hand-labeling queue and pass/fail interpretation, see
+[`docs/oos_v1_labeling_checkpoint.md`](oos_v1_labeling_checkpoint.md).
+
 A 5-case OOS pack with arbitrary picks is barely better than no OOS pack — variance per shabad is high, one outlier skews the mean. The picks have to be deliberate.
 
 ## Selection rule: 3 representative + 2 stress
