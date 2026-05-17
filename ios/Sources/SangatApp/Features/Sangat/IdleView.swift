@@ -16,6 +16,7 @@ public struct IdleView: View {
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.themeTokens) private var tokens
+    @State private var showSettings: Bool = false
 
     public init() {}
 
@@ -54,6 +55,33 @@ public struct IdleView: View {
         }
         .padding(.horizontal, tokens.spacing.edge)
         .accessibilityElement(children: .contain)
+        .overlay(alignment: .topTrailing) {
+            settingsButton
+                .padding(.top, tokens.spacing.sm)
+                .padding(.trailing, tokens.spacing.edge)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .environment(env)
+                .environment(\.theme, env.theme)
+                .environment(\.themeTokens, env.theme.tokens)
+                .preferredColorScheme(env.theme.isDark ? .dark : .light)
+        }
+    }
+
+    private var settingsButton: some View {
+        Button {
+            env.haptics.play(.selection)
+            showSettings = true
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 22, weight: .regular))
+                .foregroundStyle(tokens.colors.ink3)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Settings")
+        .accessibilityIdentifier("idle.settings")
     }
 
     private func startListening() {
