@@ -26,6 +26,10 @@ Decision rule:
 - If OOS v1 drops sharply, diagnose by case role before spending more training
   budget.
 
+Parallel track: Phase 2.10 adds automated **silver** OOS from online
+timestamped labels so engineering can continue without waiting on every gold
+label. Silver is a diagnostic bridge, not a replacement for this gold gate.
+
 ## Current artifacts
 
 | Artifact | Path | Status |

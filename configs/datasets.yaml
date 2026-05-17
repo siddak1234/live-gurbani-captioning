@@ -40,6 +40,29 @@ sources:
       Primary kirtan corpus. Labels are auto-aligned YouTube captions snapped
       to canonical SGGS via BaniDB. Quality varies — filter with --min-score.
 
+  kirtan_v2_timestamped:
+    hf_repo: surindersinghssj/gurbani-kirtan-dataset-v2
+    description: timestamped line-level kirtan segments matched to canonical Gurmukhi
+    domain: gurbani-sung
+    hours: 69
+    rows: 9319
+    license: cc-by-4.0
+    text_column: gurmukhi_text
+    quality_column: match_score
+    default_min_score: 95.0
+    holdout:
+      enforce: true
+      shabad_ids: ["4377", "1821", "1341", "3712"]
+      video_ids: [IZOsmkdmmcg, kZhIA8P6xWI, kchMJPK9Axs, zOtIpxMT9hU,
+                  hhpYbZ9_jH4, ZdZ5sBLcjr0, 9SNXYPEVE60, kZnV63eQOeM, yr6Y3gzjAu4]
+    status: silver-eval-candidate
+    notes: |
+      Public HF viewer lists train/validation/test splits by video ID and
+      start/end timestamps per line. Use first for automated silver segment
+      evaluation, not final gold promotion. On 2026-05-16 the local HF API
+      client returned 401 for this repo despite the browser-visible dataset
+      card; resolve access before wiring a required Make target.
+
   sehaj:
     hf_repo: surindersinghssj/gurbani-sehajpath-yt-captions-canonical
     description: ~160h of spoken paath (calm recitation) from YouTube
