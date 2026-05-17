@@ -20,6 +20,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.bootstrap_oos_gt import DEFAULT_CASES, OosCase, load_cases  # noqa: E402
+from scripts.validate_oos_gt import validate_case  # noqa: E402
 
 DEFAULT_DRAFT_DIR = REPO_ROOT / "eval_data" / "oos_v1" / "drafts"
 DEFAULT_AUDIO_DIR = REPO_ROOT / "eval_data" / "oos_v1" / "audio"
@@ -53,17 +54,38 @@ def segment_rows(case_id: str, segments: list[dict]) -> str:
     return "\n".join(rows)
 
 
+def _load_json(path: pathlib.Path) -> dict:
+    return json.loads(path.read_text())
+
+
+def validation_block(errors: list[str]) -> str:
+    if not errors:
+        return "<p class=\"ok\">Current validator issues: none.</p>"
+    items = "\n".join(f"<li>{html.escape(error)}</li>" for error in errors)
+    return f"""
+  <details open class="issues">
+    <summary>Current validator issues</summary>
+    <ul>
+      {items}
+    </ul>
+  </details>
+"""
+
+
 def render_case(
     case: OosCase,
     *,
-    draft: dict,
+    review_payload: dict,
     audio_rel: str,
+    review_source: str,
+    review_path: pathlib.Path,
     draft_path: pathlib.Path,
     test_path: pathlib.Path,
+    validation_errors: list[str],
 ) -> str:
-    status = str(draft.get("curation_status", ""))
-    segments = draft.get("segments") or []
-    total_duration = draft.get("total_duration", draft.get("uem", {}).get("end", ""))
+    status = str(review_payload.get("curation_status", ""))
+    segments = review_payload.get("segments") or []
+    total_duration = review_payload.get("total_duration", review_payload.get("uem", {}).get("end", ""))
     return f"""
 <section class="case" id="{html.escape(case.case_id)}">
   <header>
@@ -74,9 +96,11 @@ def render_case(
   </header>
   <audio id="audio-{html.escape(case.case_id)}" controls preload="metadata" src="{html.escape(audio_rel)}"></audio>
   <div class="paths">
+    <code>reviewing: {html.escape(review_source)} ({html.escape(str(review_path))})</code>
     <code>draft: {html.escape(str(draft_path))}</code>
     <code>save corrected GT: {html.escape(str(test_path))}</code>
   </div>
+  {validation_block(validation_errors)}
   <details open>
     <summary>Correction checklist</summary>
     <ul>
@@ -118,17 +142,34 @@ def render_index(
         test_path = test_dir / f"{case.case_id}.json"
         if not draft_path.exists():
             raise FileNotFoundError(f"missing draft: {draft_path}")
-        draft = json.loads(draft_path.read_text())
+        if test_path.exists():
+            review_payload = _load_json(test_path)
+            review_source = "working GT"
+            review_path = test_path
+            validation_errors = validate_case(
+                case,
+                gt_dir=test_dir,
+                audio_dir=audio_dir,
+                require_human_status=True,
+            ).errors
+        else:
+            review_payload = _load_json(draft_path)
+            review_source = "draft"
+            review_path = draft_path
+            validation_errors = [f"missing working GT file: {test_path}"]
         audio_rel = pathlib.Path(
             os.path.relpath(audio_path.resolve(), start=out_path.resolve().parent)
         ).as_posix()
         sections.append(
             render_case(
                 case,
-                draft=draft,
+                review_payload=review_payload,
                 audio_rel=audio_rel,
+                review_source=review_source,
+                review_path=pathlib.Path(display_path(review_path)),
                 draft_path=pathlib.Path(display_path(draft_path)),
                 test_path=pathlib.Path(display_path(test_path)),
+                validation_errors=validation_errors,
             )
         )
 
@@ -151,6 +192,8 @@ def render_index(
     code {{ background: #f3f6f9; padding: 2px 4px; border-radius: 3px; }}
     .paths code {{ display: block; margin: 4px 0; }}
     .status {{ color: #7a3b00; }}
+    .ok {{ color: #166534; }}
+    .issues {{ background: #fff8ed; border: 1px solid #f0c38a; padding: 8px 12px; margin: 12px 0; }}
     .gurmukhi {{ font-size: 1.05rem; }}
   </style>
 </head>
