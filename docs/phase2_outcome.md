@@ -139,8 +139,9 @@ Current next step: run `make oos-review-pack`, open
 fetched audio. Set `curation_status: HUMAN_CORRECTED_V1`, then run
 `make validate-oos-gt`. Do **not** claim an OOS score until those GT files are
 corrected, validated, and committed. The step-by-step labeling checkpoint is
-[`docs/oos_v1_labeling_checkpoint.md`](oos_v1_labeling_checkpoint.md). Once
-they exist, run:
+[`docs/oos_v1_labeling_checkpoint.md`](oos_v1_labeling_checkpoint.md), and the
+machine triage of the current drafts is
+[`docs/oos_v1_machine_audit.md`](oos_v1_machine_audit.md). Once they exist, run:
 
 ```bash
 make eval-oos-loop-align

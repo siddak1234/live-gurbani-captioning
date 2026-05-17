@@ -138,6 +138,8 @@ Below 5 cases the numbers are too noisy. Above 10 the curation cost outweighs th
 For the selection rule (3 representative + 2 stress), candidate pool, labor estimate, and audit-style failure modes, see the curation playbook: [`docs/oos_v1_curation.md`](../../docs/oos_v1_curation.md).
 For the current five-case labeling queue, use the checkpoint worksheet:
 [`docs/oos_v1_labeling_checkpoint.md`](../../docs/oos_v1_labeling_checkpoint.md).
+For the parser-based triage of the current drafts, see:
+[`docs/oos_v1_machine_audit.md`](../../docs/oos_v1_machine_audit.md).
 
 ## Holdout discipline
 
