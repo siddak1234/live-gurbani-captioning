@@ -298,8 +298,11 @@ five-case slate is documented in [`docs/oos_v1_curation.md`](docs/oos_v1_curatio
 OOS corpus caching and clipped audio fetch support are implemented, the five
 source clips are downloaded locally under `eval_data/oos_v1/audio/` (gitignored),
 and their source YouTube IDs are in `configs/datasets.yaml` holdout lists. The
-remaining gate is hand-corrected GT JSONs under `eval_data/oos_v1/test/`, then
-`make eval-oos-loop-align`.
+same slate is encoded in `eval_data/oos_v1/cases.yaml`; `make bootstrap-oos-gt`
+creates draft labels under `eval_data/oos_v1/drafts/`. The remaining gate is
+hand-corrected GT JSONs under `eval_data/oos_v1/test/`, then
+`make eval-oos-loop-align`. Do not train on these OOS recordings; they are the
+variance check for whether the 91.2% paired-benchmark architecture generalizes.
 
 ### Phase 3 — Mac-scale real fine-tune
 **Role:** ML Scientist (acoustic modeling) (lead) + Optimization Engineer.

@@ -9,9 +9,13 @@ A model that scores 95% on the paired benchmark but 60% here is benchmark-overfi
 ```
 eval_data/oos_v1/
 ├── README.md          # this file (committed)
+├── cases.yaml         # OOS source manifest (committed)
 ├── audio/             # 16 kHz mono WAVs (GITIGNORED — copyright, size)
 │   ├── case_001_16k.wav
 │   ├── case_002_16k.wav
+│   └── ...
+├── drafts/            # machine-generated bootstrap labels (NOT scored)
+│   ├── case_001.json
 │   └── ...
 └── test/              # ground truth JSONs (committed once curated)
     ├── case_001.json
@@ -74,18 +78,17 @@ Required fields: `video_id`, `shabad_id`, `segments[*].{start, end, line_idx}`. 
    ffmpeg -i input.mp4 -ss 30 -t 180 -ar 16000 -ac 1 -y eval_data/oos_v1/audio/case_NNN_16k.wav
    ```
 5. Curate the GT JSON. Recommended workflow:
-   - Run Path A v3.2 in oracle mode (shabad_id known) to bootstrap timings:
+   - Generate draft labels in `drafts/`:
      ```bash
-     python scripts/eval_oos.py \
-       --data-dir eval_data/oos_v1 \
-       --pred-dir /tmp/bootstrap_v3_2 \
-       --engine-config configs/inference/v3_2.yaml \
-       --oracle
+     make bootstrap-oos-gt
      ```
-   - Open the resulting JSON in your editor.
+   - Open the resulting draft JSON in your editor.
    - Hand-correct the line boundaries against the audio. This takes ~10-15 minutes per recording.
    - Save as `eval_data/oos_v1/test/case_NNN.json`.
 6. Re-run `eval_oos.py` without `--oracle` to get the real blind+live score.
+
+Never score or publish from `drafts/`. The evaluator only reads `test/`, and
+`test/` is reserved for human-corrected ground truth.
 
 ## Running an evaluation
 
