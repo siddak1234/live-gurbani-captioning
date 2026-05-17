@@ -221,6 +221,29 @@ Conclusion: the next true blocker is robust shabad-lock/candidate retrieval plus
 gold-quality OOS labels. More broad 300h training is still not the next expert
 move.
 
+Phase 2.12 answers the "can we continue learning without hand validation?"
+question. Yes: continue with a silver learning loop, but do not call it final
+accuracy. The plan is [`docs/phase2_12_silver_learning_plan.md`](phase2_12_silver_learning_plan.md):
+use the paired benchmark, assisted OOS labels, and cached ASR/corpus evidence to
+tune or learn a shabad-lock policy. Treat the resulting score as a development
+signal only.
+
+Executed Phase 2.12.A:
+
+- `make tune-shabad-lock-policy`
+- Report: `diagnostics/phase2_12_silver_lock_policy.md`
+- Best macro policy: `chunk_vote@45s|min=0`
+- Result: **67.5%** silver macro lock accuracy (**9/12** paired, **3/5**
+  assisted OOS)
+- Best OOS-only policy (`tfidf_then_topk3@45s|min=0`) reaches **5/5** assisted
+  OOS locks but collapses paired to **3/12**
+
+Decision: silver labels let us continue learning, but this tuning run rejects a
+simple scorer/window switch as the next architecture. The next targeted step is
+candidate retrieval / lock-evidence modeling. Broad 300h training remains
+deferred because the current blocker is wrong shabad commitment, not raw ASR
+capacity.
+
 Expert checkpoint on "more shabad variance": yes, the current paired benchmark
 is too small to judge production readiness, but the immediate fix is **held-out
 OOS validation**, not training on these five. The training path already has

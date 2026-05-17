@@ -53,6 +53,7 @@ OOS_REVIEW_DIR ?= eval_data/oos_v1/review
 OOS_ASSIST_REPORT ?= diagnostics/oos_v1_assisted_crosscheck.md
 OOS_LOCK_AUDIT ?= diagnostics/phase2_11_oos_assisted_lock_audit.md
 PAIRED_LOCK_AUDIT ?= diagnostics/phase2_11_paired_lock_audit.md
+LOCK_POLICY_REPORT ?= diagnostics/phase2_12_silver_lock_policy.md
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
 SILVER_MODEL    ?= surindersinghssj/surt-small-v3
@@ -331,6 +332,14 @@ audit-paired-lock: ## Audit paired-benchmark shabad-lock variants using the curr
 		--gt-dir $(BENCHMARK_DIR)/test \
 		--asr-tag medium_word \
 		--out $(PAIRED_LOCK_AUDIT)
+
+.PHONY: tune-shabad-lock-policy
+tune-shabad-lock-policy: prepare-oos-assisted ## Tune lock policy on paired + assisted-OOS silver labels.
+	$(PYTHON) scripts/tune_shabad_lock_policy.py \
+		--paired-gt-dir $(BENCHMARK_DIR)/test \
+		--oos-gt-dir $(OOS_ASSISTED_TEST_DIR) \
+		--asr-tag medium_word \
+		--out $(LOCK_POLICY_REPORT)
 
 .PHONY: eval-silver-300h
 eval-silver-300h: data-silver-300h ## Silver ASR text eval on held-out 300h canonical shards (not promotion-grade).

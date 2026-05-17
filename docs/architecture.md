@@ -164,6 +164,12 @@ while waiting, but it must not commit a final shabad on all-zero evidence.
 The first opt-in prototype adds exactly that guard (`lock_lookbacks` +
 `min_lock_score`) without changing historical defaults; it improves assisted
 OOS from 29.5% to 40.5%, but does not solve shared-hook candidate ambiguity.
+Phase 2.12 then used paired labels + machine-assisted OOS labels as a silver
+learning set for lock-policy tuning. The best macro rule (`chunk_vote@45s`) is
+only 9/12 paired and 3/5 assisted OOS; the best OOS-only rule gets 5/5 assisted
+OOS but collapses paired to 3/12. That rules out a simple scorer/window switch.
+The next clean Layer 2 direction is candidate retrieval / lock-evidence
+modeling, while keeping the lock policy generic and opt-in.
 
 ## Configuration surface
 
