@@ -108,10 +108,15 @@ public struct ThemeTokens: Sendable {
         public let gurmukhiLarge: Font
         /// Hero Gurmukhi — the committed line in `HeroLineView`.
         public let gurmukhiHero: Font
+        /// Display Gurmukhi — onboarding Welcome card, the biggest type
+        /// in the whole app. One step up from `gurmukhiHero`.
+        public let gurmukhiDisplay: Font
         /// English / translit body.
         public let serif: Font
         /// English translit italic — used for transliteration rows.
         public let serifItalic: Font
+        /// Onboarding card title — "How it follows along", role-pick header.
+        public let serifTitle: Font
         /// UI chrome — buttons, labels, body copy in chrome.
         public let sans: Font
         /// Small UI text — captions, secondary chrome.
@@ -123,15 +128,18 @@ public struct ThemeTokens: Sendable {
 
         public init(
             gurmukhi: Font, gurmukhiLarge: Font, gurmukhiHero: Font,
-            serif: Font, serifItalic: Font,
+            gurmukhiDisplay: Font,
+            serif: Font, serifItalic: Font, serifTitle: Font,
             sans: Font, sansSmall: Font, sansCaps: Font,
             mono: Font
         ) {
             self.gurmukhi = gurmukhi
             self.gurmukhiLarge = gurmukhiLarge
             self.gurmukhiHero = gurmukhiHero
+            self.gurmukhiDisplay = gurmukhiDisplay
             self.serif = serif
             self.serifItalic = serifItalic
+            self.serifTitle = serifTitle
             self.sans = sans
             self.sansSmall = sansSmall
             self.sansCaps = sansCaps

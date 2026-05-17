@@ -59,6 +59,84 @@ canonical example.
 7. Sign-off              — your approval marker
 ```
 
+## What lands in M5.4 (onboarding)
+
+Replaces the M5.1 placeholder Welcome screen with the four-card flow from
+design canvas section 03 (`V1Onb01_Welcome` → `V1Onb04_RolePick` in
+`assets/v1-paper.jsx`). Settings already shipped in a slice ahead of M5.4
+(commit `e101517` — theme + reading layout + reading layers); M5.4 is
+focused on first-launch onboarding only.
+
+Files added: 7 source files + 3 test files, all under `ios/`.
+
+```
+ios/Sources/SangatApp/Features/Onboarding/
+  OnboardingFlow.swift            container, card index state, swipe + button navigation
+  OnboardingViewModel.swift       state machine: { welcome, howItWorks, mic, role } + completion
+  WelcomeCard.swift               Card 1 — "ਸ੍ਰਵਣ ਕਰੋ" hero + body lines + Begin pill
+  HowItWorksCard.swift            Card 2 — 3-step amber/amber/saffron timeline + Back/Continue
+  MicPermissionCard.swift         Card 3 — saffronSoft disc + AVAudioApplication.requestRecordPermission
+  RolePickCard.swift              Card 4 — Sangat default selected, Sevadar requires-unlock copy
+
+ios/Sources/SangatApp/DesignSystem/Components/
+  OnboardingMetaHeader.swift      "Live Gurbani · Sangat" top strip shared by all 4 cards
+
+ios/Tests/SangatAppTests/Features/Onboarding/
+  OnboardingFlowTests.swift       card sequencing + back navigation
+  OnboardingViewModelTests.swift  state transitions; completion writes Preferences
+  MicPermissionCardTests.swift    Allow path + Not-now path both complete the flow
+```
+
+Files modified: `ios/Sources/SangatApp/App/RootView.swift` (single-block
+swap of `OnboardingPlaceholderView` for `OnboardingFlow()`),
+`ios/Sources/SangatApp/App/AppEnvironment.swift` (re-introduces persistence
+for `hasCompletedOnboarding` now that onboarding is substantive),
+`ios/Tests/SangatAppTests/AppEnvironmentTests.swift` (flip the test back
+from session-only to persistent).
+
+Persistence: **fully persistent** — after the user picks a role and taps
+Continue, `hasCompletedOnboarding`, `mode`, and `micPermissionAcknowledged`
+all land in `Preferences` (UserDefaults). Subsequent cold starts skip
+onboarding entirely. Reset by uninstall + reinstall during testing. The
+session-only behavior introduced in commit `b63bd38` was a stopgap for the
+M5.1 placeholder; M5.4 reverts it deliberately because re-asking for mic
+permission every launch is hostile.
+
+Behavior contract:
+
+- Forward navigation: Welcome → HowItWorks → Mic → Role → done.
+- Back navigation: HowItWorks/Mic/Role have a Back button per the design;
+  Welcome has only Begin.
+- Skip mic ("Not now"): advances to Role; `micPermissionAcknowledged`
+  records `false`. The "Enable microphone" affordance on IdleView for that
+  case is deferred to M5.4.1 / M5.3.
+- Role pick: tapping a card selects it; CTA label tracks selection
+  ("Continue as Sangat" / "Continue as Sevadar"). On Continue,
+  `env.mode = selected` and `env.hasCompletedOnboarding = true`.
+
+Audit gates beyond invariants A1–A10:
+
+| # | Check |
+|---|---|
+| 4.1 | First launch shows Welcome; `hasCompletedOnboarding` flips on Role Continue |
+| 4.2 | Mic card calls `AVAudioApplication.requestRecordPermission` (real path) |
+| 4.3 | "Not now" advances and `micPermissionAcknowledged = false` is recorded |
+| 4.4 | Settings (theme/layout/layers) still persists across launches (regression) |
+| 4.5 | Theme change in Settings is still live, no relaunch (regression) |
+| 4.6 | Simulator walkthrough: all 4 cards render in `paper`, `darbar`, `mool` |
+
+Design fidelity gates: 8 visual checks against `assets/v1-paper.jsx` line
+ranges 150-345 — see the M5.4 audit doc once written.
+
+Pre-ship grep gauntlet (carried forward from M5.2): no explicit `return`
+in `#Preview`/`@ViewBuilder`, no `print(`, no force-unwraps in `Sources/`,
+no raw `Color(red:…)`/hex literals in `Features/`, no `Bundle.module` as a
+public default arg, no `static let shared`.
+
+Not in M5.4: the IdleView "Enable microphone" affordance for users who
+tapped Not now (lands in M5.3 / M5.4.1), localized onboarding strings,
+debug-skip gestures. Real Sevadar behavior is M5.3.
+
 ## What lands in M5.1 (foundations) — for reference
 
 Files added: **37 source files** in `ios/Sources/SangatApp/` + **6 test

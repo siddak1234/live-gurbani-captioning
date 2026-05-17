@@ -50,14 +50,16 @@ public final class AppEnvironment {
         didSet { preferences.mode = mode }
     }
 
-    /// Whether the user has completed the Welcome step in the current session.
+    /// Whether the user has completed first-launch onboarding.
     ///
-    /// Intentionally **not persisted** — every cold start shows the Welcome
-    /// screen again. When the real 4-card onboarding lands in M5.4 (which
-    /// asks for mic permission), persistence will move back so users aren't
-    /// re-prompted on every launch. `Preferences.hasCompletedOnboarding` is
-    /// kept as a primitive for that future use, just not wired here.
-    public var hasCompletedOnboarding: Bool
+    /// Persisted to `Preferences` so subsequent cold starts skip the
+    /// 4-card onboarding flow. The brief session-only window between
+    /// commits `b63bd38` and the M5.4 landing was a stopgap when Welcome
+    /// was a content-free placeholder; once onboarding asks for mic
+    /// permission and picks a role, re-asking every launch is hostile.
+    public var hasCompletedOnboarding: Bool {
+        didSet { preferences.hasCompletedOnboarding = hasCompletedOnboarding }
+    }
 
     /// Reading layout (hero / karaoke / full). Persists.
     public var readingLayout: ReadingLayout {
@@ -95,8 +97,7 @@ public final class AppEnvironment {
         // Seed observable state from preferences (with safe defaults).
         self.theme = preferences.theme ?? .default
         self.mode = preferences.mode ?? .default
-        // Welcome screen is session-only — every cold start shows it again.
-        self.hasCompletedOnboarding = false
+        self.hasCompletedOnboarding = preferences.hasCompletedOnboarding
         self.readingLayout = preferences.readingLayout ?? .default
         self.translitEnabled = preferences.translitEnabled
         self.meaningEnabled = preferences.meaningEnabled
@@ -140,9 +141,10 @@ public final class AppEnvironment {
         let prefs = Preferences.inMemory()
         prefs.theme = theme
         prefs.mode = mode
+        prefs.hasCompletedOnboarding = hasCompletedOnboarding
 
         let source = captionSource ?? DemoCaptionSource(script: .quickCommit)
-        let env = AppEnvironment(
+        return AppEnvironment(
             captionSource: source,
             correctionLog: NoopCorrectionLog(),
             preferences: prefs,
@@ -150,9 +152,6 @@ public final class AppEnvironment {
             sessionHistory: InMemorySessionHistoryStore(),
             featureFlags: flags
         )
-        // Seed the session-only Welcome flag for preview / test scenarios.
-        env.hasCompletedOnboarding = hasCompletedOnboarding
-        return env
     }
 
     // MARK: - Internal factory
