@@ -182,6 +182,84 @@ class TestPredictIdlocked(unittest.TestCase):
         self.assertTrue(configs[1].live)
         self.assertEqual(configs[1].blind_lookback, 18.0)
 
+    def test_delayed_lock_skips_zero_evidence_window(self):
+        calls: list[dict] = []
+
+        def fake_predict(audio, corpora, *, shabad_id, uem_start, config):
+            calls.append({"shabad_id": shabad_id, "lookback": config.blind_lookback})
+            if shabad_id is None and config.blind_lookback == 30.0:
+                return PredictionResult(
+                    segments=[_seg(0, 30, 1, shabad_id=1)],
+                    shabad_id=1,
+                    n_chunks=2,
+                    blind_id_score=0.0,
+                    blind_runner_up_score=0.0,
+                )
+            if shabad_id is None:
+                return PredictionResult(
+                    segments=[_seg(0, 45, 2, shabad_id=7)],
+                    shabad_id=7,
+                    n_chunks=3,
+                    blind_id_score=55.0,
+                    blind_runner_up_score=10.0,
+                )
+            return PredictionResult(
+                segments=[_seg(0, 60, 3, shabad_id=shabad_id)],
+                shabad_id=shabad_id,
+                n_chunks=4,
+            )
+
+        with patch("src.idlock_engine.predict", side_effect=fake_predict):
+            result = predict_idlocked(
+                pathlib.Path("case.wav"),
+                {1: [], 7: []},
+                pre_config=EngineConfig(blind_lookback=30.0),
+                post_config=EngineConfig(),
+                lock_lookbacks=(30.0, 45.0, 60.0),
+                min_lock_score=1.0,
+                merge_policy="retro-buffered",
+            )
+
+        self.assertEqual([c["lookback"] for c in calls[:2]], [30.0, 45.0])
+        self.assertEqual(calls[2]["shabad_id"], 7)
+        self.assertEqual(result.commit_time, 45.0)
+        self.assertEqual(result.prediction.shabad_id, 7)
+        self.assertEqual(result.prediction.blind_id_score, 55.0)
+
+    def test_delayed_lock_preserves_single_window_by_default(self):
+        calls: list[float] = []
+
+        def fake_predict(audio, corpora, *, shabad_id, uem_start, config):
+            calls.append(config.blind_lookback)
+            if shabad_id is None:
+                return PredictionResult(
+                    segments=[],
+                    shabad_id=7,
+                    n_chunks=1,
+                    blind_id_score=0.0,
+                    blind_runner_up_score=0.0,
+                )
+            return PredictionResult(segments=[], shabad_id=shabad_id, n_chunks=1)
+
+        with patch("src.idlock_engine.predict", side_effect=fake_predict):
+            predict_idlocked(
+                pathlib.Path("case.wav"),
+                {7: []},
+                pre_config=EngineConfig(blind_lookback=30.0),
+                post_config=EngineConfig(),
+            )
+
+        # One pre-lock call and one post-lock call; no retry unless requested.
+        self.assertEqual(calls, [30.0, 30.0])
+
+    def test_rejects_empty_lock_lookbacks(self):
+        with self.assertRaises(ValueError):
+            predict_idlocked(pathlib.Path("case.wav"), {}, lock_lookbacks=())
+
+    def test_rejects_non_positive_lock_lookback(self):
+        with self.assertRaises(ValueError):
+            predict_idlocked(pathlib.Path("case.wav"), {}, lock_lookbacks=(30.0, 0.0))
+
     def test_rejects_unknown_post_context(self):
         with self.assertRaises(ValueError):
             predict_idlocked(pathlib.Path("case.wav"), {}, post_context="future")  # type: ignore[arg-type]

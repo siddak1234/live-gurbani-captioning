@@ -108,3 +108,58 @@ make audit-paired-lock
 These targets should produce markdown diagnostics under `diagnostics/` from
 cached ASR transcripts. After the report is repeatable, prototype the smallest
 runtime change: "no zero-evidence commit" plus delayed lock windows.
+
+## Prototype checkpoint — delayed zero-evidence guard
+
+Implemented an opt-in Layer 2 runtime guard in `src/idlock_engine.py`:
+
+```text
+--lock-lookbacks 30,45,60,90 --min-lock-score 1
+```
+
+Historical behavior is unchanged unless `--lock-lookbacks` is passed. With the
+guard enabled, the pre-lock engine retries later windows if the top blind-ID
+score is below `min_lock_score`; this prevents the 30s all-zero lock observed
+in OOS cases 004/005.
+
+Assisted-OOS diagnostic:
+
+| Runtime | Correct locks | Overall assisted-OOS score |
+|---|---:|---:|
+| `phase2_9_loop_align` default | 2/5 | 29.5% |
+| delayed zero-evidence guard | 3/5 | 40.5% |
+
+Case-level change:
+
+- case_005 improves from wrong lock (`906`) / 0.0% to correct lock (`3297`) /
+  53.3%.
+- case_004 delays from 30s to 45s but still locks incorrectly (`1341` instead
+  of `4892`), so zero-evidence guarding is necessary but not sufficient.
+- case_001 still fails due shared-hook ambiguity (`2333 -> 1821`) even with
+  non-zero evidence.
+
+Oracle-shabad diagnostic against the same machine-assisted labels:
+
+| Mode | Overall assisted-OOS score |
+|---|---:|
+| Correct shabad forced, v5b + loop-align | 51.0% |
+
+This means the assisted labels are useful for debugging lock failure modes, but
+they are not promotion-grade. Even with GT shabad forced, the score remains low,
+so some combination of rough machine labels, coarse boundaries, and OOS timing
+alignment is still unresolved. The final promotion gate must remain gold OOS
+(`HUMAN_CORRECTED_V1`) or a higher-quality public full-shabad labeled source.
+
+## Revised next action
+
+1. Keep the delayed zero-evidence guard as an opt-in runtime primitive.
+2. Do **not** promote it; it is a partial fix.
+3. Prototype candidate-set / scorer consensus next:
+   - never commit on all-zero evidence;
+   - delay lock until at least one lyric-bearing window exists;
+   - compare `chunk_vote`, `tfidf`, and `topk:3` without choosing a rule that
+     wins OOS but destroys paired benchmark behavior;
+   - evaluate on both paired and assisted OOS before any codepath becomes
+     default.
+4. In parallel, continue replacing machine-assisted OOS labels with gold labels
+   or locate a public full-shabad timestamped dataset with stable BaniDB IDs.

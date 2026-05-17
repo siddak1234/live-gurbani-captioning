@@ -207,6 +207,20 @@ a confidence-gated delayed lock policy. This keeps the architecture honest:
 high paired-benchmark alignment is not useful if the runtime commits the wrong
 shabad outside the benchmark.
 
+Phase 2.11 first prototype result:
+
+- Delayed zero-evidence lock guard (`--lock-lookbacks 30,45,60,90
+  --min-lock-score 1`) improves assisted OOS from **29.5%** to **40.5%** and
+  locks from **2/5** to **3/5**.
+- This fixes the all-zero early commit for case_005, but case_004 still locks
+  wrong at 45s and case_001 still has shared-hook ambiguity.
+- Oracle-shabad scoring against the same machine-assisted labels reaches only
+  **51.0%**, proving the assisted labels are diagnostic, not promotion-grade.
+
+Conclusion: the next true blocker is robust shabad-lock/candidate retrieval plus
+gold-quality OOS labels. More broad 300h training is still not the next expert
+move.
+
 Expert checkpoint on "more shabad variance": yes, the current paired benchmark
 is too small to judge production readiness, but the immediate fix is **held-out
 OOS validation**, not training on these five. The training path already has

@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass, replace
-from typing import Literal
+from typing import Literal, Sequence
 
 from src.engine import EngineConfig, PredictionResult, Segment, predict
 
@@ -110,6 +110,8 @@ def predict_idlocked(
     post_config: EngineConfig | None = None,
     post_context: PostContextMode = "buffered",
     merge_policy: MergePolicy = "commit-cutover",
+    lock_lookbacks: Sequence[float] | None = None,
+    min_lock_score: float = 0.0,
 ) -> IdLockPredictionResult:
     """Run a state/time-based two-engine ID-lock prediction.
 
@@ -126,6 +128,15 @@ def predict_idlocked(
             segments before commit and post-lock segments after commit.
             ``"retro-buffered"`` uses the locked-shabad post result from
             ``uem_start`` onward, treating pre-lock output as revisable.
+        lock_lookbacks: optional ordered lock windows to try. If omitted, the
+            historical single-window behavior is preserved. If provided, the
+            pre-lock engine is retried with each lookback until the blind-ID
+            score is at least ``min_lock_score``. This is the Phase 2.11
+            zero-evidence guard: a live system can keep captions tentative
+            rather than committing a shabad when the first window contains no
+            lyric evidence.
+        min_lock_score: minimum top lock score required to commit before the
+            final lookback. Defaults to ``0.0`` to preserve historical behavior.
 
     Returns:
         ``IdLockPredictionResult`` with merged prediction and child diagnostics.
@@ -135,15 +146,31 @@ def predict_idlocked(
     if merge_policy not in ("commit-cutover", "retro-buffered"):
         raise ValueError(f"unknown merge_policy: {merge_policy}")
 
-    pre_cfg = replace(pre_config or EngineConfig(), live=True, tentative_emit=True)
-    pre_result = predict(
-        audio,
-        corpora,
-        shabad_id=None,
-        uem_start=uem_start,
-        config=pre_cfg,
-    )
+    pre_base = replace(pre_config or EngineConfig(), live=True, tentative_emit=True)
+    lookbacks_raw = (pre_base.blind_lookback,) if lock_lookbacks is None else lock_lookbacks
+    lookbacks = tuple(float(x) for x in lookbacks_raw)
+    if not lookbacks:
+        raise ValueError("lock_lookbacks must not be empty")
+    if any(x <= 0 for x in lookbacks):
+        raise ValueError("lock_lookbacks must be positive seconds")
 
+    pre_result: PredictionResult | None = None
+    pre_cfg = pre_base
+    for i, lookback in enumerate(lookbacks):
+        pre_cfg = replace(pre_base, blind_lookback=lookback)
+        pre_result = predict(
+            audio,
+            corpora,
+            shabad_id=None,
+            uem_start=uem_start,
+            config=pre_cfg,
+        )
+        score = float(pre_result.blind_id_score or 0.0)
+        is_last = i == len(lookbacks) - 1
+        if score >= float(min_lock_score) or is_last:
+            break
+
+    assert pre_result is not None  # for type-checkers; loop always runs
     commit_time = float(uem_start) + float(pre_cfg.blind_lookback)
 
     post_base = post_config or EngineConfig()

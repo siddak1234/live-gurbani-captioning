@@ -161,6 +161,9 @@ the fixed 30s window; another confused a similar high-scoring shabad. The next
 Layer 2 change must therefore make shabad commit confidence-aware and
 delayable. A production-shaped streaming engine may emit tentative captions
 while waiting, but it must not commit a final shabad on all-zero evidence.
+The first opt-in prototype adds exactly that guard (`lock_lookbacks` +
+`min_lock_score`) without changing historical defaults; it improves assisted
+OOS from 29.5% to 40.5%, but does not solve shared-hook candidate ambiguity.
 
 ## Configuration surface
 

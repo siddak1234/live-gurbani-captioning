@@ -43,6 +43,13 @@ def _parse_blend(spec: str) -> dict[str, float] | None:
     return out
 
 
+def _parse_float_list(spec: str) -> tuple[float, ...] | None:
+    spec = spec.strip()
+    if not spec:
+        return None
+    return tuple(float(part.strip()) for part in spec.split(",") if part.strip())
+
+
 def _load_corpora(corpus_dir: pathlib.Path) -> dict[int, list[dict]]:
     corpora: dict[int, list[dict]] = {}
     for path in sorted(corpus_dir.glob("*.json")):
@@ -61,6 +68,8 @@ def process_one(
     post_config: EngineConfig,
     post_context: PostContextMode,
     merge_policy: MergePolicy,
+    lock_lookbacks: tuple[float, ...] | None,
+    min_lock_score: float,
 ) -> bool:
     gt = json.loads(gt_path.read_text())
     video_id = gt["video_id"]
@@ -79,6 +88,8 @@ def process_one(
             post_config=post_config,
             post_context=post_context,
             merge_policy=merge_policy,
+            lock_lookbacks=lock_lookbacks,
+            min_lock_score=min_lock_score,
         )
     except ValueError as exc:
         print(f"  error: {exc}", file=sys.stderr)
@@ -151,6 +162,12 @@ def main() -> int:
     parser.add_argument("--viterbi-null-switch-penalty", type=float, default=0.0,
                         help="Penalty for entering/exiting Viterbi no-line state.")
     parser.add_argument("--blind-lookback", type=float, default=30.0)
+    parser.add_argument("--lock-lookbacks", default="",
+                        help="Optional comma-separated delayed-lock windows, e.g. 30,45,60,90. "
+                             "If omitted, uses --blind-lookback only.")
+    parser.add_argument("--min-lock-score", type=float, default=0.0,
+                        help="Minimum blind-ID top score before committing prior to the final "
+                             "lock window. Use >0 to avoid zero-evidence commits.")
     parser.add_argument("--blind-aggregate", default="chunk_vote")
     parser.add_argument("--blind-ratio", default="WRatio")
     parser.add_argument("--blind-blend", default="")
@@ -170,6 +187,7 @@ def main() -> int:
                              "ID commit; retro-buffered lets the locked post engine revise "
                              "the buffered window from UEM start.")
     args = parser.parse_args()
+    lock_lookbacks = _parse_float_list(args.lock_lookbacks)
 
     corpus_dir = args.corpus_dir.resolve()
     corpora = _load_corpora(corpus_dir)
@@ -233,6 +251,7 @@ def main() -> int:
         f"post={args.post_backend}:{args.post_model}, "
         f"adapter={args.post_adapter_dir}, post_context={args.post_context}, "
         f"merge_policy={args.merge_policy}, lookback={args.blind_lookback}s, "
+        f"lock_lookbacks={lock_lookbacks or 'single'}, min_lock_score={args.min_lock_score}, "
         f"smoother={args.smoother})",
         flush=True,
     )
@@ -247,6 +266,8 @@ def main() -> int:
             post_config=post_config,
             post_context=args.post_context,  # type: ignore[arg-type]
             merge_policy=args.merge_policy,  # type: ignore[arg-type]
+            lock_lookbacks=lock_lookbacks,
+            min_lock_score=args.min_lock_score,
         )
         if not ok:
             failures.append(gt_file.stem)
