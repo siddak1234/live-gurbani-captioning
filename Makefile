@@ -49,6 +49,7 @@ OOS_CASES      ?= eval_data/oos_v1/cases.yaml
 OOS_DRAFT_DIR  ?= eval_data/oos_v1/drafts
 OOS_TEST_DIR   ?= eval_data/oos_v1/test
 OOS_REVIEW_DIR ?= eval_data/oos_v1/review
+OOS_ASSIST_REPORT ?= diagnostics/oos_v1_assisted_crosscheck.md
 SILVER_DATA_DIR ?= training_data/silver_300h_holdout
 SILVER_OUT      ?= submissions/silver_300h_v5b.json
 SILVER_MODEL    ?= surindersinghssj/surt-small-v3
@@ -168,6 +169,13 @@ oos-review-pack: ## Build local HTML aid for hand-correcting OOS GT drafts.
 		--cases $(OOS_CASES) \
 		--draft-dir $(OOS_DRAFT_DIR) \
 		--out-dir $(OOS_REVIEW_DIR)
+
+.PHONY: audit-oos-assist
+audit-oos-assist: ## Cross-check OOS working GT with corpus, ASR cache, and online captions.
+	$(PYTHON) scripts/audit_oos_assisted_gt.py \
+		--cases $(OOS_CASES) \
+		--gt-dir $(OOS_TEST_DIR) \
+		--out $(OOS_ASSIST_REPORT)
 
 # -----------------------------------------------------------------------------
 # Data
