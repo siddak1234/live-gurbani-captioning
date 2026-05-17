@@ -151,17 +151,19 @@ Checkpoint 2026-05-16:
 - `configs/datasets.yaml` holdout video IDs now include the five OOS source
   YouTube IDs so future training pulls cannot sample these eval recordings.
 
-Current next step: run `make oos-review-pack`, then
-`make prepare-oos-review`. The second target seeds
-`eval_data/oos_v1/test/case_001.json` through `case_005.json` from the machine
-drafts but marks them `NEEDS_HUMAN_CORRECTION`; validation will still fail until
-the files are corrected against the fetched audio and promoted to
+Current next step: run `make oos-review-pack`, `make prepare-oos-review`, and
+`make audit-oos-assist`. The second target seeds `eval_data/oos_v1/test/case_001.json`
+through `case_005.json` from the machine drafts but marks them
+`NEEDS_HUMAN_CORRECTION`; the assisted audit then cross-checks those working
+files against cached BaniDB corpus text, local Whisper ASR chunks, and any
+available YouTube caption tracks. Validation will still fail until the files are
+corrected against the fetched audio and promoted to
 `curation_status: HUMAN_CORRECTED_V1`. Do **not** claim an OOS score until those
 GT files are corrected, validated, and committed. The step-by-step labeling
 checkpoint is [`docs/oos_v1_labeling_checkpoint.md`](oos_v1_labeling_checkpoint.md),
-and the machine triage of the current drafts is
-[`docs/oos_v1_machine_audit.md`](oos_v1_machine_audit.md). Once they pass
-validation, run:
+the first machine triage is [`docs/oos_v1_machine_audit.md`](oos_v1_machine_audit.md),
+and the repeatable assisted cross-check is `make audit-oos-assist`. Once the GT
+files pass validation, run:
 
 ```bash
 make eval-oos-loop-align

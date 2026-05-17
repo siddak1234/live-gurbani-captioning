@@ -92,6 +92,13 @@ Required fields: `video_id`, `shabad_id`, `segments[*].{start, end, line_idx}`. 
      ```
      The files are intentionally marked `NEEDS_HUMAN_CORRECTION` so validation
      still fails until review is complete.
+   - Run the machine-assisted cross-check:
+     ```bash
+     make audit-oos-assist
+     ```
+     This produces `diagnostics/oos_v1_assisted_crosscheck.md` from local
+     Whisper ASR cache, cached BaniDB corpus text, and any available online
+     caption tracks. Use it to focus correction effort, not to bypass review.
    - Open `eval_data/oos_v1/review/index.html` in a browser and the matching
      `eval_data/oos_v1/test/case_NNN.json` file in your editor.
    - Hand-correct the line boundaries against the audio. This takes ~10-15 minutes per recording.

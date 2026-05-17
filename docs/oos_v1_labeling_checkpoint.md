@@ -82,12 +82,24 @@ because its expected opening line is absent from the draft, then review
    That status is intentional. `make validate-oos-gt` will still fail until the
    files are actually reviewed and promoted to `HUMAN_CORRECTED_V1`.
 
-3. Open `eval_data/oos_v1/review/index.html` and the matching
+3. Run the AI-assisted cross-check:
+
+   ```bash
+   make audit-oos-assist
+   ```
+
+   This writes `diagnostics/oos_v1_assisted_crosscheck.md`. It compares the
+   editable working files against cached BaniDB corpus text, local Whisper ASR
+   chunks, and any available YouTube auto-caption JSON3 files. Treat this as a
+   triage report: it can identify likely mismatches, unlabeled sung regions, and
+   suspicious line choices; it does not certify gold labels.
+
+4. Open `eval_data/oos_v1/review/index.html` and the matching
    `eval_data/oos_v1/test/case_NNN.json` files in your editor.
 
-4. Listen to the full clipped audio once before editing.
+5. Listen to the full clipped audio once before editing.
 
-5. For every draft segment:
+6. For every draft segment:
 
    - adjust `start` / `end` to the actually sung line;
    - delete hallucinated or duplicated rows;
@@ -96,19 +108,19 @@ because its expected opening line is absent from the draft, then review
    - verify `line_idx`, `verse_id`, and `banidb_gurmukhi` against the cached
      shabad corpus.
 
-6. After correction, set:
+7. After correction, set:
 
    ```json
    "curation_status": "HUMAN_CORRECTED_V1"
    ```
 
-7. Run:
+8. Run:
 
    ```bash
    make validate-oos-gt
    ```
 
-8. Only after validation passes, run:
+9. Only after validation passes, run:
 
    ```bash
    make eval-oos-loop-align
