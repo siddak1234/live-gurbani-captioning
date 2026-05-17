@@ -126,11 +126,12 @@ Current alignment-error reports show:
 
 - paired recency guard: wrong_line `63.2%` of remaining errors,
   boundary_wrong `31.9%`, missing_pred `4.9%`;
-- assisted-OOS recency guard: wrong_line `56.4%`, unresolved_pred `37.1%`,
+- assisted-OOS recency guard: wrong_line `56.4%`, outside_gt_line `37.1%`,
   boundary_wrong `6.5%`.
 
 That makes the immediate next step a locked-shabad aligner/canonical-resolution
-diagnostic, not another broad data pull.
+diagnostic, not another broad data pull. The OOS errors mostly stay inside the
+correct shabad; the problem is the line path chosen inside that shabad.
 
 Only after a generic runtime change improves paired/OOS frame accuracy, or a
 diagnostic proves the remaining errors are true held-out ASR misses, should the

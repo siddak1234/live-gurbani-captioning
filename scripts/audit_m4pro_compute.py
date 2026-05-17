@@ -182,9 +182,9 @@ def render_report() -> str:
         lines.extend([
             "- The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.",
             "- A generic recency-consistency guarded fusion runtime lifted paired accuracy to 91.0% / 12-of-12 locks without assisted-OOS regression.",
-            "- Alignment-error reports show the active blocker: paired residual errors are mostly wrong-line/boundary issues; assisted-OOS is mostly wrong-line plus unresolved canonical predictions.",
+            "- Alignment-error reports show the active blocker: paired residual errors are mostly wrong-line/boundary issues; assisted-OOS is mostly wrong-line plus outside-GT line choices inside the correct shabad.",
             "- The 48 GB headroom remains useful for future larger batches, gradient checkpointing experiments, and longer runs, but full 300h / multi-seed training is not justified until OOS alignment/canonical resolution improves or diagnostics prove true ASR misses.",
-            "- Do not pull/train on all 300h right now. The next valid experiment is locked-shabad aligner/canonical-resolution diagnostics.",
+            "- Do not pull/train on all 300h right now. The next valid experiment is locked-shabad aligner diagnostics: line-state transitions, loop/refrain behavior, and null/no-line penalties.",
             "- Next recommended compute use: cached-output diagnostics on OOS unresolved predictions and loop-align wrong-line spans.",
         ])
     elif has_recency_paired and has_recency_oos:

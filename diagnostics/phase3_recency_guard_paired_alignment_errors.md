@@ -72,5 +72,7 @@ next move should be aligner/timing work or acoustic training.
 
 - High `missing_pred`: aligner/no-line behavior is too conservative or ASR chunks are sparse.
 - High `wrong_line`: locked-shabad line smoother is choosing the wrong pangti, often a loop/refrain issue.
+- High `outside_gt_line`: prediction is in the correct shabad but not among the GT-labeled lines for that clip; often an overrun/loop-align issue, or a silver-GT completeness issue.
+- High `wrong_shabad_line`: prediction comes from a different shabad despite scorer resolution failure.
 - High `boundary_wrong`: segment boundaries need timing smoothing; label identity may be right nearby.
 - High `unresolved_pred`: predictions are not resolving to the GT shabad's canonical line IDs/text.

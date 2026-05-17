@@ -331,23 +331,25 @@ Result, 2026-05-17:
 | Set | Accuracy | Error frames | Dominant remaining errors |
 |---|---:|---:|---|
 | Paired recency guard | 91.0% | 307 | wrong_line 63.2%, boundary_wrong 31.9%, missing_pred 4.9% |
-| Assisted OOS recency guard | 59.9% | 353 | wrong_line 56.4%, unresolved_pred 37.1%, boundary_wrong 6.5% |
+| Assisted OOS recency guard | 59.9% | 353 | wrong_line 56.4%, outside_gt_line 37.1%, boundary_wrong 6.5% |
 
 Interpretation:
 
 - Paired remaining errors are mostly wrong-line and boundary/timing issues, not
   shabad-ID errors.
 - Assisted OOS remains weak despite 5/5 correct locks. The two biggest OOS
-  buckets are `wrong_line` and `unresolved_pred`, which points to locked-shabad
-  line resolution/alignment and assisted-GT/corpus canonical-ID consistency.
+  buckets are `wrong_line` and `outside_gt_line`: the model is staying inside
+  the correct shabad, but the smoother often chooses a pangti not present in the
+  clip's assisted labels. That points to overrun/loop-align behavior and/or
+  silver-GT completeness, not wrong shabad ID.
 - This is the evidence against launching the all-300h / 3-seed training run
   immediately. A larger acoustic adapter may help some ASR text, but it will
   not fix unresolved canonical IDs or loop-align line choices under the correct
   shabad by itself.
 
-Next recommended implementation step: add a locked-shabad alignment diagnostic
-that compares predicted `verse_id`/`banidb_gurmukhi` against the case corpus and
-reports whether `unresolved_pred` is a corpus/GT ID mismatch or a true wrong
-line. If it is a resolution mismatch, fix canonical resolution first. If it is
-true wrong-line behavior, tune loop-align/Viterbi scoring on paired + assisted
-OOS before spending the next large-training budget.
+Next recommended implementation step: tune locked-shabad line alignment under
+the recency-guarded runtime. Focus on `wrong_line` and `outside_gt_line` spans:
+line-state transitions, loop/refrain behavior, null/no-line penalties, and
+whether assisted-GT labels omit repeated lines that are actually sung. If this
+diagnostic improves OOS while preserving paired 91%+, then a larger training
+slice becomes justified again.

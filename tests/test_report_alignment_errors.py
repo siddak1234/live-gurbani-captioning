@@ -16,6 +16,22 @@ class TestReportAlignmentErrors(unittest.TestCase):
     def test_classify_error(self):
         self.assertEqual(classify_error({"pred": None}), "missing_pred")
         self.assertEqual(classify_error({"pred": "__no_match__"}), "unresolved_pred")
+        self.assertEqual(
+            classify_error(
+                {"pred": "__no_match__"},
+                raw_pred_segment={"shabad_id": 7},
+                gt_shabad_id=7,
+            ),
+            "outside_gt_line",
+        )
+        self.assertEqual(
+            classify_error(
+                {"pred": "__no_match__"},
+                raw_pred_segment={"shabad_id": 8},
+                gt_shabad_id=7,
+            ),
+            "wrong_shabad_line",
+        )
         self.assertEqual(classify_error({"pred": 2, "type": "boundary_error"}), "boundary_wrong")
         self.assertEqual(classify_error({"pred": 2, "type": "error"}), "wrong_line")
 

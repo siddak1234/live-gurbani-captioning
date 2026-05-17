@@ -6,6 +6,7 @@ headline percentage; this report asks what kind of frames are still wrong:
 
 - missing prediction over a labeled GT span;
 - wrong resolved line_idx;
+- predicted line outside the GT's labeled line set;
 - unresolved prediction (`NO_MATCH`);
 - boundary/collar errors.
 
@@ -52,18 +53,44 @@ def load_benchmark_eval(path: pathlib.Path = DEFAULT_BENCHMARK_EVAL):
     return module
 
 
-def classify_error(detail: dict[str, Any]) -> str:
+def raw_pred_segment_frames(pred_segments: list[dict], total_seconds: int) -> list[dict | None]:
+    frames: list[dict | None] = [None] * total_seconds
+    for seg in pred_segments:
+        start = int(seg["start"])
+        end = min(int(seg["end"]), total_seconds)
+        for t in range(start, end):
+            frames[t] = seg
+    return frames
+
+
+def classify_error(
+    detail: dict[str, Any],
+    *,
+    raw_pred_segment: dict | None = None,
+    gt_shabad_id: int | None = None,
+) -> str:
     pred = detail.get("pred")
     if pred is None:
         return "missing_pred"
     if pred == "__no_match__":
+        if raw_pred_segment is not None and gt_shabad_id is not None:
+            seg_shabad = raw_pred_segment.get("shabad_id")
+            if seg_shabad is not None and int(seg_shabad) == int(gt_shabad_id):
+                return "outside_gt_line"
+            if seg_shabad is not None:
+                return "wrong_shabad_line"
         return "unresolved_pred"
     if detail.get("type") == "boundary_error":
         return "boundary_wrong"
     return "wrong_line"
 
 
-def error_spans(details: list[dict[str, Any]]) -> list[ErrorSpan]:
+def error_spans(
+    details: list[dict[str, Any]],
+    *,
+    raw_pred_frames: list[dict | None] | None = None,
+    gt_shabad_id: int | None = None,
+) -> list[ErrorSpan]:
     spans: list[ErrorSpan] = []
     active: ErrorSpan | None = None
     for detail in details:
@@ -73,7 +100,12 @@ def error_spans(details: list[dict[str, Any]]) -> list[ErrorSpan]:
                 active = None
             continue
         t = int(detail["t"])
-        key = (detail.get("gt"), detail.get("pred"), classify_error(detail))
+        raw_pred_segment = raw_pred_frames[t] if raw_pred_frames and t < len(raw_pred_frames) else None
+        key = (
+            detail.get("gt"),
+            detail.get("pred"),
+            classify_error(detail, raw_pred_segment=raw_pred_segment, gt_shabad_id=gt_shabad_id),
+        )
         if (
             active is not None
             and active.end == t
@@ -89,8 +121,24 @@ def error_spans(details: list[dict[str, Any]]) -> list[ErrorSpan]:
     return spans
 
 
-def summarize_case(score: dict[str, Any], *, case_id: str | None = None) -> dict[str, Any]:
-    spans = error_spans(score["details"])
+def summarize_case(
+    score: dict[str, Any],
+    *,
+    case_id: str | None = None,
+    gt: dict | None = None,
+    pred: dict | None = None,
+) -> dict[str, Any]:
+    raw_frames = None
+    if gt is not None and pred is not None:
+        raw_frames = raw_pred_segment_frames(
+            pred.get("segments", []),
+            int(gt.get("total_duration", score.get("uem_end", 0))),
+        )
+    spans = error_spans(
+        score["details"],
+        raw_pred_frames=raw_frames,
+        gt_shabad_id=(gt or score).get("shabad_id"),
+    )
     by_kind = Counter()
     for span in spans:
         by_kind[span.kind] += span.duration_s
@@ -188,6 +236,8 @@ def render_markdown(
         "",
         "- High `missing_pred`: aligner/no-line behavior is too conservative or ASR chunks are sparse.",
         "- High `wrong_line`: locked-shabad line smoother is choosing the wrong pangti, often a loop/refrain issue.",
+        "- High `outside_gt_line`: prediction is in the correct shabad but not among the GT-labeled lines for that clip; often an overrun/loop-align issue, or a silver-GT completeness issue.",
+        "- High `wrong_shabad_line`: prediction comes from a different shabad despite scorer resolution failure.",
         "- High `boundary_wrong`: segment boundaries need timing smoothing; label identity may be right nearby.",
         "- High `unresolved_pred`: predictions are not resolving to the GT shabad's canonical line IDs/text.",
         "",
@@ -205,7 +255,7 @@ def run_report(*, pred_dir: pathlib.Path, gt_dir: pathlib.Path, collar: int, ben
         gt = json.loads(gt_path.read_text())
         pred = json.loads(pred_path.read_text())
         score = scorer.score_video(gt, pred, collar=collar)
-        summaries.append(summarize_case(score, case_id=gt_path.stem))
+        summaries.append(summarize_case(score, case_id=gt_path.stem, gt=gt, pred=pred))
     return summaries
 
 
