@@ -14,6 +14,16 @@ public struct ShabadLine: Codable, Identifiable, Equatable {
     /// Optional English transliteration used by the matcher.
     public let transliterationEnglish: String?
 
+    public init(lineIdx: Int,
+                verseId: String,
+                banidbGurmukhi: String,
+                transliterationEnglish: String? = nil) {
+        self.lineIdx = lineIdx
+        self.verseId = verseId
+        self.banidbGurmukhi = banidbGurmukhi
+        self.transliterationEnglish = transliterationEnglish
+    }
+
     public var id: String { "\(verseId)#\(lineIdx)" }
 
     enum CodingKeys: String, CodingKey {

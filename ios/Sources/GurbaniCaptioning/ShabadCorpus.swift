@@ -39,15 +39,19 @@ public final class ShabadCorpus {
     /// Load the default corpus from the package bundle.
     public static func loadFromBundle(resource: String = "shabads",
                                       ext: String = "json",
-                                      bundle: Bundle = .module) throws -> ShabadCorpus {
-        guard let url = bundle.url(forResource: resource, withExtension: ext) else {
+                                      bundle: Bundle? = nil) throws -> ShabadCorpus {
+        let activeBundle = bundle ?? .module
+        guard let url = activeBundle.url(forResource: resource, withExtension: ext) else {
             throw ShabadCorpusError.resourceMissing("\(resource).\(ext)")
         }
         let data = try Data(contentsOf: url)
         do {
             let shabads = try JSONDecoder().decode([Shabad].self, from: data)
-            let dict = Dictionary(uniqueKeysWithValues: shabads.map { ($0.shabadId, $0) })
-            return ShabadCorpus(byId: dict)
+            var byId: [Int: Shabad] = [:]
+            for shabad in shabads {
+                byId[shabad.shabadId] = shabad
+            }
+            return ShabadCorpus(byId: byId)
         } catch {
             throw ShabadCorpusError.decodingFailed(error)
         }

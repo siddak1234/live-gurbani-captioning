@@ -1,0 +1,44 @@
+# SwiftFormat config for the Sangat iOS app.
+# Scope: ios/Sources, ios/Tests.
+
+--swiftversion 5.9
+--indent 4
+--linebreaks lf
+--maxwidth 100
+--trimwhitespace always
+--commas inline
+--operatorfunc spaced
+--decimalgrouping ignore
+--binarygrouping ignore
+--hexgrouping ignore
+--ifdef no-indent
+--exponentgrouping ignore
+
+# Don't strip headers — Sangat files have intentional file-level docstrings.
+--header ignore
+
+# Wrapping
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+
+# Self
+--self remove
+--selfrequired forEach,sink,onChange
+
+# Enable some opinionated rules that catch real bugs
+--enable redundantReturn
+--enable redundantSelf
+--enable unusedArguments
+--enable trailingClosures
+--enable strongOutlets
+--enable redundantParens
+--enable redundantInit
+--enable hoistAwait
+--enable hoistTry
+--enable consecutiveBlankLines
+--enable blankLinesAroundMark
+
+# Disable some defaults that conflict with our house style
+--disable wrapMultilineStatementBraces
+--disable redundantNilInit

@@ -9,6 +9,13 @@
 //
 // Open this Package.swift in Xcode — it generates the project tree directly,
 // no .xcodeproj hand-authoring needed.
+//
+// M5.1 (Foundations) added the `SangatApp` library target and a matching
+// test target. The `GurbaniCaptioningApp` executable target now depends on
+// `SangatApp` and is intentionally tiny — just `@main` + a one-line
+// `ContentView` redirect. All app-layer code lives in `SangatApp` so it can
+// be `@testable import`-ed by the test target. See
+// `docs/ios_app_architecture.md` for the rationale.
 
 import PackageDescription
 
@@ -22,6 +29,12 @@ let package = Package(
         .library(
             name: "GurbaniCaptioning",
             targets: ["GurbaniCaptioning"]
+        ),
+        // M5.1: App-layer library so the executable stays thin and the test
+        // target can `@testable import SangatApp`.
+        .library(
+            name: "SangatApp",
+            targets: ["SangatApp"]
         ),
         .executable(
             name: "GurbaniCaptioningApp",
@@ -48,9 +61,22 @@ let package = Package(
                 .process("Resources"),
             ]
         ),
+        // M5.1: All app-layer UI + state code. Depends only on the
+        // GurbaniCaptioning library (the engine), never the other way.
+        .target(
+            name: "SangatApp",
+            dependencies: [
+                "GurbaniCaptioning",
+            ],
+            path: "Sources/SangatApp"
+        ),
         .executableTarget(
             name: "GurbaniCaptioningApp",
-            dependencies: ["GurbaniCaptioning"],
+            dependencies: [
+                "GurbaniCaptioning",
+                // M5.1: executable now imports SangatApp for RootView etc.
+                "SangatApp",
+            ],
             path: "Sources/GurbaniCaptioningApp"
         ),
         .testTarget(
@@ -61,6 +87,13 @@ let package = Package(
                 // Parity-test fixtures dumped from Python.
                 .process("Fixtures"),
             ]
+        ),
+        // M5.1: App-layer tests. Uses `@testable import SangatApp` so test
+        // code can reach internal types when needed.
+        .testTarget(
+            name: "SangatAppTests",
+            dependencies: ["SangatApp"],
+            path: "Tests/SangatAppTests"
         ),
     ]
 )

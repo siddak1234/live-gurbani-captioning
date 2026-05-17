@@ -1,0 +1,134 @@
+# SwiftLint config for the Sangat iOS app.
+#
+# Custom rules enforce the architectural invariants documented in
+# `docs/ios_app_architecture.md` § "Architectural invariants". When a rule
+# matches it cites the invariant code (A6, A7, A8) so reviewers can look up
+# the rationale.
+
+included:
+  - Sources/SangatApp
+  - Sources/GurbaniCaptioningApp
+  - Tests/SangatAppTests
+
+excluded:
+  - .build
+  - "**/.build"
+  - "**/DerivedData"
+
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - explicit_init
+  - first_where
+  - last_where
+  - sorted_first_last
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+  - convenience_type
+  - redundant_nil_coalescing
+
+disabled_rules:
+  - trailing_whitespace        # SwiftFormat handles
+  - todo                       # comments are fine
+
+line_length:
+  warning: 120
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+function_body_length:
+  warning: 80
+  error: 200
+
+type_body_length:
+  warning: 400
+  error: 800
+
+file_length:
+  warning: 500
+  error: 1000
+
+cyclomatic_complexity:
+  warning: 12
+  error: 25
+
+identifier_name:
+  min_length:
+    warning: 2
+    error: 1
+  excluded:
+    - id
+    - t       # Tweaks alias, conventional in this codebase
+    - r
+    - g
+    - b
+    - a
+    - x
+    - y
+    - on
+    - p
+    - i
+    - j
+    - k
+    - vm
+    - of
+    - to
+    - at
+    - in
+
+nesting:
+  type_level:
+    warning: 3
+
+# ── Architectural invariants (custom rules) ──────────────────────────────
+
+custom_rules:
+
+  no_hex_colors_in_features:
+    name: "A6 · Hex color in Features/"
+    regex: '"#[0-9A-Fa-f]{3,8}"'
+    included: "Sources/SangatApp/Features/.*\\.swift"
+    message: "Use theme tokens (theme.tokens.colors.*), never hex colors in feature views (invariant A6)"
+    severity: error
+
+  no_raw_system_font_in_features:
+    name: "A6 · Raw .system(size:) in Features/"
+    regex: '\.system\(size:'
+    included: "Sources/SangatApp/Features/.*\\.swift"
+    message: "Use theme tokens (theme.tokens.type.*), never raw .system(size:) in feature views (invariant A6)"
+    severity: error
+
+  no_print:
+    name: "A8 · No print()"
+    regex: '(^|\s)print\s*\('
+    message: "Use AppLogger.<category>.<level>() instead of print() (invariant A8)"
+    severity: warning
+
+  no_singleton_shared:
+    name: "A7 · No static `shared` singletons"
+    regex: 'static\s+(let|var)\s+shared\s*[:=]'
+    excluded: ".*/Logger\\.swift"
+    message: "Inject dependencies through AppEnvironment; no singletons (invariant A7)"
+    severity: error
+
+  no_force_try:
+    name: "A9 · No `try!` in production code"
+    regex: 'try!'
+    excluded: ".*/(Tests|Previews)/.*"
+    message: "Force-tries are forbidden in production code (invariant A9)"
+    severity: error
+
+  no_force_cast:
+    name: "A9 · No force casts in production code"
+    regex: '\bas!\s'
+    excluded: ".*/(Tests|Previews)/.*"
+    message: "Force casts are forbidden in production code (invariant A9)"
+    severity: error
+
+  no_cross_feature_import:
+    name: "A2 · Cross-feature import"
+    regex: 'import\s+(Sangat|Gurbani)Features\.\w+'
+    included: "Sources/SangatApp/Features/.*\\.swift"
+    message: "Feature folders must not import each other. Shared code goes in DesignSystem/ or App/ (invariant A2)"
+    severity: error

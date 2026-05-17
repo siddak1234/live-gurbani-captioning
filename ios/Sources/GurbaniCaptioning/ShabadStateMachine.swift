@@ -57,6 +57,18 @@ public struct LineGuess: Equatable {
     public let lineIdx: Int
     public let confidence: Double
     public let isCommitted: Bool
+
+    public init(chunk: AsrChunk,
+                shabadId: Int,
+                lineIdx: Int,
+                confidence: Double,
+                isCommitted: Bool) {
+        self.chunk = chunk
+        self.shabadId = shabadId
+        self.lineIdx = lineIdx
+        self.confidence = confidence
+        self.isCommitted = isCommitted
+    }
 }
 
 public final class ShabadStateMachine {
