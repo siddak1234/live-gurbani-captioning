@@ -143,6 +143,12 @@ complete `checkpoint-2000/trainer_state.json`, set
 continued training past step 2000. That proves the PEFT eval-loss fix on the
 real v7 run, not just the 1-step smoke.
 
+Step-3000 validation then emitted `eval_loss=0.035645694`, saved a complete
+`checkpoint-3000/trainer_state.json`, and moved `best_model_checkpoint` to
+`checkpoint-3000`. Early held-out loss is therefore still improving during the
+large one-epoch run (`0.03620 -> 0.03565`) rather than showing immediate
+overfit drift.
+
 ## Gates after training
 
 Evaluate the adapter through the current confirmed runtime, not the older
