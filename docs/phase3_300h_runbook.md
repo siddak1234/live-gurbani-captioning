@@ -175,6 +175,20 @@ best/final v7 adapter against paired benchmark and assisted OOS before deciding
 whether to promote, continue to multi-epoch 300h training, or diagnose runtime
 bottlenecks.
 
+Step-7000 validation emitted `eval_loss=0.035162665` with
+`eval_runtime=2095.2946s`, `eval_samples_per_second=5.508`, and
+`eval_steps_per_second=0.689`.
+
+Step-8000 validation emitted `eval_loss=0.035139494` with
+`eval_runtime=2098.0578s`, `eval_samples_per_second=5.501`, and
+`eval_steps_per_second=0.688`. The curve is now nearly flat but still improving
+(`0.03620 -> 0.03565 -> 0.03543 -> 0.03532 -> 0.03524 -> 0.03516 ->
+0.03514`). This does **not** justify stopping early: there is no overfit signal
+yet, and the remaining compute is cheaper than introducing a new variable
+mid-run. It does mean the next decision must come from paired + assisted-OOS
+runtime metrics. If those metrics do not move, the bottleneck is likely
+alignment/runtime behavior rather than acoustic loss alone.
+
 ## Gates after training
 
 Evaluate the adapter through the current confirmed runtime, not the older
