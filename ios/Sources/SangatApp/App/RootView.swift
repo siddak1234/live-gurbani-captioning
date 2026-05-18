@@ -127,6 +127,14 @@ public struct RootView: View {
                 castCoordinator = CastSceneCoordinator(env: env)
             }
         }
+        .onChange(of: env.mode) { _, newMode in
+            // Cast is a Sevadar-only surface (per onboarding role copy
+            // and SevadarDock's sole `onCast` affordance). When a user
+            // flips role mid-session, the projector window must follow:
+            // detach on flip to Sangat, re-attach on flip to Sevadar if
+            // an external screen is still physically connected.
+            castCoordinator?.modeDidChange(to: newMode)
+        }
         .animation(
             .easeInOut(duration: 0.25),
             value: env.hasCompletedOnboarding

@@ -27,6 +27,25 @@ final class SangatViewSmokeTests: XCTestCase {
         _ = ViewProbe(content: view)
     }
 
+    /// M5.4.1: IdleView gained a mic-permission pill driven by
+    /// `MicPermissionStatus`. The pure decision helpers are unit-
+    /// tested in `IdlePermissionPromptTests`; this is the SwiftUI-
+    /// integration smoke that the body evaluates in every reachable
+    /// status without crashing. We can't seed `@State` from outside,
+    /// so we cover the body-evaluation path that fires on `.task`
+    /// (which reads `AudioPermissions.status` — returns `.unavailable`
+    /// on the macOS test host) and trust the pure mappings for the
+    /// rest of the state space.
+    func testIdleViewBodyEvaluatesUnderEveryReadingLayoutAtIdle() {
+        for layout in ReadingLayout.allCases {
+            let env = AppEnvironment.preview()
+            env.readingLayout = layout
+            let view = IdleView()
+                .environment(env)
+            _ = ViewProbe(content: view)
+        }
+    }
+
     func testListeningViewConstructs() {
         let view = ListeningView()
             .environment(AppEnvironment.preview())
