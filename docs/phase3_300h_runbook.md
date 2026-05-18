@@ -127,6 +127,22 @@ make train-v7-300h-epoch1 \
   PHASE3_RESUME=lora_adapters/v7_mac_300h_epoch1/checkpoint-1000
 ```
 
+Operational note: the crash happened after the step-1000 adapter/optimizer/
+scheduler/RNG files were saved, but before `trainer_state.json` existed. For
+this one recovery, a minimal `trainer_state.json` was reconstructed with
+`global_step=1000` and no best checkpoint, then the run resumed from
+`checkpoint-1000`. This is acceptable for epoch-1 continuation because the model
+weights, optimizer state, scheduler state, RNG state, and training arguments were
+present; it only means best-checkpoint ranking starts from the first successful
+post-fix eval.
+
+Live recovery validation: the resumed run reached step 2000 on 2026-05-17,
+completed the full validation sweep, emitted `eval_loss=0.036197841`, saved a
+complete `checkpoint-2000/trainer_state.json`, set
+`best_model_checkpoint=lora_adapters/v7_mac_300h_epoch1/checkpoint-2000`, and
+continued training past step 2000. That proves the PEFT eval-loss fix on the
+real v7 run, not just the 1-step smoke.
+
 ## Gates after training
 
 Evaluate the adapter through the current confirmed runtime, not the older
