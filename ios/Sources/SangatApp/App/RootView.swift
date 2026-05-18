@@ -28,6 +28,7 @@ public struct RootView: View {
 
     @State private var env: AppEnvironment
     @State private var showSettings: Bool = false
+    @State private var showShabadPicker: Bool = false
 
     /// Per-session gate flipped by the user tapping Begin on
     /// `SessionStartView`. Resets to false on every cold start since
@@ -47,9 +48,6 @@ public struct RootView: View {
                 .transition(.opacity)
         }
         .preferredColorScheme(env.theme.isDark ? .dark : .light)
-        .environment(\.theme, env.theme)
-        .environment(\.themeTokens, env.theme.tokens)
-        .environment(env)
         .safeAreaInset(edge: .top, spacing: 0) {
             // Top chrome row — Back (when running) + Settings gear. Lives
             // in the safe-area inset so the reading view's content always
@@ -60,12 +58,48 @@ public struct RootView: View {
                 topChromeRow
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            // Sevadar dock — overlays the reading view from below when
+            // the user is in sevadar mode AND a session is running. The
+            // safe-area inset means the reading view content lays out
+            // above the dock automatically; no Sangat view is modified.
+            if shouldShowSevadarDock {
+                sevadarDock
+            }
+        }
+        // Environment modifiers MUST come after the safeAreaInset calls.
+        // SwiftUI wraps the modified view with each modifier in order;
+        // the inset's content closure is a sibling of the wrapped ZStack,
+        // so .environment placed BEFORE the insets never reached the
+        // dock's `@Environment(\.themeTokens)` lookup — the dock fell
+        // back to Theme.default.tokens (paper) even when env.theme was
+        // darbar or mool. Moving environment modifiers downstream of the
+        // insets wraps everything including the inset content.
+        .environment(\.theme, env.theme)
+        .environment(\.themeTokens, env.theme.tokens)
+        .environment(env)
         .sheet(isPresented: $showSettings) {
             SettingsView()
                 .environment(env)
                 .environment(\.theme, env.theme)
                 .environment(\.themeTokens, env.theme.tokens)
                 .preferredColorScheme(env.theme.isDark ? .dark : .light)
+        }
+        .sheet(isPresented: $showShabadPicker) {
+            ShabadPickerView(
+                viewModel: ShabadPickerViewModel(
+                    nowPlayingShabadId: env.captionModel.committedShabadId,
+                    recents: Array<ShabadPickerEntry>.demoRecents
+                ),
+                onPick: { shabadId in
+                    env.haptics.play(.success)
+                    env.captionModel.manuallyCommit(shabadId: shabadId)
+                }
+            )
+            .environment(env)
+            .environment(\.theme, env.theme)
+            .environment(\.themeTokens, env.theme.tokens)
+            .preferredColorScheme(env.theme.isDark ? .dark : .light)
         }
         .task {
             await prepareCaptionSource()
@@ -95,7 +129,7 @@ public struct RootView: View {
         } else if !env.captionModel.isRunning {
             IdleView()
         } else {
-            ReadingHost()
+            ReadingHost(onRequestPicker: { showShabadPicker = true })
         }
     }
 
@@ -111,11 +145,36 @@ public struct RootView: View {
 
             Spacer()
 
+            // Current-mode tag in the center of the chrome row so it
+            // is visible on every post-onboarding screen — matches the
+            // design canvas's `V1MetaHeader` strip (sangat dot in
+            // saffron, sevadar in indigo). Without this the only place
+            // the mode is surfaced is Let's Begin, which is invisible
+            // mid-session.
+            modeChip
+
+            Spacer()
+
             settingsGearButton
         }
         .padding(.horizontal, env.theme.tokens.spacing.edge - 10)
         .padding(.top, env.theme.tokens.spacing.xs)
         .padding(.bottom, env.theme.tokens.spacing.xs)
+    }
+
+    private var modeChip: some View {
+        HStack(spacing: env.theme.tokens.spacing.xs) {
+            Circle()
+                .fill(env.mode == .sevadar
+                      ? env.theme.tokens.colors.sevadar
+                      : env.theme.tokens.colors.accent)
+                .frame(width: 6, height: 6)
+            Text(env.mode == .sevadar ? "Sevadar" : "Sangat")
+                .font(env.theme.tokens.type.sansCaps)
+                .tracking(0.6)
+                .foregroundStyle(env.theme.tokens.colors.ink3)
+        }
+        .accessibilityIdentifier("root.modeChip")
     }
 
     private var backButton: some View {
@@ -146,6 +205,86 @@ public struct RootView: View {
         }
         .accessibilityLabel("Settings")
         .accessibilityIdentifier("root.settings")
+    }
+
+    // MARK: - Sevadar dock
+
+    private var shouldShowSevadarDock: Bool {
+        // Listening + Tentative look identical for Sangat and Sevadar
+        // by design — the dock is reserved for the committed state so
+        // it doesn't add chrome to moments that haven't earned it yet.
+        // Tentative's "Pick manually" affordance is the picker entry
+        // before commit; the dock takes over after.
+        env.hasCompletedOnboarding
+            && didStartSession
+            && env.mode == .sevadar
+            && env.captionModel.isRunning
+            && env.captionModel.isCommitted
+    }
+
+    private var sevadarDock: some View {
+        SevadarDock(
+            isPaused: env.captionModel.isPaused,
+            layersSummary: layersSummary(
+                layout: env.readingLayout,
+                translit: env.translitEnabled,
+                meaning: env.meaningEnabled
+            ),
+            onNudgeBack: {
+                env.haptics.play(.selection)
+                nudgeLine(by: -1)
+            },
+            onTogglePause: {
+                env.haptics.play(.selection)
+                if env.captionModel.isPaused {
+                    env.captionModel.resume()
+                } else {
+                    env.captionModel.pause()
+                }
+            },
+            onNudgeForward: {
+                env.haptics.play(.selection)
+                nudgeLine(by: 1)
+            },
+            onPick: {
+                env.haptics.play(.selection)
+                showShabadPicker = true
+            },
+            onCast: {
+                // M5.5 wires real AirPlay; M5.3 logs intent and no-ops.
+                env.haptics.play(.warning)
+                AppLogger.app.info("Sevadar Cast tapped — wiring lands with M5.5")
+            },
+            onEditLayers: {
+                env.haptics.play(.selection)
+                showSettings = true
+            }
+        )
+    }
+
+    /// Clamp the nudge target to the current shabad's line count, then
+    /// hand the absolute index to the source via the existing
+    /// `nudge(by:)` protocol method. `env.totalLines(forShabadId:)`
+    /// owns the upper bound — the source clamps only at zero.
+    private func nudgeLine(by delta: Int) {
+        guard let guess = env.captionModel.currentGuess else { return }
+        let total = env.totalLines(forShabadId: guess.shabadId)
+        let target = max(0, min(guess.lineIdx + delta, total - 1))
+        let actualDelta = target - guess.lineIdx
+        guard actualDelta != 0 else { return }
+        env.captionModel.nudge(by: actualDelta)
+    }
+
+    private func layersSummary(layout: ReadingLayout, translit: Bool, meaning: Bool) -> String {
+        let layoutName: String
+        switch layout {
+        case .hero: layoutName = "Hero"
+        case .karaoke: layoutName = "Karaoke"
+        case .full: layoutName = "Full"
+        }
+        let t = translit ? "Translit on" : "Translit off"
+        let m = meaning ? "Meaning on" : "Meaning off"
+        return "\(layoutName) · \(t) · \(m)"
     }
 
     /// Prepare the caption source on appear — no automatic `start()` in

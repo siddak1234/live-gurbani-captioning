@@ -30,6 +30,11 @@ public final class CaptionSourceModel {
     public private(set) var currentGuess: LineGuess?
     public private(set) var runnerUps: [LineGuess] = []
     public private(set) var isRunning: Bool = false
+    /// Stored mirror of the source's pause flag. Stored (not computed)
+    /// so the `@Observable` macro tracks reads and triggers view
+    /// re-renders when `pause()` / `resume()` flip it. A computed
+    /// pass-through to `source.isPaused` does NOT trigger Observation.
+    public private(set) var isPaused: Bool = false
     /// Most recent non-fatal error message, or `nil`. Cleared on next event.
     public private(set) var lastError: String?
 
@@ -50,6 +55,7 @@ public final class CaptionSourceModel {
         self.currentGuess = source.currentGuess
         self.runnerUps = source.runnerUps
         self.isRunning = source.isRunning
+        self.isPaused = source.isPaused
 
         // Subscribe to events. We hold the task so we can cancel on deinit.
         let stream = source.events
@@ -92,13 +98,44 @@ public final class CaptionSourceModel {
         source.manuallyCommit(shabadId: shabadId)
     }
 
+    public func nudge(by delta: Int) {
+        source.nudge(by: delta)
+    }
+
+    public func pause() {
+        source.pause()
+        // Mirror the source flag onto the tracked stored property so
+        // SwiftUI re-renders the dock's Pause/Resume label.
+        isPaused = source.isPaused
+    }
+
+    public func resume() {
+        source.resume()
+        isPaused = source.isPaused
+    }
+
     // MARK: - Convenience
 
     /// `true` when the engine has settled on a shabad.
-    public var isCommitted: Bool { source.isCommitted }
+    ///
+    /// Reads from the model's own `state` (a tracked stored property)
+    /// rather than from `source.isCommitted` (a computed pass-through
+    /// SwiftUI's Observation framework cannot track). The pass-through
+    /// version caused the Sevadar dock to not appear when state
+    /// transitioned to `.committed` — re-renders only fired when some
+    /// other observable property changed.
+    public var isCommitted: Bool {
+        switch state {
+        case .committed: return true
+        case .listening, .tentative: return false
+        }
+    }
 
     /// The committed shabad id, or `nil` if not committed.
-    public var committedShabadId: Int? { source.committedShabadId }
+    public var committedShabadId: Int? {
+        if case let .committed(shabadId: sid) = state { return sid }
+        return nil
+    }
 
     // MARK: - Internal
 

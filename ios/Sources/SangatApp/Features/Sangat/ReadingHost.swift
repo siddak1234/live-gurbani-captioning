@@ -25,7 +25,13 @@ public struct ReadingHost: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.themeTokens) private var tokens
 
-    public init() {}
+    /// Forwarded to `TentativeView.onPickManually`. RootView owns the
+    /// single `ShabadPickerView` sheet; ReadingHost is the conduit.
+    public let onRequestPicker: () -> Void
+
+    public init(onRequestPicker: @escaping () -> Void = {}) {
+        self.onRequestPicker = onRequestPicker
+    }
 
     public var body: some View {
         switch env.captionModel.state {
@@ -33,7 +39,7 @@ public struct ReadingHost: View {
             ListeningView()
 
         case .tentative(let shabadId):
-            TentativeView(shabadId: shabadId)
+            TentativeView(shabadId: shabadId, onPickManually: onRequestPicker)
 
         case .committed(let shabadId):
             committedView(shabadId: shabadId)

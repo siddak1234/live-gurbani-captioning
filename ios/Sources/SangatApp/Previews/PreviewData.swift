@@ -62,7 +62,10 @@ public enum PreviewData {
         ),
     ]
 
-    /// Look up a preview line by index. Returns `nil` if out of bounds.
+    /// Look up a preview line by index in Tati Vao Na Lagai. Kept for
+    /// existing callers that don't know which shabad they're looking
+    /// up (the demo source always emits 1789); new callers should use
+    /// `line(forShabadId:lineIdx:)` for accurate per-shabad dispatch.
     public static func line(forIndex idx: Int) -> PreviewLine? {
         guard idx >= 0, idx < tatiVaoNaLagaiLines.count else { return nil }
         return tatiVaoNaLagaiLines[idx]
@@ -77,6 +80,117 @@ public enum PreviewData {
             banidbGurmukhi: p.gurmukhi,
             transliterationEnglish: p.translit
         )
+    }
+
+    // MARK: - Per-shabad demo dispatch (M5.3)
+
+    /// Minimal demo line content for catalog shabads other than the
+    /// fully-detailed Tati Vao Na Lagai (1789). Lets the manual
+    /// shabad picker actually change what the reading view shows.
+    /// Production reads from `ShabadCorpus` and will retire this.
+    public static let demoLinesByShabadId: [Int: [PreviewLine]] = [
+        1789: tatiVaoNaLagaiLines,
+        1: [
+            PreviewLine(
+                idx: 0,
+                verseId: "mool-1",
+                gurmukhi: "ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ",
+                translit: "Ik Oankār sat nām kartā purakẖ nirbẖa▫o nirvair",
+                english: "One Universal Creator God. The Name Is Truth. Creative Being Personified. No Fear. No Hatred."
+            ),
+            PreviewLine(
+                idx: 1,
+                verseId: "mool-2",
+                gurmukhi: "ਅਕਾਲ ਮੂਰਤਿ ਅਜੂਨੀ ਸੈਭੰ ਗੁਰ ਪ੍ਰਸਾਦਿ ॥",
+                translit: "Akāl mūraṯ ajūnī saibẖaʼn gur parsāḏ.",
+                english: "Image Of The Undying. Beyond Birth. Self-Existent. By Guru's Grace."
+            )
+        ],
+        8: [
+            PreviewLine(
+                idx: 0,
+                verseId: "sodar-1",
+                gurmukhi: "ਸੋ ਦਰੁ ਕੇਹਾ ਸੋ ਘਰੁ ਕੇਹਾ ਜਿਤੁ ਬਹਿ ਸਰਬ ਸਮਾਲੇ ॥",
+                translit: "So ḏar kehā so gẖar kehā jiṯ bahi sarab samāle.",
+                english: "Where is that Gate, and where is that Dwelling, in which You sit and take care of all?"
+            )
+        ],
+        3: [
+            PreviewLine(
+                idx: 0,
+                verseId: "jotudh-1",
+                gurmukhi: "ਜੋ ਤੁਧੁ ਭਾਵੈ ਸਾਈ ਭਲੀ ਕਾਰ ॥",
+                translit: "Jo ṯuḏẖ bẖāvai sā▫ī bẖalī kār.",
+                english: "Whatever pleases You is the only good done."
+            )
+        ],
+        660: [
+            PreviewLine(
+                idx: 0,
+                verseId: "humaadmi-1",
+                gurmukhi: "ਹਮ ਆਦਮੀ ਹਾਂ ਇਕ ਦਮੀ ਮੁਹਲਤਿ ਮੁਹਤੁ ਨ ਜਾਣਾ ॥",
+                translit: "Ham āḏmī hāʼn ik ḏamī muhlaṯ muhaṯ na jāṇā.",
+                english: "We are mortal beings of a single breath; we do not know the appointed time of our departure."
+            )
+        ],
+        4900: [
+            PreviewLine(
+                idx: 0,
+                verseId: "mitr-1",
+                gurmukhi: "ਮਿਤ੍ਰ ਪਿਆਰੇ ਨੂੰ ਹਾਲ ਮੁਰੀਦਾਂ ਦਾ ਕਹਿਣਾ ॥",
+                translit: "Miṯar pi▫āre nūʼn hāl murīḏāʼn ḏā kahiṇā.",
+                english: "Tell the state of the disciples to the Beloved Friend."
+            )
+        ],
+        4901: [
+            PreviewLine(
+                idx: 0,
+                verseId: "deh-1",
+                gurmukhi: "ਦੇਹ ਸਿਵਾ ਬਰੁ ਮੋਹਿ ਇਹੈ ਸੁਭ ਕਰਮਨ ਤੇ ਕਬਹੂੰ ਨ ਟਰੋਂ ॥",
+                translit: "Ḏeh sivā bar mohi ihai subẖ karman ṯe kabahūʼn na taroʼn.",
+                english: "Grant me this boon, O God: that I may never shrink from righteous deeds."
+            )
+        ]
+    ]
+
+    /// Look up a preview line by shabad id + line index. Used by
+    /// `AppEnvironment.resolveLine` so the manual shabad picker
+    /// actually changes the reading view.
+    public static func line(forShabadId shabadId: Int, lineIdx: Int) -> PreviewLine? {
+        guard let lines = demoLinesByShabadId[shabadId],
+              lineIdx >= 0,
+              lineIdx < lines.count
+        else { return nil }
+        return lines[lineIdx]
+    }
+
+    /// Total line count for the given shabad in the demo data, or 0 if
+    /// unknown. Drives the progress strip in `HeroLineView`.
+    public static func lineCount(forShabadId shabadId: Int) -> Int {
+        demoLinesByShabadId[shabadId]?.count ?? 0
+    }
+
+    /// Minimal demo meta per catalog shabad — raag, ang, author. Used
+    /// by `AppEnvironment.shabadMeta(forShabadId:)`.
+    public static func meta(forShabadId shabadId: Int) -> (raag: String, ang: Int, author: String, authorGurmukhi: String)? {
+        switch shabadId {
+        case 1789:
+            return ("Bilaaval", 819, "Guru Arjan Dev Ji", "ਗੁਰੂ ਅਰਜਨ ਦੇਵ ਜੀ")
+        case 1:
+            return ("Mool Mantar", 1, "Guru Nanak Dev Ji", "ਗੁਰੂ ਨਾਨਕ ਦੇਵ ਜੀ")
+        case 8:
+            return ("Aasaa", 8, "Guru Nanak Dev Ji", "ਗੁਰੂ ਨਾਨਕ ਦੇਵ ਜੀ")
+        case 3:
+            return ("Japji Sahib", 3, "Guru Nanak Dev Ji", "ਗੁਰੂ ਨਾਨਕ ਦੇਵ ਜੀ")
+        case 660:
+            return ("Dhanaasaree", 660, "Guru Nanak Dev Ji", "ਗੁਰੂ ਨਾਨਕ ਦੇਵ ਜੀ")
+        case 4900:
+            return ("Dasam Granth", 0, "Guru Gobind Singh Ji", "ਗੁਰੂ ਗੋਬਿੰਦ ਸਿੰਘ ਜੀ")
+        case 4901:
+            return ("Dasam Granth", 0, "Guru Gobind Singh Ji", "ਗੁਰੂ ਗੋਬਿੰਦ ਸਿੰਘ ਜੀ")
+        default:
+            return nil
+        }
     }
 }
 

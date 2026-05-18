@@ -64,43 +64,51 @@ extension AppEnvironment {
 
     /// Resolve a canonical SGGS line for display.
     ///
-    /// In M5.2 with the demo source, this always falls through to
-    /// `PreviewData` (which mirrors the demo script's shabad). When the
-    /// live source is wired in M5.7, the corpus lookup path is added in
-    /// front.
+    /// M5.3 dispatches by `shabadId` so the manual shabad picker
+    /// actually changes the reading view — previously the resolve
+    /// path ignored shabadId and always returned Tati Vao Na Lagai.
+    /// Unknown shabad ids return `nil`; reading views render a "—"
+    /// placeholder in that case. M5.7 wires the bundled `ShabadCorpus`.
     public func resolveLine(shabadId: Int, lineIdx: Int) -> ResolvedLine? {
-        // Demo-source path: the only shabad demo produces is
-        // `PreviewData.tatiVaoNaLagaiLines`. Lookup by lineIdx works for
-        // any shabadId the demo emits.
-        if let preview = PreviewData.line(forIndex: lineIdx) {
-            return ResolvedLine(
-                gurmukhi: preview.gurmukhi,
-                transliteration: preview.translit,
-                english: preview.english,
-                verseId: preview.verseId
+        guard let preview = PreviewData.line(forShabadId: shabadId, lineIdx: lineIdx) else {
+            return nil
+        }
+        return ResolvedLine(
+            gurmukhi: preview.gurmukhi,
+            transliteration: preview.translit,
+            english: preview.english,
+            verseId: preview.verseId
+        )
+    }
+
+    /// Total number of lines in the given shabad. Drives the progress
+    /// strip in `HeroLineView` and karaoke next-line guards. Returns
+    /// `1` for catalog shabads that have only a single demo line so
+    /// reading views don't divide-by-zero on the progress fraction.
+    public func totalLines(forShabadId shabadId: Int) -> Int {
+        let count = PreviewData.lineCount(forShabadId: shabadId)
+        return max(count, 1)
+    }
+
+    /// Per-shabad metadata header — raag, ang, author. M5.3 dispatches
+    /// through the same per-shabad table as the line resolver so the
+    /// reading view's header matches whichever shabad was picked.
+    /// Falls back to the Tati Vao defaults for unknown shabads to keep
+    /// the header from blanking out.
+    public func shabadMeta(forShabadId shabadId: Int) -> ShabadMeta {
+        if let meta = PreviewData.meta(forShabadId: shabadId) {
+            return ShabadMeta(
+                raag: meta.raag,
+                ang: meta.ang,
+                author: meta.author,
+                authorGurmukhi: meta.authorGurmukhi
             )
         }
-        return nil
-    }
-
-    /// Total number of lines in the given shabad. Used by reading views to
-    /// compute progress strips and karaoke next-line guards.
-    ///
-    /// M5.2 returns the demo shabad's length (6). M5.7 will look up via
-    /// the bundled corpus.
-    public func totalLines(forShabadId shabadId: Int) -> Int {
-        PreviewData.tatiVaoNaLagaiLines.count
-    }
-
-    /// Best-effort metadata header for the shabad currently on screen.
-    /// M5.7 will populate from corpus metadata; today this is the demo
-    /// shabad's known meta.
-    public func shabadMeta(forShabadId shabadId: Int) -> ShabadMeta {
-        ShabadMeta(
-            raag: "Bilaaval",
-            ang: 819,
-            author: "Guru Arjan Dev Ji",
-            authorGurmukhi: "ਗੁਰੂ ਅਰਜਨ ਦੇਵ ਜੀ"
+        return ShabadMeta(
+            raag: "—",
+            ang: 0,
+            author: "Unknown",
+            authorGurmukhi: nil
         )
     }
 }

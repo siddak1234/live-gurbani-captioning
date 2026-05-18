@@ -108,6 +108,29 @@ public protocol CaptionSource: AnyObject {
     /// triggers in M5.6 — the call site decides whether to record a
     /// `CorrectionEvent`; the source itself remains correction-agnostic.
     func manuallyCommit(shabadId: Int)
+
+    /// Manually move the displayed line within the committed shabad by
+    /// `delta` (typically ±1 from the Sevadar dock). The source clamps
+    /// to `0..<totalLines`. A no-op when not in `.committed` state.
+    ///
+    /// Engine emissions on the next chunk MAY override the nudge — that
+    /// is intentional. Pair with `pause()` to make manual nudges stick.
+    func nudge(by delta: Int)
+
+    /// Stop processing audio chunks but keep the session alive — state,
+    /// `currentGuess`, runner-ups, and the underlying state machine all
+    /// remain. Use when the Sevadar wants to manually drive the line
+    /// without the engine fighting for control. Resume with `resume()`.
+    /// Distinct from `stop()`, which tears the session down completely.
+    func pause()
+
+    /// Resume engine processing after `pause()`. Idempotent — calling on
+    /// a not-paused source is a no-op.
+    func resume()
+
+    /// Whether engine processing is paused. False after `start()` and
+    /// `resume()`; true after `pause()`. Independent of `isRunning`.
+    var isPaused: Bool { get }
 }
 
 // MARK: - Convenience
