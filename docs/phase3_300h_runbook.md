@@ -166,6 +166,15 @@ pattern, not an overfit signal. Continue the epoch; do not change architecture
 until paired + assisted-OOS scoring says the ASR improvement is failing to move
 the line-alignment runtime.
 
+Step-6000 validation emitted `eval_loss=0.035235524` with
+`eval_runtime=2104.6417s`, `eval_samples_per_second=5.484`, and
+`eval_steps_per_second=0.686`. The slope continues to flatten, but it is still
+moving in the right direction (`0.03620 -> 0.03565 -> 0.03543 -> 0.03532 ->
+0.03524`). This keeps the current plan valid: finish epoch 1, then evaluate the
+best/final v7 adapter against paired benchmark and assisted OOS before deciding
+whether to promote, continue to multi-epoch 300h training, or diagnose runtime
+bottlenecks.
+
 ## Gates after training
 
 Evaluate the adapter through the current confirmed runtime, not the older
