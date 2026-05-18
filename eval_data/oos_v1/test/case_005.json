@@ -1,0 +1,116 @@
+{
+  "video_id": "case_005",
+  "shabad_id": 3297,
+  "total_duration": 180.0,
+  "uem": {
+    "start": 0.0,
+    "end": 180.0
+  },
+  "source_url": "https://www.youtube.com/watch?v=yr6Y3gzjAu4",
+  "source_video_id": "yr6Y3gzjAu4",
+  "source_clip": {
+    "start_s": 45.0,
+    "end_s": 225.0
+  },
+  "curation_status": "NEEDS_HUMAN_CORRECTION",
+  "curation_notes": "Machine-generated oracle bootstrap only. Correct boundaries and verify every verse_id/banidb_gurmukhi before copying to test/.",
+  "machine_review_notes": [
+    "Online probe 2026-05-16: YouTube Punjabi auto captions are available for yr6Y3gzjAu4 and were downloaded locally to /private/tmp/oos_subs/yr6Y3gzjAu4.pa-orig.json3.",
+    "After subtracting the 45.0s clip offset, auto captions support line 3/4 around 34-83s and line 1/2 repeats around 83-132s.",
+    "Auto captions suggest the line 5/6 region starts closer to ~152s, so review the current late rows carefully. Captions are noisy and cannot be used as gold."
+  ],
+  "segments": [
+    {
+      "start": 30.0,
+      "end": 42.0,
+      "line_idx": 3,
+      "shabad_id": 3297,
+      "verse_id": 37580,
+      "banidb_gurmukhi": "ਕਾਰਣ ਕਰਣ ਕਰੀਮ ॥"
+    },
+    {
+      "start": 42.0,
+      "end": 57.0,
+      "line_idx": 4,
+      "shabad_id": 3297,
+      "verse_id": 37581,
+      "banidb_gurmukhi": "ਕਿਰਪਾ ਧਾਰਿ ਰਹੀਮ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 58.0,
+      "end": 67.0,
+      "line_idx": 3,
+      "shabad_id": 3297,
+      "verse_id": 37580,
+      "banidb_gurmukhi": "ਕਾਰਣ ਕਰਣ ਕਰੀਮ ॥"
+    },
+    {
+      "start": 67.0,
+      "end": 83.0,
+      "line_idx": 4,
+      "shabad_id": 3297,
+      "verse_id": 37581,
+      "banidb_gurmukhi": "ਕਿਰਪਾ ਧਾਰਿ ਰਹੀਮ ॥੧॥ ਰਹਾਉ ॥"
+    },
+    {
+      "start": 83.0,
+      "end": 91.0,
+      "line_idx": 1,
+      "shabad_id": 3297,
+      "verse_id": 37578,
+      "banidb_gurmukhi": "ਕੋਈ ਬੋਲੈ ਰਾਮ ਰਾਮ ਕੋਈ ਖੁਦਾਇ ॥"
+    },
+    {
+      "start": 91.0,
+      "end": 99.0,
+      "line_idx": 2,
+      "shabad_id": 3297,
+      "verse_id": 37579,
+      "banidb_gurmukhi": "ਕੋਈ ਸੇਵੈ ਗੁਸਈਆ ਕੋਈ ਅਲਾਹਿ ॥੧॥"
+    },
+    {
+      "start": 99.0,
+      "end": 107.0,
+      "line_idx": 1,
+      "shabad_id": 3297,
+      "verse_id": 37578,
+      "banidb_gurmukhi": "ਕੋਈ ਬੋਲੈ ਰਾਮ ਰਾਮ ਕੋਈ ਖੁਦਾਇ ॥"
+    },
+    {
+      "start": 107.0,
+      "end": 115.0,
+      "line_idx": 2,
+      "shabad_id": 3297,
+      "verse_id": 37579,
+      "banidb_gurmukhi": "ਕੋਈ ਸੇਵੈ ਗੁਸਈਆ ਕੋਈ ਅਲਾਹਿ ॥੧॥"
+    },
+    {
+      "start": 129.0,
+      "end": 137.0,
+      "line_idx": 1,
+      "shabad_id": 3297,
+      "verse_id": 37578,
+      "banidb_gurmukhi": "ਕੋਈ ਬੋਲੈ ਰਾਮ ਰਾਮ ਕੋਈ ਖੁਦਾਇ ॥"
+    },
+    {
+      "start": 137.0,
+      "end": 145.0,
+      "line_idx": 5,
+      "shabad_id": 3297,
+      "verse_id": 37582,
+      "banidb_gurmukhi": "ਕੋਈ ਨਾਵੈ ਤੀਰਥਿ ਕੋਈ ਹਜ ਜਾਇ ॥"
+    },
+    {
+      "start": 145.0,
+      "end": 180.0,
+      "line_idx": 6,
+      "shabad_id": 3297,
+      "verse_id": 37583,
+      "banidb_gurmukhi": "ਕੋਈ ਕਰੈ ਪੂਜਾ ਕੋਈ ਸਿਰੁ ਨਿਵਾਇ ॥੨॥"
+    }
+  ],
+  "draft_source": "eval_data/oos_v1/drafts/case_005.json",
+  "draft_curation_status": "DRAFT_FROM_ORACLE_ENGINE__HAND_CORRECT_BEFORE_COMMIT",
+  "human_review_required": true,
+  "review_protocol": "Listen to the clipped audio, correct every segment boundary and canonical line field, then set curation_status to 'HUMAN_CORRECTED_V1' only after review."
+}
