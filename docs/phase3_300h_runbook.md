@@ -48,6 +48,17 @@ The one-epoch run is deliberate. It checks whether the full data scale improves
 held-out eval loss and runtime behavior before spending the full multi-day /
 multi-seed budget.
 
+If a long run is interrupted after a checkpoint, resume explicitly rather than
+starting over:
+
+```bash
+make train-v7-300h-epoch1 \
+  PHASE3_RESUME=lora_adapters/v7_mac_300h_epoch1/checkpoint-1000
+```
+
+The resume path restores model, optimizer, scheduler, RNG, and trainer state.
+Use the latest complete `checkpoint-*` directory.
+
 ## Expected cost
 
 Based on the v6 run:
@@ -84,6 +95,37 @@ The 2026-05-17 v7 pull passed the pre-training gates:
 - train/val/test split: `split_by=shabad`, 0 shabad overlap across splits;
 - score floor: min score 0.800, split mean scores ~0.96;
 - `manifest.json` is identical to `manifest_train.json` for back-compat.
+
+## 2026-05-17 training checkpoint
+
+The first v7 epoch-1 attempt reached step 1000 and completed the full
+validation sweep over 11,541 held-out clips, then crashed while saving the
+checkpoint:
+
+- train loss fell from roughly `1.16` to the `0.25-0.30` range by step 1000;
+- validation ran to completion in `1996 s` (`5.78 samples/s`, `0.72 steps/s`);
+- peak MPS driver memory reported by `run_card.json`: `38.82 GB`;
+- `checkpoint-1000` was written successfully;
+- failure cause: Transformers could not find `eval_loss` while
+  `--load-best-model-at-end` requested `metric_for_best_model=eval_loss`.
+
+Root cause: PEFT wraps Whisper with a generic forward signature, so
+Transformers did not infer that `labels` is the evaluation label column. The
+trainer still learned normally, but evaluation emitted runtime-only metrics.
+
+Fix landed in `scripts/finetune_path_b.py`: pass `label_names=["labels"]` to
+`Seq2SeqTrainingArguments` for both CTC and Whisper paths, and add explicit
+`--resume-from-checkpoint` support. A 1-step Whisper smoke run with
+`--eval-manifest`, `--save-steps 1`, and `--load-best-model-at-end` verified
+that `eval_loss` is now emitted (`eval_loss=1.9093`) and checkpoint ranking no
+longer crashes.
+
+Resume command for this run:
+
+```bash
+make train-v7-300h-epoch1 \
+  PHASE3_RESUME=lora_adapters/v7_mac_300h_epoch1/checkpoint-1000
+```
 
 ## Gates after training
 

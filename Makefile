@@ -87,6 +87,7 @@ PHASE3_DATA_DIR ?= training_data/v6_mac_scale20
 PHASE3_TRAIN_OUT ?= lora_adapters/v6_mac_scale20
 PHASE3_FULL_DATA_DIR ?= training_data/v7_mac_300h
 PHASE3_FULL_TRAIN_OUT ?= lora_adapters/v7_mac_300h_epoch1
+PHASE3_RESUME ?=
 DATA_SHARDS_ARG := $(if $(DATA_SHARDS),--shards $(DATA_SHARDS),--shard $(DATA_SHARD))
 DATA_SPLIT_ARG := $(if $(filter-out none,$(DATA_SPLIT_BY)),--split-by $(DATA_SPLIT_BY) --split-ratios $(DATA_SPLIT_RATIOS),)
 SILVER_ADAPTER_ARG := $(if $(SILVER_ADAPTER_DIR),--adapter-dir $(SILVER_ADAPTER_DIR),)
@@ -316,10 +317,11 @@ train-v7-300h-epoch1: data-v7-300h ## First 300h acoustic-scaling run: 1 epoch w
 		--eval-manifest $(PHASE3_FULL_DATA_DIR)/manifest_val.json \
 		--output-dir $(PHASE3_FULL_TRAIN_OUT) \
 		--epochs 1 \
-		--eval-strategy steps \
-		--eval-steps 1000 \
-		--save-steps 1000 \
-		--load-best-model-at-end
+			--eval-strategy steps \
+			--eval-steps 1000 \
+			--save-steps 1000 \
+			--load-best-model-at-end \
+			$(if $(PHASE3_RESUME),--resume-from-checkpoint $(PHASE3_RESUME),)
 
 # -----------------------------------------------------------------------------
 # Evaluation

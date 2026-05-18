@@ -223,6 +223,8 @@ def main() -> int:
                              "Requires --eval-strategy != 'no' and --load-best-model-at-end.")
     parser.add_argument("--load-best-model-at-end", action="store_true", default=False,
                         help="Restore the best-eval checkpoint at end of training. Required for early stopping.")
+    parser.add_argument("--resume-from-checkpoint", type=pathlib.Path, default=None,
+                        help="Resume optimizer/scheduler/trainer state from a checkpoint directory.")
 
     # -- Tracking --
     parser.add_argument("--report-to", default="auto",
@@ -421,6 +423,7 @@ def _run_ctc_train(args, target_modules: list[str]) -> int:
         bf16=args.bf16,
         seed=args.seed,
         data_seed=args.seed,
+        label_names=["labels"],
     )
 
     callbacks = []
@@ -451,7 +454,8 @@ def _run_ctc_train(args, target_modules: list[str]) -> int:
     status = "completed"
     started_at = time.monotonic()
     try:
-        trainer.train()
+        resume = str(args.resume_from_checkpoint) if args.resume_from_checkpoint else None
+        trainer.train(resume_from_checkpoint=resume)
     except KeyboardInterrupt:
         status = "interrupted"
         raise
@@ -588,6 +592,7 @@ def _run_whisper_train(args, target_modules: list[str]) -> int:
         seed=args.seed,
         data_seed=args.seed,
         predict_with_generate=False,  # speeds up training; switch on for WER eval at large scale
+        label_names=["labels"],
         # PEFT-wrapped Whisper has a generic *args/**kwargs forward signature that
         # confuses HF Trainer's introspection — with remove_unused_columns=True
         # (the default) it strips input_features and replays the row dict in a
@@ -622,7 +627,8 @@ def _run_whisper_train(args, target_modules: list[str]) -> int:
     status = "completed"
     started_at = time.monotonic()
     try:
-        trainer.train()
+        resume = str(args.resume_from_checkpoint) if args.resume_from_checkpoint else None
+        trainer.train(resume_from_checkpoint=resume)
     except KeyboardInterrupt:
         status = "interrupted"
         raise
