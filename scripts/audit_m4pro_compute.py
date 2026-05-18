@@ -125,6 +125,17 @@ def render_report() -> str:
         (REPO_ROOT / "diagnostics" / "phase3_recency_guard_confirmed_paired_line_path.md").exists()
         and (REPO_ROOT / "diagnostics" / "phase3_recency_guard_confirmed_oos_assisted_line_path.md").exists()
     )
+    v7_epoch1_dir = REPO_ROOT / "lora_adapters" / "v7_mac_300h_epoch1"
+    v7_checkpoint_steps = []
+    for ckpt in v7_epoch1_dir.glob("checkpoint-*"):
+        try:
+            step = int(ckpt.name.split("-")[-1])
+        except ValueError:
+            continue
+        if (ckpt / "trainer_state.json").exists():
+            v7_checkpoint_steps.append(step)
+    has_v7_epoch1_active = bool(v7_checkpoint_steps)
+    latest_v7_step = max(v7_checkpoint_steps) if v7_checkpoint_steps else None
     has_alignment_reports = (
         (REPO_ROOT / "diagnostics" / "phase3_recency_guard_paired_alignment_errors.md").exists()
         and (REPO_ROOT / "diagnostics" / "phase3_recency_guard_oos_assisted_alignment_errors.md").exists()
@@ -147,7 +158,7 @@ def render_report() -> str:
         f"| MPS available in this process | {mps.get('mps_available')} |",
         f"| MPS smoke ok | {mps.get('mps_smoke_ok')} |",
         "",
-        "## Completed training runs",
+        "## Completed / in-progress training runs",
         "",
         "| Adapter | Clips | Loss | Wall clock | Peak MPS memory | Device |",
         "|---|---:|---:|---:|---:|---|",
@@ -156,6 +167,9 @@ def render_report() -> str:
         wall = f"{(card.wall_clock_s or 0.0) / 60:.1f} min" if card.wall_clock_s else "unknown"
         peak = f"{card.peak_mem_gb:.2f} GB ({card.peak_mem_source})" if card.peak_mem_gb else "unknown"
         loss = f"{card.final_train_loss:.4f}" if card.final_train_loss is not None else "unknown"
+        if card.name == "v7_mac_300h_epoch1" and has_v7_epoch1_active and card.final_train_loss is None:
+            wall = f"in progress (latest checkpoint {latest_v7_step})"
+            loss = "in progress"
         lines.append(
             f"| `{card.name}` | {card.train_n_clips or 'unknown'} | {loss} | {wall} | {peak} | {card.device or 'unknown'} |"
         )
@@ -184,7 +198,17 @@ def render_report() -> str:
     lines.extend([
         "- The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.",
     ])
-    if has_confirmed_paired and has_confirmed_oos and has_confirmed_reports:
+    if has_v7_epoch1_active and has_confirmed_paired and has_confirmed_oos and has_confirmed_reports:
+        lines.extend([
+            "- The confirmed loop-align runtime reached a local plateau at 92.8% paired / 60.8% assisted-OOS.",
+            "- That plateau justified the current controlled v7 300h-source epoch-1 run; this is no longer an underuse-of-M4 question.",
+            f"- v7 epoch 1 is currently in progress with complete trainer state through checkpoint {latest_v7_step}.",
+            "- The interrupted first v7 attempt recorded ~38.82 GB peak MPS driver memory at step 1000, so this workload is using most of the 48 GB M4 Pro envelope.",
+            "- The correct action is to finish epoch 1, then evaluate the final/best v7 adapter through the confirmed paired + assisted-OOS gates.",
+            "- Do not automatically expand to 3 epochs or multiple seeds. Promotion requires beating 92.8% paired and 60.8% assisted-OOS with locks preserved.",
+            "- If held-out loss improves but runtime metrics do not, the remaining bottleneck is line alignment / candidate resolution, not acoustic capacity or M4 Pro underuse.",
+        ])
+    elif has_confirmed_paired and has_confirmed_oos and has_confirmed_reports:
         lines.extend([
             "- The controlled Phase 3 warm-start completed and passed the silver non-regression gate modestly.",
             "- A generic recency-consistency guarded fusion runtime lifted paired accuracy to 91.0% / 12-of-12 locks without assisted-OOS regression.",
