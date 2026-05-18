@@ -24,6 +24,9 @@ public struct SettingsView: View {
     @Environment(\.themeTokens) private var tokens
     @Environment(\.dismiss) private var dismiss
 
+    @State private var showConfidence: Bool = false
+    @State private var showHistory: Bool = false
+
     public init() {}
 
     public var body: some View {
@@ -44,13 +47,67 @@ public struct SettingsView: View {
                         translitBinding: $env.translitEnabled,
                         meaningBinding: $env.meaningEnabled
                     )
+
+                    if env.mode == .sevadar {
+                        sevadarToolsSection
+                    }
                 }
                 .padding(.horizontal, tokens.spacing.edge)
                 .padding(.top, tokens.spacing.xxl)
                 .padding(.bottom, tokens.spacing.xxl)
             }
         }
+        .sheet(isPresented: $showConfidence) {
+            ConfidenceView()
+                .environment(env)
+                .environment(\.theme, env.theme)
+                .environment(\.themeTokens, env.theme.tokens)
+                .preferredColorScheme(env.theme.isDark ? .dark : .light)
+        }
+        .sheet(isPresented: $showHistory) {
+            HistoryView()
+                .environment(env)
+                .environment(\.theme, env.theme)
+                .environment(\.themeTokens, env.theme.tokens)
+                .preferredColorScheme(env.theme.isDark ? .dark : .light)
+        }
         .accessibilityIdentifier("settings.root")
+    }
+
+    private var sevadarToolsSection: some View {
+        VStack(alignment: .leading, spacing: tokens.spacing.md) {
+            SectionLabel("Sevadar tools")
+
+            VStack(spacing: 0) {
+                SevadarToolRow(
+                    icon: "waveform",
+                    title: "Engine confidence",
+                    subtitle: "ASR state, candidates, recent chunks"
+                ) {
+                    env.haptics.play(.selection)
+                    showConfidence = true
+                }
+                .accessibilityIdentifier("settings.sevadar.confidence")
+
+                Divider().background(tokens.colors.ruleSoft)
+
+                SevadarToolRow(
+                    icon: "clock.arrow.circlepath",
+                    title: "Session history",
+                    subtitle: "Today's shabads, in order"
+                ) {
+                    env.haptics.play(.selection)
+                    showHistory = true
+                }
+                .accessibilityIdentifier("settings.sevadar.history")
+            }
+            .background(tokens.colors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: tokens.radii.md, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: tokens.radii.md, style: .continuous)
+                    .stroke(tokens.colors.rule, lineWidth: 0.5)
+            )
+        }
     }
 
     private var header: some View {
@@ -320,22 +377,65 @@ private struct LayoutGlyph: View {
     }
 }
 
+// MARK: - Sevadar tool row
+
+private struct SevadarToolRow: View {
+
+    @Environment(\.themeTokens) private var tokens
+
+    let icon: String
+    let title: String
+    let subtitle: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: tokens.spacing.md) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundStyle(tokens.colors.sevadar)
+                    .frame(width: 32, height: 32)
+                    .background(tokens.colors.bgSoft, in: RoundedRectangle(cornerRadius: tokens.radii.sm, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(tokens.type.serif.weight(.semibold))
+                        .foregroundStyle(tokens.colors.ink)
+                    Text(subtitle)
+                        .font(tokens.type.sansSmall)
+                        .foregroundStyle(tokens.colors.ink3)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(tokens.colors.ink3)
+            }
+            .padding(.horizontal, tokens.spacing.md)
+            .padding(.vertical, tokens.spacing.sm + 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Previews
 
-#Preview("SettingsView · paper") {
+#Preview("SettingsView · paper sangat") {
     SettingsView()
         .environment(AppEnvironment.preview())
         .previewTheme(.paper)
 }
 
-#Preview("SettingsView · darbar") {
+#Preview("SettingsView · darbar sevadar") {
     SettingsView()
-        .environment(AppEnvironment.preview(theme: .darbar))
+        .environment(AppEnvironment.preview(theme: .darbar, mode: .sevadar))
         .previewTheme(.darbar)
 }
 
-#Preview("SettingsView · mool") {
+#Preview("SettingsView · mool sevadar") {
     SettingsView()
-        .environment(AppEnvironment.preview(theme: .mool))
+        .environment(AppEnvironment.preview(theme: .mool, mode: .sevadar))
         .previewTheme(.mool)
 }

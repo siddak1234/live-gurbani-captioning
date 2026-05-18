@@ -15,15 +15,21 @@ the audit report for N is reviewed and approved.
 | # | Name | Scope | Audit doc | Status |
 |---|------|-------|-----------|--------|
 | M5.1 | Foundations | Theme, tokens, atoms, `CaptionSource` + Demo, `AppEnvironment`, RootView placeholder, Corrections protocol + Noop, test target | `ios/AUDIT-M5.1.md` | **landed** |
-| M5.2 | Sangat reading | `Features/Sangat/` — Idle, Listening, Tentative, ReadingHost, Hero, Karaoke, FullShabad | `ios/AUDIT-M5.2.md` | pending |
-| M5.3 | Sevadar surfaces | `Features/Sevadar/` — Dock, Picker, Confidence, History; AppMode switching | `ios/AUDIT-M5.3.md` | pending |
-| M5.4 | Onboarding + Settings | `Features/Onboarding/` + `Features/Settings/`; mic permission flow | `ios/AUDIT-M5.4.md` | pending |
+| M5.2 | Sangat reading | `Features/Sangat/` — Idle, Listening, Tentative, ReadingHost, Hero, Karaoke, FullShabad | `ios/AUDIT-M5.2.md` | **landed** |
+| M5.4 | Onboarding + per-session Let's Begin | `Features/Onboarding/` (4-card flow) + `SessionStartView` + theme/layout/layers Settings | `ios/AUDIT-M5.4.md` | **landed** |
+| M5.3 | Sevadar surfaces | `Features/Sevadar/` — Dock, Picker, Confidence, History; Settings → Sevadar tools; mode chip in chrome row | `ios/AUDIT-M5.3.md` | **landed** |
+| M5.4.1 | "Enable microphone" affordance on IdleView | One-screen addition for users who tapped "Not now" in M5.4 | — | pending |
 | M5.5 | Cast / AirPlay | `Features/Cast/`; UIScreen route handling | `ios/AUDIT-M5.5.md` | pending |
 | M5.6 | Correction loop surfaces | Touchpoints in Sangat + Sevadar; `CorrectionsSettingsView`; still writes to `NoopCorrectionLog` | `ios/AUDIT-M5.6.md` | pending |
 
 After M5.6 the codebase is feature-complete for everything except the
 WhisperKit wire (M5.7, blocked on model export) and real correction
 persistence (M5.8, blocked on user-trust decision).
+
+Note on ordering: M5.4 (Onboarding) landed before M5.3 (Sevadar)
+because the design canvas's "Sangat vs Sevadar" role pick lives in
+Onboarding Card 4, and the per-session Let's Begin role pill needed
+to exist before Sevadar surfaces could be conditionally shown.
 
 ## Architectural invariants — apply to every milestone
 
@@ -58,6 +64,92 @@ canonical example.
 6. Known gaps            — what's deliberately deferred and to which milestone
 7. Sign-off              — your approval marker
 ```
+
+## What lands in M5.3 (Sevadar surfaces)
+
+Implements the four Sevadar surfaces from design canvas section 06
+(`assets/v1-paper.jsx` lines 751-1024): the floating dock, the manual
+shabad picker, the engine confidence panel, and the today's-session
+history. The Sevadar role itself was already pickable via M5.4's
+onboarding Card 4 + Let's Begin role pill; M5.3 is where that role
+*does* something.
+
+Files added: 4 feature views + 2 atoms + 3 test files, all under
+`ios/`.
+
+```
+ios/Sources/SangatApp/Features/Sevadar/
+  SevadarDock.swift           bottom-anchored control card with 6 buttons
+  ShabadPickerView.swift      modal picker with search + 3 sections
+  ShabadPickerViewModel.swift filter logic, recent vs all-matches sections
+  ConfidenceView.swift        engine debug panel (state grid + candidates + chunks)
+  HistoryView.swift           today's SessionEntry list
+
+ios/Sources/SangatApp/DesignSystem/Components/
+  SevadarButton.swift         dock control button (primary/secondary variants)
+  StatCard.swift              labeled stat tile reused in confidence 2x2 grid
+
+ios/Tests/SangatAppTests/Features/Sevadar/
+  ShabadPickerViewModelTests.swift  filter logic, search by prefix
+  CaptionSourceNudgeTests.swift     nudge ±1 clamping, override semantics
+  CaptionSourcePauseTests.swift     pause/resume vs stop semantics
+```
+
+Files modified: `Sources/CaptionSource.swift` and
+`Sources/CaptionSourceModel.swift` (add `nudge(by:)`, `pause()`,
+`resume()`), `Sources/DemoCaptionSource.swift` and
+`Sources/LiveCaptionSource.swift` (implement / stub the new methods),
+`Features/Settings/SettingsView.swift` (one new "Sevadar tools"
+section, conditional on `env.mode == .sevadar`),
+`App/RootView.swift` (a `.safeAreaInset(edge: .bottom)` overlay for
+the dock + sheet for the picker).
+
+Routing summary:
+
+- **Dock** appears as a bottom safe-area inset when
+  `env.mode == .sevadar && captionModel.isRunning &&
+  state == .committed`. Per the architecture invariant, the dock is
+  an overlay composed at RootView level — `Features/Sevadar/` never
+  imports `Features/Sangat/`. The reading view content auto-lays-out
+  above the dock; no state loss when toggling modes.
+- **Picker** is triggered from the dock's "Pick shabad" → presented
+  as a sheet from RootView so dismissing returns to dock unchanged.
+- **Confidence + History** are reached via a new "Sevadar tools"
+  section that appears in `SettingsView` only when in sevadar mode.
+
+CaptionSource additions:
+
+- `nudge(by: Int)` clamps the displayed line index to
+  `0..<totalLines(for: currentShabad)`. Engine emissions may
+  overwrite the nudge on the next chunk — that's intended behavior;
+  the dock's "Pause auto" button gates engine emissions when the user
+  wants manual nudges to stick.
+- `pause()` / `resume()` keep the session alive (state, currentGuess,
+  history) but stop processing audio chunks. `stop()` still tears
+  down the session entirely.
+
+Audit gates (additive to A1-A10 + the pre-ship grep gauntlet):
+
+| # | Check |
+|---|---|
+| 3.1 | Mode toggle (Sangat ↔ Sevadar via Let's Begin role pill) reveals/hides dock without remounting the reading view; current line preserved |
+| 3.2 | "Pick shabad" presents the picker modally; Cancel returns to dock + reading view unchanged |
+| 3.3 | Picker search filters demo corpus by Gurmukhi prefix; "X results" counter updates |
+| 3.4 | `ConfidenceView` reads `CaptionSource.runnerUps` (published; already exists since M5.1) — not a hardcoded list |
+| 3.5 | Dock's Line ±1 advances/retreats the displayed line; clamped at shabad bounds |
+| 3.6 | "Pause auto" toggles label to "Resume" and stops engine emissions; manual nudges persist while paused |
+| 3.7 | `Features/Sevadar/` does not import `Features/Sangat/` (grep) |
+| 3.8 | Design fidelity: 6 dock buttons in order Line−1 / Pause / Line+1 / Pick shabad / Cast / Lock; "Sangat sees" preview strip with accent "Edit ›" caption |
+
+Not in M5.3 (deferred):
+
+| Not included | Why | When |
+|---|---|---|
+| Real Cast / AirPlay wiring | Needs `UIScreen.didConnect`; separate surface | M5.5 |
+| Long-press header → wrong-shabad correction sheet | Needs `CorrectionLog` surface wiring | M5.6 |
+| "Enable microphone" affordance on IdleView | Loose end from M5.4 | M5.4.1 |
+| Persistent `SessionHistoryStore` | `InMemorySessionHistoryStore` ships; durable store is a trust decision | M5.8 |
+| Sevadar unlock gating | Currently anyone can pick Sevadar; gating is a product decision | future |
 
 ## What lands in M5.4 (onboarding)
 

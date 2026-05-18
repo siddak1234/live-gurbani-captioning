@@ -140,6 +140,31 @@ public final class LiveCaptionSource: CaptionSource {
         engine.manuallyCommit(shabadId: shabadId)
     }
 
+    public private(set) var isPaused: Bool = false
+
+    public func nudge(by delta: Int) {
+        // M5.3: stub. Real nudge requires CaptionEngine to expose a
+        // setLineIdx hook on the state machine. Once wired, this mirrors
+        // DemoCaptionSource.nudge — clamp lower bound, construct a new
+        // LineGuess, yield .guessUpdated.
+        AppLogger.source.warning("LiveCaptionSource.nudge(\(delta, privacy: .public)) — not yet wired to CaptionEngine; ignored")
+    }
+
+    public func pause() {
+        // M5.3: stub. Live engine pause needs to suspend WhisperKit's
+        // audio buffer without tearing down the session. M5.7 wires the
+        // real implementation alongside the engine swap.
+        guard !isPaused else { return }
+        isPaused = true
+        AppLogger.source.warning("LiveCaptionSource.pause — not yet wired; flag set but engine continues processing")
+    }
+
+    public func resume() {
+        guard isPaused else { return }
+        isPaused = false
+        AppLogger.source.warning("LiveCaptionSource.resume — not yet wired")
+    }
+
     // MARK: - Internal — receive delegate callbacks
 
     fileprivate func handleGuess(_ guess: LineGuess?) {

@@ -22,8 +22,15 @@ public struct TentativeView: View {
 
     public let shabadId: Int
 
-    public init(shabadId: Int) {
+    /// Opens the same `ShabadPickerView` the Sevadar dock uses. Passed
+    /// down from `ReadingHost` (which gets it from `RootView`) so there
+    /// is a single source of truth for the picker sheet — no duplicate
+    /// `.sheet` modifiers, one shared picker for both Sangat and Sevadar.
+    public let onPickManually: () -> Void
+
+    public init(shabadId: Int, onPickManually: @escaping () -> Void = {}) {
         self.shabadId = shabadId
+        self.onPickManually = onPickManually
     }
 
     public var body: some View {
@@ -80,8 +87,7 @@ public struct TentativeView: View {
     private var pickManuallyButton: some View {
         Button {
             env.haptics.play(.selection)
-            // M5.3: present ShabadPickerView. For now this is a stub.
-            AppLogger.ui.info("TentativeView: 'Pick manually' tapped (M5.3 will wire the picker)")
+            onPickManually()
         } label: {
             HStack(spacing: tokens.spacing.xs) {
                 Image(systemName: "magnifyingglass")

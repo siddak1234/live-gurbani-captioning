@@ -34,6 +34,7 @@ public final class DemoCaptionSource: CaptionSource {
     public private(set) var currentGuess: LineGuess?
     public private(set) var runnerUps: [LineGuess] = []
     public private(set) var isRunning: Bool = false
+    public private(set) var isPaused: Bool = false
 
     public let events: AsyncStream<CaptionSourceEvent>
     private let continuation: AsyncStream<CaptionSourceEvent>.Continuation
@@ -124,12 +125,79 @@ public final class DemoCaptionSource: CaptionSource {
         let newState: ShabadState = .committed(shabadId: shabadId)
         state = newState
         continuation.yield(.stateChanged(newState))
+
+        // Also reset currentGuess to point at the new shabad's first
+        // line. Without this, manuallyCommit changes state but the
+        // reading view keeps rendering the PREVIOUS shabad's lines —
+        // the picker's "I just changed shabads" intent silently fails.
+        let newGuess = LineGuess(
+            chunk: AsrChunk(start: 0, end: 0, text: ""),
+            shabadId: shabadId,
+            lineIdx: 0,
+            confidence: 100.0,
+            isCommitted: true
+        )
+        currentGuess = newGuess
+        continuation.yield(.guessUpdated(newGuess))
+
+        // Runner-ups from the previous shabad are no longer relevant.
+        runnerUps = []
+        continuation.yield(.runnerUpsUpdated([]))
+
         AppLogger.source.info("DemoCaptionSource manuallyCommit to shabad #\(shabadId, privacy: .public)")
+    }
+
+    public func nudge(by delta: Int) {
+        guard case .committed = state, let guess = currentGuess else {
+            AppLogger.source.debug("DemoCaptionSource.nudge ignored — not in .committed with a guess")
+            return
+        }
+        let newIdx = max(0, guess.lineIdx + delta)
+        guard newIdx != guess.lineIdx else { return }
+        let updated = LineGuess(
+            chunk: guess.chunk,
+            shabadId: guess.shabadId,
+            lineIdx: newIdx,
+            confidence: guess.confidence,
+            isCommitted: guess.isCommitted
+        )
+        currentGuess = updated
+        continuation.yield(.guessUpdated(updated))
+        AppLogger.source.info("DemoCaptionSource nudge \(delta, privacy: .public) → lineIdx=\(newIdx, privacy: .public)")
+    }
+
+    public func pause() {
+        guard !isPaused else { return }
+        isPaused = true
+        AppLogger.source.info("DemoCaptionSource paused — engine emissions gated")
+    }
+
+    public func resume() {
+        guard isPaused else { return }
+        isPaused = false
+        AppLogger.source.info("DemoCaptionSource resumed")
+    }
+
+    /// Test-only seam for unit tests that need to drive the source into
+    /// a known guess without playing the full script. Not exposed
+    /// publicly — only callers inside the SangatApp module (including
+    /// the test target via @testable import) can reach this. Don't call
+    /// from production view code.
+    @_spi(Testing)
+    public func _testInject(guess: LineGuess) {
+        currentGuess = guess
     }
 
     // MARK: - Internal
 
     private func apply(step: DemoStep) {
+        // While paused, scripted engine emissions are suppressed so manual
+        // nudges from the Sevadar dock stay put. The playback loop keeps
+        // ticking through delays — on resume, the next scripted step will
+        // apply, matching the live engine's "audio kept coming but UI was
+        // gated" model.
+        guard !isPaused else { return }
+
         if let newState = step.state {
             state = newState
             continuation.yield(.stateChanged(newState))
