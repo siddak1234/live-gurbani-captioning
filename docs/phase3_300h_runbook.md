@@ -157,6 +157,15 @@ training past step 4000. This keeps the trend positive
 epoch finish, then score the final/best v7 adapter on paired benchmark plus
 assisted OOS before promoting or changing architecture.
 
+Step-5000 validation emitted `eval_loss=0.035315320` with
+`eval_runtime=2107.6419s`, `eval_samples_per_second=5.476`, and
+`eval_steps_per_second=0.685`. The improvement is smaller than the earlier
+steps but still positive (`0.03620 -> 0.03565 -> 0.03543 -> 0.03532`), and the
+run continued training past step 5000. This is a normal late-epoch flattening
+pattern, not an overfit signal. Continue the epoch; do not change architecture
+until paired + assisted-OOS scoring says the ASR improvement is failing to move
+the line-alignment runtime.
+
 ## Gates after training
 
 Evaluate the adapter through the current confirmed runtime, not the older
