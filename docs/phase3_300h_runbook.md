@@ -149,6 +149,14 @@ Step-3000 validation then emitted `eval_loss=0.035645694`, saved a complete
 large one-epoch run (`0.03620 -> 0.03565`) rather than showing immediate
 overfit drift.
 
+Step-4000 validation emitted `eval_loss=0.035433434` with
+`eval_runtime=2103.088s`, `eval_samples_per_second=5.488`, and
+`eval_steps_per_second=0.686`. The run resumed after validation and continued
+training past step 4000. This keeps the trend positive
+(`0.03620 -> 0.03565 -> 0.03543`), so the recommended action remains: let the
+epoch finish, then score the final/best v7 adapter on paired benchmark plus
+assisted OOS before promoting or changing architecture.
+
 ## Gates after training
 
 Evaluate the adapter through the current confirmed runtime, not the older
