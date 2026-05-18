@@ -96,6 +96,11 @@ public final class CaptionSourceModel {
 
     public func manuallyCommit(shabadId: Int) {
         source.manuallyCommit(shabadId: shabadId)
+        // Mirror any auto-pause the source applied so the dock's
+        // "Pause auto / Resume" button reflects the actual gating
+        // state. The Sevadar should see "Resume" right after picking,
+        // confirming the engine has been silenced.
+        isPaused = source.isPaused
     }
 
     public func nudge(by delta: Int) {

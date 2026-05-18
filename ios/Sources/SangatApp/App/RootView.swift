@@ -29,12 +29,19 @@ public struct RootView: View {
     @State private var env: AppEnvironment
     @State private var showSettings: Bool = false
     @State private var showShabadPicker: Bool = false
+    @State private var showCastHint: Bool = false
 
     /// Per-session gate flipped by the user tapping Begin on
     /// `SessionStartView`. Resets to false on every cold start since
     /// it's plain `@State`, which is exactly the behavior we want:
     /// every cold start lands on Let's Begin before the Listen page.
     @State private var didStartSession: Bool = false
+
+    /// Owns the external-display UIWindow + observation. `@State` so
+    /// it survives RootView body re-renders; lazily initialized in
+    /// `.task` once the env is fully wired (a UIScreen may already be
+    /// connected at app launch in the simulator).
+    @State private var castCoordinator: CastSceneCoordinator?
 
     public init(env: AppEnvironment? = nil) {
         _env = State(initialValue: env ?? AppEnvironment.production())
@@ -101,8 +108,24 @@ public struct RootView: View {
             .environment(\.themeTokens, env.theme.tokens)
             .preferredColorScheme(env.theme.isDark ? .dark : .light)
         }
+        .sheet(isPresented: $showCastHint) {
+            CastHintSheet(
+                isConnected: castCoordinator?.isExternalScreenConnected ?? false
+            )
+            .environment(env)
+            .environment(\.theme, env.theme)
+            .environment(\.themeTokens, env.theme.tokens)
+            .preferredColorScheme(env.theme.isDark ? .dark : .light)
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
         .task {
             await prepareCaptionSource()
+            // Lazy-init the cast coordinator with the live env. Holds
+            // a weak reference inside, so RootView retains ownership.
+            if castCoordinator == nil {
+                castCoordinator = CastSceneCoordinator(env: env)
+            }
         }
         .animation(
             .easeInOut(duration: 0.25),
@@ -153,6 +176,15 @@ public struct RootView: View {
             // mid-session.
             modeChip
 
+            // "Casting" indicator appears immediately to the right of
+            // the mode chip when the cast coordinator has attached to
+            // an external screen. Subtle by design — it's a status
+            // confirmation, not an action.
+            if castCoordinator?.isExternalScreenConnected == true {
+                castingIndicator
+                    .padding(.leading, env.theme.tokens.spacing.sm)
+            }
+
             Spacer()
 
             settingsGearButton
@@ -175,6 +207,24 @@ public struct RootView: View {
                 .foregroundStyle(env.theme.tokens.colors.ink3)
         }
         .accessibilityIdentifier("root.modeChip")
+    }
+
+    /// Visible only while `castCoordinator.isExternalScreenConnected`.
+    /// Uses the theme's `accent` (saffron / wheat-gold / terracotta)
+    /// to match the cast view's own "Live · Casting from iPhone"
+    /// indicator — same dot color in both surfaces.
+    private var castingIndicator: some View {
+        HStack(spacing: env.theme.tokens.spacing.xs) {
+            Circle()
+                .fill(env.theme.tokens.colors.accent)
+                .frame(width: 6, height: 6)
+            Text("Casting")
+                .font(env.theme.tokens.type.sansCaps)
+                .tracking(0.6)
+                .foregroundStyle(env.theme.tokens.colors.ink3)
+        }
+        .accessibilityIdentifier("root.castingIndicator")
+        .transition(.opacity)
     }
 
     private var backButton: some View {
@@ -251,9 +301,14 @@ public struct RootView: View {
                 showShabadPicker = true
             },
             onCast: {
-                // M5.5 wires real AirPlay; M5.3 logs intent and no-ops.
-                env.haptics.play(.warning)
-                AppLogger.app.info("Sevadar Cast tapped — wiring lands with M5.5")
+                // M5.5: Cast routing is owned by the OS (Control Center
+                // → Screen Mirroring). Tapping this button can't *start*
+                // casting; instead we surface a hint sheet so the user
+                // knows where to find the system control. Once an
+                // external screen connects, CastSceneCoordinator takes
+                // over and the chrome row shows a "Casting" indicator.
+                env.haptics.play(.selection)
+                showCastHint = true
             },
             onEditLayers: {
                 env.haptics.play(.selection)

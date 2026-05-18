@@ -104,6 +104,27 @@ public enum PreviewData {
                 gurmukhi: "ਅਕਾਲ ਮੂਰਤਿ ਅਜੂਨੀ ਸੈਭੰ ਗੁਰ ਪ੍ਰਸਾਦਿ ॥",
                 translit: "Akāl mūraṯ ajūnī saibẖaʼn gur parsāḏ.",
                 english: "Image Of The Undying. Beyond Birth. Self-Existent. By Guru's Grace."
+            ),
+            PreviewLine(
+                idx: 2,
+                verseId: "mool-3",
+                gurmukhi: "॥ ਜਪੁ ॥",
+                translit: "|| Jap ||",
+                english: "Chant And Meditate."
+            ),
+            PreviewLine(
+                idx: 3,
+                verseId: "mool-4",
+                gurmukhi: "ਆਦਿ ਸਚੁ ਜੁਗਾਦਿ ਸਚੁ ॥",
+                translit: "Āḏ sacẖ jugāḏ sacẖ.",
+                english: "True In The Primal Beginning. True Throughout The Ages."
+            ),
+            PreviewLine(
+                idx: 4,
+                verseId: "mool-5",
+                gurmukhi: "ਹੈ ਭੀ ਸਚੁ ਨਾਨਕ ਹੋਸੀ ਭੀ ਸਚੁ ॥੧॥",
+                translit: "Hai bẖī sacẖ Nānak hosī bẖī sacẖ. ||1||",
+                english: "True Here And Now. O Nanak, Forever And Ever True. ||1||"
             )
         ],
         8: [
@@ -113,6 +134,20 @@ public enum PreviewData {
                 gurmukhi: "ਸੋ ਦਰੁ ਕੇਹਾ ਸੋ ਘਰੁ ਕੇਹਾ ਜਿਤੁ ਬਹਿ ਸਰਬ ਸਮਾਲੇ ॥",
                 translit: "So ḏar kehā so gẖar kehā jiṯ bahi sarab samāle.",
                 english: "Where is that Gate, and where is that Dwelling, in which You sit and take care of all?"
+            ),
+            PreviewLine(
+                idx: 1,
+                verseId: "sodar-2",
+                gurmukhi: "ਵਾਜੇ ਨਾਦ ਅਨੇਕ ਅਸੰਖਾ ਕੇਤੇ ਵਾਵਣਹਾਰੇ ॥",
+                translit: "Vāje nāḏ anek asankẖā keṯe vāvaṇhāre.",
+                english: "The Sound-current of the Naad vibrates there, and countless musicians play on all sorts of instruments there."
+            ),
+            PreviewLine(
+                idx: 2,
+                verseId: "sodar-3",
+                gurmukhi: "ਕੇਤੇ ਰਾਗ ਪਰੀ ਸਿਉ ਕਹੀਅਨਿ ਕੇਤੇ ਗਾਵਣਹਾਰੇ ॥",
+                translit: "Keṯe rāg parī si▫o kahī▫an keṯe gāvaṇhāre.",
+                english: "So many Ragas, so many musicians singing there."
             )
         ],
         3: [
@@ -122,6 +157,20 @@ public enum PreviewData {
                 gurmukhi: "ਜੋ ਤੁਧੁ ਭਾਵੈ ਸਾਈ ਭਲੀ ਕਾਰ ॥",
                 translit: "Jo ṯuḏẖ bẖāvai sā▫ī bẖalī kār.",
                 english: "Whatever pleases You is the only good done."
+            ),
+            PreviewLine(
+                idx: 1,
+                verseId: "jotudh-2",
+                gurmukhi: "ਤੂ ਸਦਾ ਸਲਾਮਤਿ ਨਿਰੰਕਾਰ ॥",
+                translit: "Ŧū saḏā salāmaṯ nirankār.",
+                english: "You, Eternal and Formless One."
+            ),
+            PreviewLine(
+                idx: 2,
+                verseId: "jotudh-3",
+                gurmukhi: "ਹੁਕਮੀ ਹੋਵਨਿ ਆਕਾਰ ਹੁਕਮੁ ਨ ਕਹਿਆ ਜਾਈ ॥",
+                translit: "Hukmī hovan ākār hukam na kahi▫ā jā▫ī.",
+                english: "By His Command, bodies are created; His Command cannot be described."
             )
         ],
         660: [
@@ -131,6 +180,20 @@ public enum PreviewData {
                 gurmukhi: "ਹਮ ਆਦਮੀ ਹਾਂ ਇਕ ਦਮੀ ਮੁਹਲਤਿ ਮੁਹਤੁ ਨ ਜਾਣਾ ॥",
                 translit: "Ham āḏmī hāʼn ik ḏamī muhlaṯ muhaṯ na jāṇā.",
                 english: "We are mortal beings of a single breath; we do not know the appointed time of our departure."
+            ),
+            PreviewLine(
+                idx: 1,
+                verseId: "humaadmi-2",
+                gurmukhi: "ਨਾਨਕੁ ਬਿਨਵੈ ਤਿਸੈ ਸਰੇਵਹੁ ਜਾ ਕੇ ਜੀਅ ਪਰਾਣਾ ॥",
+                translit: "Nānak binvai ṯisai sarevhu jā ke jī▫a parāṇā.",
+                english: "Nanak humbly prays — serve the One to whom belong our soul and our breath."
+            ),
+            PreviewLine(
+                idx: 2,
+                verseId: "humaadmi-3",
+                gurmukhi: "ਅੰਧੇ ਜੀਵਨਾ ਵੀਚਾਰਿ ਦੇਖਿ ਕੇਤੇ ਕੇ ਦਿਨਾ ॥੧॥",
+                translit: "Anḏẖe jīvnā vīcẖār ḏekẖ keṯe ke ḏinā. ||1||",
+                english: "O blind one, reflect on your life — see, how many days do you have left? ||1||"
             )
         ],
         4900: [
@@ -140,6 +203,20 @@ public enum PreviewData {
                 gurmukhi: "ਮਿਤ੍ਰ ਪਿਆਰੇ ਨੂੰ ਹਾਲ ਮੁਰੀਦਾਂ ਦਾ ਕਹਿਣਾ ॥",
                 translit: "Miṯar pi▫āre nūʼn hāl murīḏāʼn ḏā kahiṇā.",
                 english: "Tell the state of the disciples to the Beloved Friend."
+            ),
+            PreviewLine(
+                idx: 1,
+                verseId: "mitr-2",
+                gurmukhi: "ਤੁਧੁ ਬਿਨੁ ਰੋਗੁ ਰਜਾਈਆਂ ਦਾ ਓਢਣ ਨਾਗ ਨਿਵਾਸਾਂ ਦੇ ਰਹਿਣਾ ॥",
+                translit: "Ŧuḏẖ bin rog rajā▫ī▫āʼn ḏā odẖaṇ nāg nivāsāʼn ḏe rahiṇā.",
+                english: "Without You, soft blankets feel like disease, and living at home is like dwelling among snakes."
+            ),
+            PreviewLine(
+                idx: 2,
+                verseId: "mitr-3",
+                gurmukhi: "ਸੂਲ ਸੁਰਾਹੀ ਖੰਜਰੁ ਪਿਆਲਾ ਬਿੰਗ ਕਸਾਈਆਂ ਦਾ ਸਹਿਣਾ ॥",
+                translit: "Sūl surāhī kẖanjar pi▫ālā bing kasā▫ī▫āʼn ḏā sahiṇā.",
+                english: "The flask becomes a spike, the cup a dagger; without You, life is enduring the cuts of a butcher."
             )
         ],
         4901: [
@@ -149,6 +226,27 @@ public enum PreviewData {
                 gurmukhi: "ਦੇਹ ਸਿਵਾ ਬਰੁ ਮੋਹਿ ਇਹੈ ਸੁਭ ਕਰਮਨ ਤੇ ਕਬਹੂੰ ਨ ਟਰੋਂ ॥",
                 translit: "Ḏeh sivā bar mohi ihai subẖ karman ṯe kabahūʼn na taroʼn.",
                 english: "Grant me this boon, O God: that I may never shrink from righteous deeds."
+            ),
+            PreviewLine(
+                idx: 1,
+                verseId: "deh-2",
+                gurmukhi: "ਨ ਡਰੋਂ ਅਰਿ ਸੋਂ ਜਬ ਜਾਇ ਲਰੋਂ ਨਿਸਚੈ ਕਰਿ ਅਪਨੀ ਜੀਤ ਕਰੋਂ ॥",
+                translit: "Na daroʼn ar soʼn jab jā▫e laroʼn niscẖai kar apnī jīṯ karoʼn.",
+                english: "May I not fear the foe when I go to fight, and with certainty win my victory."
+            ),
+            PreviewLine(
+                idx: 2,
+                verseId: "deh-3",
+                gurmukhi: "ਅਰੁ ਸਿਖ ਹੌਂ ਆਪਨੇ ਹੀ ਮਨ ਕੌ ਇਹ ਲਾਲਚ ਹਉ ਗੁਨ ਤਉ ਉਚਰੋਂ ॥",
+                translit: "Ar sikẖ haⁿ̃ āpne hī man kau ih lālacẖ ha▫o gun ṯa▫o ucẖroʼn.",
+                english: "And teach my own mind only this longing: that I may forever sing Your praises."
+            ),
+            PreviewLine(
+                idx: 3,
+                verseId: "deh-4",
+                gurmukhi: "ਜਬ ਆਵ ਕੀ ਅਉਧ ਨਿਦਾਨ ਬਨੈ ਅਤਿ ਹੀ ਰਨ ਮੈ ਤਬ ਜੂਝ ਮਰੋਂ ॥੨੩੧॥",
+                translit: "Jab āv kī a▫oḏẖ niḏān banai aṯ hī ran mai ṯab jūjẖ maroʼn. ||231||",
+                english: "And when the final hour of my life comes, may I die fighting in the field of battle. ||231||"
             )
         ]
     ]

@@ -111,12 +111,20 @@ public struct ThemeTokens: Sendable {
         /// Display Gurmukhi — onboarding Welcome card, the biggest type
         /// in the whole app. One step up from `gurmukhiHero`.
         public let gurmukhiDisplay: Font
+        /// Projector / cast Gurmukhi — read at 8-10 ft of distance on a
+        /// 16:9 external display. Bigger than `gurmukhiDisplay` because
+        /// it's never on a phone-held screen. Used only by
+        /// `Features/Cast/CastReadingView`.
+        public let gurmukhiCast: Font
         /// English / translit body.
         public let serif: Font
         /// English translit italic — used for transliteration rows.
         public let serifItalic: Font
         /// Onboarding card title — "How it follows along", role-pick header.
         public let serifTitle: Font
+        /// Cast view's English body — italic serif at projector size,
+        /// readable from the back of a Gurdwara hall.
+        public let serifCastBody: Font
         /// UI chrome — buttons, labels, body copy in chrome.
         public let sans: Font
         /// Small UI text — captions, secondary chrome.
@@ -128,8 +136,8 @@ public struct ThemeTokens: Sendable {
 
         public init(
             gurmukhi: Font, gurmukhiLarge: Font, gurmukhiHero: Font,
-            gurmukhiDisplay: Font,
-            serif: Font, serifItalic: Font, serifTitle: Font,
+            gurmukhiDisplay: Font, gurmukhiCast: Font,
+            serif: Font, serifItalic: Font, serifTitle: Font, serifCastBody: Font,
             sans: Font, sansSmall: Font, sansCaps: Font,
             mono: Font
         ) {
@@ -137,9 +145,11 @@ public struct ThemeTokens: Sendable {
             self.gurmukhiLarge = gurmukhiLarge
             self.gurmukhiHero = gurmukhiHero
             self.gurmukhiDisplay = gurmukhiDisplay
+            self.gurmukhiCast = gurmukhiCast
             self.serif = serif
             self.serifItalic = serifItalic
             self.serifTitle = serifTitle
+            self.serifCastBody = serifCastBody
             self.sans = sans
             self.sansSmall = sansSmall
             self.sansCaps = sansCaps
