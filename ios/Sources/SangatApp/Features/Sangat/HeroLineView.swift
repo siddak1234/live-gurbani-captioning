@@ -97,26 +97,6 @@ public struct HeroLineView: View {
     }
 }
 
-private struct ProgressBar: View {
-
-    @Environment(\.themeTokens) private var tokens
-    let value: Double
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(tokens.colors.rule)
-                Capsule()
-                    .fill(tokens.colors.accent)
-                    .frame(width: max(0, geo.size.width * value))
-            }
-        }
-        .frame(height: 3)
-        .accessibilityHidden(true)
-    }
-}
-
 #Preview("HeroLineView · paper") {
     HeroLineView(guess: PreviewSample.guess(lineIdx: 1))
         .environment(AppEnvironment.preview())

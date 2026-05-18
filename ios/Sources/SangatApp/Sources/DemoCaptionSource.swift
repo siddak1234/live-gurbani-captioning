@@ -79,9 +79,29 @@ public final class DemoCaptionSource: CaptionSource {
             AppLogger.source.debug("DemoCaptionSource.start() ignored — already running")
             return
         }
+
+        // Reset session state. After the user taps the back chevron
+        // (which calls `stop()`), state + currentGuess + isPaused are
+        // preserved so a Sevadar can still see what they were reading.
+        // But the next `start()` call is intent-to-begin-a-fresh-
+        // session — we must clear stale committed state, otherwise
+        // RootView jumps straight from the IdleView "Listen" button to
+        // the previous shabad's reading view, skipping the listening
+        // → tentative → committed transitions entirely. Locked in by
+        // `testStartAfterStopResetsToListening`.
+        if state != .listening || currentGuess != nil || isPaused {
+            state = .listening
+            currentGuess = nil
+            runnerUps = []
+            isPaused = false
+            continuation.yield(.stateChanged(.listening))
+            continuation.yield(.guessUpdated(nil))
+            continuation.yield(.runnerUpsUpdated([]))
+        }
+
         isRunning = true
         continuation.yield(.started)
-        AppLogger.source.info("DemoCaptionSource started")
+        AppLogger.source.info("DemoCaptionSource started — fresh session")
 
         playbackTask = Task { @MainActor [weak self] in
             guard let self else { return }
@@ -144,7 +164,16 @@ public final class DemoCaptionSource: CaptionSource {
         runnerUps = []
         continuation.yield(.runnerUpsUpdated([]))
 
-        AppLogger.source.info("DemoCaptionSource manuallyCommit to shabad #\(shabadId, privacy: .public)")
+        // Auto-pause the scripted engine. The Sevadar's intent when
+        // manually picking a different shabad is "I'm taking control"
+        // — without this, the playback task keeps running and the
+        // next scripted `guessUpdated` event overwrites the manual
+        // selection a few seconds later (the screen flips back to
+        // Tati Vao even though the user picked Hum Aadmi). Sevadar
+        // hits Resume on the dock to let auto-detection drive again.
+        isPaused = true
+
+        AppLogger.source.info("DemoCaptionSource manuallyCommit to shabad #\(shabadId, privacy: .public) — engine auto-paused")
     }
 
     public func nudge(by delta: Int) {

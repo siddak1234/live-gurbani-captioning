@@ -193,6 +193,11 @@ public struct SettingsView: View {
                 RoundedRectangle(cornerRadius: tokens.radii.md, style: .continuous)
                     .stroke(tokens.colors.rule, lineWidth: 0.5)
             )
+
+            Text("Affects the phone only — the projector always shows a single hero line for readability at distance.")
+                .font(tokens.type.sansSmall)
+                .foregroundStyle(tokens.colors.ink3)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -230,6 +235,11 @@ public struct SettingsView: View {
                 RoundedRectangle(cornerRadius: tokens.radii.md, style: .continuous)
                     .stroke(tokens.colors.rule, lineWidth: 0.5)
             )
+
+            Text("Applies to both the phone and the projector — toggle these to control what the sangat sees on screen.")
+                .font(tokens.type.sansSmall)
+                .foregroundStyle(tokens.colors.ink3)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
