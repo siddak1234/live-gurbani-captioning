@@ -19,14 +19,14 @@
 | `v5_mac_baseline` | 200 | 0.6465 | 3.9 min | 22.34 GB (mps_driver) | mps |
 | `v5b_mac_diverse` | 2544 | 0.2486 | 47.8 min | 27.05 GB (mps_driver) | mps |
 | `v6_mac_scale20` | 12216 | 0.0280 | 226.1 min | 27.24 GB (mps_driver) | mps |
-| `v7_mac_300h_epoch1` | 93292 | in progress | in progress (latest checkpoint 8000) | 1.38 GB (mps_driver) | mps |
+| `v7_mac_300h_epoch1` | 93292 | in progress | in progress (latest checkpoint 9000) | 1.38 GB (mps_driver) | mps |
 
 ## Data and artifact footprint
 
 | Path | Size |
 |---|---:|
 | `training_data/` | 31G |
-| `lora_adapters/` | 904M |
+| `lora_adapters/` | 945M |
 | `submissions/` | 4.1M |
 | `asr_cache/` | 308K |
 
@@ -36,7 +36,7 @@
 - The M4 Pro is being used correctly for the training work we have actually approved: PyTorch MPS, not CPU.
 - The confirmed loop-align runtime reached a local plateau at 92.8% paired / 60.8% assisted-OOS.
 - That plateau justified the current controlled v7 300h-source epoch-1 run; this is no longer an underuse-of-M4 question.
-- v7 epoch 1 is currently in progress with complete trainer state through checkpoint 8000.
+- v7 epoch 1 is currently in progress with complete trainer state through checkpoint 9000.
 - The interrupted first v7 attempt recorded ~38.82 GB peak MPS driver memory at step 1000, so this workload is using most of the 48 GB M4 Pro envelope.
 - The correct action is to finish epoch 1, then evaluate the final/best v7 adapter through the confirmed paired + assisted-OOS gates.
 - Do not automatically expand to 3 epochs or multiple seeds. Promotion requires beating 92.8% paired and 60.8% assisted-OOS with locks preserved.

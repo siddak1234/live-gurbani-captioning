@@ -189,6 +189,16 @@ mid-run. It does mean the next decision must come from paired + assisted-OOS
 runtime metrics. If those metrics do not move, the bottleneck is likely
 alignment/runtime behavior rather than acoustic loss alone.
 
+Step-9000 validation emitted `eval_loss=0.035123996` with
+`eval_runtime=2134.5091s`, `eval_samples_per_second=5.407`, and
+`eval_steps_per_second=0.676`. `trainer_state.json` moved
+`best_model_checkpoint` to `checkpoint-9000`. The improvement is very small but
+still monotonic (`0.03620 -> 0.03565 -> 0.03543 -> 0.03532 -> 0.03524 ->
+0.03516 -> 0.03514 -> 0.03512`). Continue to epoch end. The key experimental
+question is no longer "does the adapter keep lowering held-out loss?" It is
+"does the lower loss move the confirmed paired/OOS runtime metrics toward the
+95% target?"
+
 ## Gates after training
 
 Evaluate the adapter through the current confirmed runtime, not the older

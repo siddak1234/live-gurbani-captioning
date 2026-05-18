@@ -182,10 +182,10 @@ line-path problem is solved.
 ## Current next step
 
 Keep the v7 300h-source epoch-1 run alive and documented. The held-out
-validation loss has improved through checkpoint 8000:
+validation loss has improved through checkpoint 9000:
 
 ```text
-0.03620 -> 0.03565 -> 0.03543 -> 0.03532 -> 0.03524 -> 0.03516 -> 0.03514
+0.03620 -> 0.03565 -> 0.03543 -> 0.03532 -> 0.03524 -> 0.03516 -> 0.03514 -> 0.03512
 ```
 
 The curve is flattening, but it is not reversing. Therefore the expert move is:
