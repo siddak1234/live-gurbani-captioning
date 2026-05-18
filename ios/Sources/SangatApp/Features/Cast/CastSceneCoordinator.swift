@@ -34,6 +34,25 @@ import UIKit
 @Observable
 public final class CastSceneCoordinator {
 
+    /// Pure policy: is the dedicated cast projector window allowed
+    /// for the given mode? Cast is a **Sevadar-only** surface — see
+    /// `RolePickCard` / `RolePickerSheet` onboarding copy ("cast to
+    /// the projector") and the fact that `SevadarDock` is the only
+    /// in-app surface with an `onCast` affordance. A Sangat-mode
+    /// user connecting an external display falls back to whatever
+    /// iOS shows by default (typically a black screen with the app
+    /// icon) — we do not host a projector window for them.
+    ///
+    /// Used by `attach(to:)` to early-return and by
+    /// `modeDidChange(to:)` to reactively detach when a user flips
+    /// from Sevadar to Sangat mid-session.
+    public static func shouldHostCastSurface(for mode: AppMode) -> Bool {
+        switch mode {
+        case .sevadar:  return true
+        case .sangat:   return false
+        }
+    }
+
     /// True while an external display is connected and the cast window
     /// is mounted. Observable so the phone's chrome row can show a
     /// small "Casting" indicator without polling.
@@ -97,6 +116,45 @@ public final class CastSceneCoordinator {
         #endif
     }
 
+    // MARK: - Reactive role gate
+
+    /// Called from `RootView` on `env.mode` changes. If the user
+    /// switches to Sangat while a projector window is mounted, we
+    /// tear it down. If they switch to Sevadar while an external
+    /// screen is physically connected (and we were skipping the
+    /// attach for role reasons), we mount it now. Idempotent.
+    ///
+    /// Lives **outside** the `#if canImport(UIKit)` block so the
+    /// macOS test host can call it (no projector window can exist
+    /// there, but the observable state still transitions correctly).
+    public func modeDidChange(to newMode: AppMode) {
+        let allowed = Self.shouldHostCastSurface(for: newMode)
+        switch (allowed, isExternalScreenConnected) {
+        case (false, true):
+            AppLogger.cast.info("modeDidChange → \(newMode.rawValue, privacy: .public); tearing down cast window")
+            #if canImport(UIKit) && os(iOS)
+            detach()
+            #else
+            // No projector window can exist without UIKit; just clear
+            // the observable flags so callers see a consistent state.
+            isExternalScreenConnected = false
+            externalScreenName = nil
+            #endif
+        case (true, false):
+            #if canImport(UIKit) && os(iOS)
+            // Re-scan: if an external screen is currently attached at
+            // the OS level, attempt the projector mount now that role
+            // permits it.
+            if let screen = UIScreen.screens.first(where: { $0 !== UIScreen.main }) {
+                AppLogger.cast.info("modeDidChange → sevadar; external screen present, attempting attach")
+                attach(to: screen)
+            }
+            #endif
+        case (true, true), (false, false):
+            break  // already in the right state
+        }
+    }
+
     #if canImport(UIKit) && os(iOS)
 
     // MARK: - Screen observation
@@ -143,6 +201,15 @@ public final class CastSceneCoordinator {
         }
         guard let env else {
             AppLogger.cast.error("attach failed — env was deallocated")
+            return
+        }
+        // Role gate (carried-forward M5.5 finding, fixed in M5.4.1
+        // touch): cast is a Sevadar-only surface. A Sangat-mode user
+        // connecting an external display must not auto-mount the
+        // projector window. If they switch to Sevadar mid-session,
+        // `modeDidChange(to:)` will attempt the attach.
+        guard Self.shouldHostCastSurface(for: env.mode) else {
+            AppLogger.cast.info("attach skipped — current mode is \(env.mode.rawValue, privacy: .public); cast is Sevadar-only")
             return
         }
 
