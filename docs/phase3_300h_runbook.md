@@ -21,6 +21,16 @@ Pull the large filtered slice from the full canonical 300h dataset:
 make data-v7-300h
 ```
 
+If Hugging Face/Xet stalls on a `.incomplete` blob with no clip-count growth,
+restart the pull through the regular HTTP path:
+
+```bash
+HF_HUB_DISABLE_XET=1 make data-v7-300h
+```
+
+That workaround was required on 2026-05-17: the first attempt hung on shard 81
+with a CloudFront socket in `CLOSE_WAIT`; the HTTP-path restart completed.
+
 This writes:
 
 - `training_data/v7_mac_300h/manifest_train.json`
@@ -43,8 +53,13 @@ multi-seed budget.
 Based on the v6 run:
 
 - v6: 24.6 h training audio, 3 epochs, 3.8 h wall-clock, 27.2 GB peak MPS memory.
-- v7 epoch-1 estimate: roughly 12-18 h wall-clock if the filtered pull lands
-  near the full 300h scale.
+- v7 pull result (2026-05-17): 116,246 clean clips, 235.96 h total, 188.61 h
+  train, 23.79 h val, 23.57 h test. The target name remains `v7_mac_300h`
+  because it scans the full canonical 300h source, but after quality/duration
+  filters the usable training split is ~189 h.
+- v7 epoch-1 estimate: roughly 8-12 h wall-clock on M4 Pro for the 188.61 h
+  train split, extrapolating from the v6 wall-clock and allowing overhead for
+  validation/checkpointing.
 - Disk: 35-60 GB for clips plus parquet cache is expected and acceptable on
   this machine (`df -h` showed >700 GB free at checkpoint time).
 
@@ -60,6 +75,15 @@ After `make data-v7-300h`, inspect `data_card.md`:
 
 If the data card fails, do not train. Adjust shard range / score threshold /
 diversity floors and re-pull.
+
+The 2026-05-17 v7 pull passed the pre-training gates:
+
+- holdout counters: `holdout_shabad=0`, `holdout_video=0`,
+  `holdout_content=0`;
+- diversity: 296 videos, 1,751 shabad tokens;
+- train/val/test split: `split_by=shabad`, 0 shabad overlap across splits;
+- score floor: min score 0.800, split mean scores ~0.96;
+- `manifest.json` is identical to `manifest_train.json` for back-compat.
 
 ## Gates after training
 
