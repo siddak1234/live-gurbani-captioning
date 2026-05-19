@@ -78,40 +78,121 @@ def _run_whisperkittools(model_path_or_id: str, output_dir: pathlib.Path,
                          cfg: dict) -> int:
     """Shell out to whisperkittools to compile the model to Core ML.
 
-    Uses the CLI form (``python -m whisperkittools.generate ...``) because the
-    Python API isn't stable across versions; the CLI flags are. If
-    whisperkittools' invocation contract changes upstream, only this function
-    needs to update.
-    """
-    package_name = cfg.get("package_name", "whisper-ane")
-    quant = cfg.get("quantization", {})
-    encoder_q = quant.get("encoder", "q4")
-    decoder_q = quant.get("decoder", "q4")
-    od_mbp = cfg.get("od_mbp", True)
-    stateful = cfg.get("stateful_encoder", True)
-    ane_attn = cfg.get("ane_attention", True)
-    precision = cfg.get("compute_precision", "fp16")
+    Uses the CLI form because the Python API isn't stable across versions;
+    the CLI is the contract. If the invocation surface changes upstream
+    again, only this function needs to update.
 
+    Compatibility note (M5.7 / May 19, 2026)
+    ----------------------------------------
+    The argmaxinc/whisperkittools repo now installs as the ``whisperkit``
+    Python package + ``whisperkit-generate-model`` console script (was
+    ``python -m whisperkittools.generate`` in 0.1.x). The CLI surface
+    shrank significantly along with the rename:
+
+      Dropped flags (no longer accepted):
+        --package-name          (output directory now uses model-version)
+        --encoder-quantization  (use --allowed-nbits + --outlier-decomp)
+        --decoder-quantization  (same)
+        --compute-precision     (no per-component override)
+        --stateful-encoder      (SDPA impl is now the streaming knob)
+        --ane-attention         (always on; ANE is the default target)
+
+      Renamed:
+        --enable-od-mbp  →  --outlier-decomp
+
+      New (now-supported) knobs:
+        --allowed-nbits N                       (4, 6, 8 …)
+        --generate-quantized-variants           (produces multiple)
+        --disable-default-tests                 (skip post-export tests)
+        --audio-encoder-sdpa-implementation     (cache shape)
+        --text-decoder-sdpa-implementation
+        --palettization-group-size
+
+    The YAML in configs/export/coreml_ane.yaml keeps the legacy keys so
+    older docs still read true; we map a small subset to the new CLI and
+    log what we ignored. Anything not actively wired here is currently a
+    no-op until / unless we choose to surface it again.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Resolve the binary. `shutil.which` only checks `$PATH`, which won't
+    # include the venv's `bin/` when this script is launched via
+    # `.venv/bin/python scripts/export_coreml.py` without first activating
+    # the venv. So look next to the active interpreter first (that's where
+    # `pip install whisperkit` drops the console script), then fall back
+    # to `$PATH`, then to a bare name as last resort.
+    interp_bin = pathlib.Path(sys.executable).parent / "whisperkit-generate-model"
+    if interp_bin.exists():
+        binary = str(interp_bin)
+    else:
+        binary = shutil.which("whisperkit-generate-model") or "whisperkit-generate-model"
+
+    quant = cfg.get("quantization", {})
+    # Pick the dominant encoder bit-width as the single --allowed-nbits.
+    # The new CLI doesn't split encoder vs. decoder; if a future profile
+    # wants split widths, use --generate-quantized-variants and pick.
+    nbits = _quant_to_nbits(quant.get("encoder")) or _quant_to_nbits(quant.get("decoder"))
+    od_mbp = bool(cfg.get("od_mbp", True))
+
+    # Components the new CLI no longer exposes — log so the user knows
+    # we read these from the YAML and chose not to honor them.
+    ignored: list[str] = []
+    if cfg.get("stateful_encoder") is not None:
+        ignored.append("stateful_encoder")
+    if cfg.get("ane_attention") is not None:
+        ignored.append("ane_attention")
+    if cfg.get("compute_precision") is not None:
+        ignored.append("compute_precision")
+    if cfg.get("package_name") is not None:
+        ignored.append("package_name")
+    if ignored:
+        print(f"  note: legacy YAML keys ignored by whisperkit ≥ 0.4: {', '.join(ignored)}")
+
     cmd = [
-        sys.executable, "-m", "whisperkittools.generate",
+        binary,
         "--model-version", model_path_or_id,
         "--output-dir", str(output_dir),
-        "--package-name", package_name,
-        "--encoder-quantization", encoder_q,
-        "--decoder-quantization", decoder_q,
-        "--compute-precision", precision,
     ]
-    if od_mbp:
-        cmd.append("--enable-od-mbp")
-    if stateful:
-        cmd.append("--stateful-encoder")
-    if ane_attn:
-        cmd.append("--ane-attention")
+    # Important: do NOT pass `--disable-default-tests` here. In the
+    # current whisperkittools, the "default tests" entry points
+    # (`test_audio_encoder.main` / `test_text_decoder.main`) are *also*
+    # the only paths that emit `AudioEncoder.mlmodelc` and
+    # `TextDecoder.mlmodelc`. Disabling them silently produces an
+    # incomplete package containing only `MelSpectrogram.mlmodelc`,
+    # which then fails to load through WhisperKit on iOS. Caught the
+    # hard way during the first M5.7 export run.
+    if nbits is not None:
+        # `--generate-quantized-variants` requires `--allowed-nbits`
+        # and is the *only* way to produce the palletized variant
+        # (without this flag the run emits the fp16 baseline only —
+        # ~465 MB for whisper-small, too big for the iOS bundle).
+        cmd += [
+            "--generate-quantized-variants",
+            "--allowed-nbits", str(nbits),
+        ]
+        if od_mbp:
+            # OD-MBP only makes sense alongside quantization.
+            cmd.append("--outlier-decomp")
 
     print(f"\n→ {' '.join(cmd)}\n")
     return subprocess.call(cmd)
+
+
+def _quant_to_nbits(value) -> int | None:
+    """Best-effort YAML-string → bit-width int. Returns None if not a
+    quantized setting (e.g. ``"fp16"`` or missing). The legacy YAML uses
+    ``q4``/``q8``; the new CLI takes the integer directly."""
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    s = str(value).strip().lower()
+    if s.startswith("q") and s[1:].isdigit():
+        return int(s[1:])
+    if s.isdigit():
+        return int(s)
+    # "auto", "fp16", "float32", etc. → no quantization
+    return None
 
 
 def _validate_parity(mlpackage_path: pathlib.Path, base_model_id: str,
