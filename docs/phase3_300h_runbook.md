@@ -280,3 +280,20 @@ PYTHON=.venv/bin/python3 make train-v7-300h \
 Do not start seed sweeps yet. First prove that epochs 2-3 improve runtime
 metrics beyond `93.1%` / `61.3%`; if they do not, the next bottleneck is again
 runtime alignment or candidate resolution rather than raw acoustic scale.
+
+
+## Epoch-2 continuation checkpoint — step 12000
+
+Step-12000 validation completed during the controlled continuation from
+`checkpoint-11661` toward 3 epochs:
+
+- `eval_loss=0.03508933633565903`
+- previous best at step 11000: `0.03510706499218941`
+- relative improvement: about `0.05%`
+- `best_model_checkpoint` moved to
+  `lora_adapters/v7_mac_300h_epoch1/checkpoint-12000`
+
+Decision: continue. This is not an overfit signal; held-out shabad validation
+is still improving, albeit slowly. Keep monitoring at `checkpoint-13000` and
+beyond. If future evals regress for two consecutive checkpoints, pause and score
+the best saved checkpoint rather than spending compute blindly.
