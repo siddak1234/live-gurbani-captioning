@@ -23,7 +23,15 @@ public struct HistoryView: View {
 
     @State private var entries: [SessionEntry] = []
 
-    public init() {}
+    /// M5.6 hook. Fires when the Sevadar long-presses a past history
+    /// row, signaling "this entry was the wrong shabad". Host
+    /// (Settings → History sheet in RootView) presents a follow-up
+    /// picker so the user can supply the corrected shabad id.
+    public let onFlagWrongShabad: ((SessionEntry) -> Void)?
+
+    public init(onFlagWrongShabad: ((SessionEntry) -> Void)? = nil) {
+        self.onFlagWrongShabad = onFlagWrongShabad
+    }
 
     public var body: some View {
         ZStack(alignment: .top) {
@@ -43,7 +51,13 @@ public struct HistoryView: View {
                             ForEach(entries) { entry in
                                 HistoryRow(
                                     entry: entry,
-                                    activeShabadId: env.captionModel.committedShabadId
+                                    activeShabadId: env.captionModel.committedShabadId,
+                                    onFlag: onFlagWrongShabad.map { handler in
+                                        {
+                                            env.haptics.play(.warning)
+                                            handler(entry)
+                                        }
+                                    }
                                 )
                                 Divider().background(tokens.colors.ruleSoft)
                             }
@@ -148,6 +162,11 @@ private struct HistoryRow: View {
     let entry: SessionEntry
     let activeShabadId: Int?
 
+    /// Non-nil → row exposes a "Flag as wrong" context-menu item.
+    /// Nil → no menu, row is read-only (the natural state outside
+    /// the Sevadar correction flow).
+    let onFlag: (() -> Void)?
+
     var body: some View {
         HStack(alignment: .center, spacing: tokens.spacing.md) {
             Text(timeText)
@@ -179,6 +198,17 @@ private struct HistoryRow: View {
         .padding(.vertical, tokens.spacing.sm + 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(entry.firstLineGurmukhi). Ang \(entry.ang). \(durationText).")
+        .contentShape(Rectangle())
+        .contextMenu {
+            if let onFlag {
+                Button(role: .destructive) {
+                    onFlag()
+                } label: {
+                    Label("Flag as wrong shabad", systemImage: "flag.fill")
+                }
+                .accessibilityIdentifier("history.row.flag")
+            }
+        }
     }
 
     private var timeText: String {

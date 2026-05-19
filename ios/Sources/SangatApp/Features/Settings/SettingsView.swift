@@ -26,6 +26,12 @@ public struct SettingsView: View {
 
     @State private var showConfidence: Bool = false
     @State private var showHistory: Bool = false
+    @State private var showCorrections: Bool = false
+
+    /// M5.6: when the Sevadar long-presses a history row, we surface a
+    /// follow-up sheet so they can supply the correct shabad. Nil →
+    /// no sheet; non-nil → the row being retroactively flagged.
+    @State private var pendingRetroactiveFlag: PendingRetroactiveFlag?
 
     public init() {}
 
@@ -51,6 +57,8 @@ public struct SettingsView: View {
                     if env.mode == .sevadar {
                         sevadarToolsSection
                     }
+
+                    improveDetectionSection
                 }
                 .padding(.horizontal, tokens.spacing.edge)
                 .padding(.top, tokens.spacing.xxl)
@@ -58,20 +66,128 @@ public struct SettingsView: View {
             }
         }
         .sheet(isPresented: $showConfidence) {
-            ConfidenceView()
-                .environment(env)
-                .environment(\.theme, env.theme)
-                .environment(\.themeTokens, env.theme.tokens)
-                .preferredColorScheme(env.theme.isDark ? .dark : .light)
+            ConfidenceView(
+                onEndorseRunnerUp: { shabadId in
+                    recordRunnerUpEndorsement(endorsedShabadId: shabadId)
+                    env.haptics.play(.success)
+                    env.captionModel.manuallyCommit(shabadId: shabadId)
+                }
+            )
+            .environment(env)
+            .environment(\.theme, env.theme)
+            .environment(\.themeTokens, env.theme.tokens)
+            .preferredColorScheme(env.theme.isDark ? .dark : .light)
         }
         .sheet(isPresented: $showHistory) {
-            HistoryView()
+            HistoryView(
+                onFlagWrongShabad: { entry in
+                    pendingRetroactiveFlag = PendingRetroactiveFlag(entry: entry)
+                }
+            )
+            .environment(env)
+            .environment(\.theme, env.theme)
+            .environment(\.themeTokens, env.theme.tokens)
+            .preferredColorScheme(env.theme.isDark ? .dark : .light)
+        }
+        .sheet(item: $pendingRetroactiveFlag) { pending in
+            // Reusing the picker as the "supply the correct shabad"
+            // surface. Same atom, framed for retroactive use.
+            WrongShabadSheet(
+                predictedShabadId: pending.entry.shabadId,
+                onCorrect: { correctedShabadId in
+                    recordRetroactiveFlag(
+                        entry: pending.entry,
+                        correctedShabadId: correctedShabadId
+                    )
+                    env.haptics.play(.success)
+                    pendingRetroactiveFlag = nil
+                }
+            )
+            .environment(env)
+            .environment(\.theme, env.theme)
+            .environment(\.themeTokens, env.theme.tokens)
+            .preferredColorScheme(env.theme.isDark ? .dark : .light)
+        }
+        .sheet(isPresented: $showCorrections) {
+            CorrectionsSettingsView()
                 .environment(env)
                 .environment(\.theme, env.theme)
                 .environment(\.themeTokens, env.theme.tokens)
                 .preferredColorScheme(env.theme.isDark ? .dark : .light)
         }
         .accessibilityIdentifier("settings.root")
+    }
+
+    // MARK: - Improve detection (M5.6)
+
+    private var improveDetectionSection: some View {
+        VStack(alignment: .leading, spacing: tokens.spacing.md) {
+            SectionLabel("Improve detection")
+
+            VStack(spacing: 0) {
+                SevadarToolRow(
+                    icon: "sparkles",
+                    title: "Help improve detection",
+                    subtitle: env.preferences.correctionsOptIn
+                        ? "On · corrections saved on this device"
+                        : "Off · corrections discarded"
+                ) {
+                    env.haptics.play(.selection)
+                    showCorrections = true
+                }
+                .accessibilityIdentifier("settings.corrections")
+            }
+            .background(tokens.colors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: tokens.radii.md, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: tokens.radii.md, style: .continuous)
+                    .stroke(tokens.colors.rule, lineWidth: 0.5)
+            )
+        }
+    }
+
+    // MARK: - Correction emission helpers (M5.6)
+
+    /// Same gate every emission site funnels through; mirrors the
+    /// helper in `RootView` so the contract is uniform across files.
+    private func recordIfOptedIn(_ build: () -> CorrectionEvent) {
+        guard env.preferences.correctionsOptIn else {
+            AppLogger.corrections.debug("Correction skipped — user has not opted in")
+            return
+        }
+        env.correctionLog.record(build())
+    }
+
+    private func recordRunnerUpEndorsement(endorsedShabadId: Int) {
+        let currentGuess = env.captionModel.currentGuess
+        let predictedId = currentGuess?.shabadId ?? env.captionModel.committedShabadId
+        guard let predictedId, predictedId != endorsedShabadId else { return }
+        let runnerUps = Dictionary(
+            uniqueKeysWithValues: env.captionModel.runnerUps.map { ($0.shabadId, $0.confidence) }
+        )
+        recordIfOptedIn {
+            CorrectionEventBuilder.makeRunnerUpEndorsed(
+                sessionId: env.sessionId,
+                predictedShabadId: predictedId,
+                predictedConfidence: currentGuess?.confidence,
+                runnerUps: runnerUps,
+                endorsedShabadId: endorsedShabadId,
+                engineStateRaw: CorrectionEventBuilder.engineStateRaw(env.captionModel.state)
+            )
+        }
+    }
+
+    private func recordRetroactiveFlag(entry: SessionEntry, correctedShabadId: Int) {
+        guard entry.shabadId != correctedShabadId else { return }
+        recordIfOptedIn {
+            CorrectionEventBuilder.makeRetroactive(
+                sessionId: env.sessionId,
+                flaggedShabadId: entry.shabadId,
+                correctedShabadId: correctedShabadId,
+                flaggedAt: entry.timestamp,
+                engineStateRaw: CorrectionEventBuilder.engineStateRaw(env.captionModel.state)
+            )
+        }
     }
 
     private var sevadarToolsSection: some View {
@@ -448,4 +564,19 @@ private struct SevadarToolRow: View {
     SettingsView()
         .environment(AppEnvironment.preview(theme: .mool, mode: .sevadar))
         .previewTheme(.mool)
+}
+
+// MARK: - Identifiable shim for retroactive-flag follow-up sheet
+
+/// Wraps `SessionEntry` so SwiftUI's `.sheet(item:)` can drive the
+/// "supply the corrected shabad" picker. Fresh UUID per construction
+/// so the sheet re-presents if the user flags two entries back-to-back.
+private struct PendingRetroactiveFlag: Identifiable {
+    let id: UUID
+    let entry: SessionEntry
+
+    init(entry: SessionEntry) {
+        self.id = UUID()
+        self.entry = entry
+    }
 }

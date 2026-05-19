@@ -76,6 +76,30 @@ public final class AppEnvironment {
         didSet { preferences.meaningEnabled = meaningEnabled }
     }
 
+    // MARK: - Session identity (M5.6)
+
+    /// Identifier for the current "session" — the span between a
+    /// Let's Begin tap and either the next Let's Begin or app exit.
+    /// Stamped onto every `CorrectionEvent` so the off-device fine-
+    /// tune pipeline can group user corrections by sitting.
+    ///
+    /// Seeded at init so the field is always populated (the type is
+    /// non-optional `UUID`), and re-rolled by `startNewSession()`
+    /// when RootView observes the Let's Begin transition.
+    ///
+    /// Not persisted to `Preferences` — a session is by definition
+    /// in-memory; cold launches always start a fresh one.
+    public private(set) var sessionId: UUID = UUID()
+
+    /// Roll a fresh `sessionId`. Called by RootView when the user
+    /// taps Let's Begin (the `didStartSession` false→true transition).
+    /// Idempotent for callers — calling twice in a row generates two
+    /// different ids, which is the intended semantics.
+    public func startNewSession() {
+        sessionId = UUID()
+        AppLogger.app.info("AppEnvironment: started new session \(self.sessionId.uuidString, privacy: .public)")
+    }
+
     // MARK: - Init
 
     public init(
@@ -122,7 +146,10 @@ public final class AppEnvironment {
 
         return AppEnvironment(
             captionSource: source,
-            correctionLog: NoopCorrectionLog(),
+            // M5.6.x: session-scoped log instead of the noop. Real
+            // counts surface in Settings → Improve detection. Durable
+            // persistence across app launches remains M5.8.
+            correctionLog: InMemoryCorrectionLog(),
             preferences: preferences,
             haptics: haptics,
             sessionHistory: InMemorySessionHistoryStore(),
@@ -131,8 +158,14 @@ public final class AppEnvironment {
     }
 
     /// In-memory environment for tests + previews. No bundle loads.
+    ///
+    /// `correctionLog` defaults to `NoopCorrectionLog`; tests can pass
+    /// a `CorrectionLogSpy` (defined in `SangatAppTests`) to inspect
+    /// emissions through the M5.6 wiring without touching the
+    /// production seam.
     public static func preview(
         captionSource: (any CaptionSource)? = nil,
+        correctionLog: (any CorrectionLog)? = nil,
         theme: Theme = .default,
         mode: AppMode = .sangat,
         hasCompletedOnboarding: Bool = true,
@@ -146,7 +179,11 @@ public final class AppEnvironment {
         let source = captionSource ?? DemoCaptionSource(script: .quickCommit)
         return AppEnvironment(
             captionSource: source,
-            correctionLog: NoopCorrectionLog(),
+            // M5.6.x: preview default mirrors production. Tests that
+            // want to inspect emissions inject `CorrectionLogSpy`
+            // explicitly via the `correctionLog:` parameter; tests
+            // that want absolute discard can pass `NoopCorrectionLog()`.
+            correctionLog: correctionLog ?? InMemoryCorrectionLog(),
             preferences: prefs,
             haptics: NoopHapticsService(),
             sessionHistory: InMemorySessionHistoryStore(),
@@ -159,7 +196,15 @@ public final class AppEnvironment {
     private static func makeCaptionSource(flags: FeatureFlags) -> any CaptionSource {
         if flags.useDemoSource {
             AppLogger.app.info("AppEnvironment using DemoCaptionSource")
-            return DemoCaptionSource()
+            // M5.6.x: pass the PreviewData-backed line count so the
+            // demo source's synthetic auto-advance (post-manualCommit)
+            // wraps at the correct line count per shabad. The
+            // production call goes through PreviewData rather than
+            // the env's `totalLines(forShabadId:)` to avoid the env-
+            // is-not-yet-built chicken-and-egg.
+            return DemoCaptionSource(
+                totalLinesProvider: { PreviewData.lineCount(forShabadId: $0) }
+            )
         }
         do {
             let corpus = try ShabadCorpus.loadFromBundle()
@@ -171,7 +216,9 @@ public final class AppEnvironment {
             return LiveCaptionSource(corpus: corpus, config: config)
         } catch {
             AppLogger.app.error("AppEnvironment failed to construct LiveCaptionSource — \(error.localizedDescription, privacy: .public). Falling back to DemoCaptionSource so the app remains usable.")
-            return DemoCaptionSource()
+            return DemoCaptionSource(
+                totalLinesProvider: { PreviewData.lineCount(forShabadId: $0) }
+            )
         }
     }
 }

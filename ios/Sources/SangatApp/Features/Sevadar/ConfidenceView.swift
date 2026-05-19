@@ -24,7 +24,15 @@ public struct ConfidenceView: View {
     @Environment(\.themeTokens) private var tokens
     @Environment(\.dismiss) private var dismiss
 
-    public init() {}
+    /// M5.6 hook. Fires when the Sevadar taps a non-committed
+    /// candidate row, signaling "this one is right" before the engine
+    /// commits. Owner (Settings → Confidence sheet host in RootView)
+    /// is responsible for `manuallyCommit` + `correctionLog.record`.
+    public let onEndorseRunnerUp: ((Int) -> Void)?
+
+    public init(onEndorseRunnerUp: ((Int) -> Void)? = nil) {
+        self.onEndorseRunnerUp = onEndorseRunnerUp
+    }
 
     public var body: some View {
         ZStack(alignment: .top) {
@@ -128,11 +136,16 @@ public struct ConfidenceView: View {
         } else {
             VStack(spacing: tokens.spacing.xs + 2) {
                 if let committed {
+                    // The committed row is never tappable — tapping it
+                    // would be a self-endorsement, which the engine
+                    // already has. `onSelect = nil` disables the
+                    // gesture and the visual affordance.
                     CandidateRow(
                         shabadId: committed.shabadId,
                         title: candidateTitle(forShabadId: committed.shabadId),
                         score: committed.confidence,
-                        isCommitted: true
+                        isCommitted: true,
+                        onSelect: nil
                     )
                 }
                 ForEach(runners.prefix(4), id: \.shabadId) { runner in
@@ -140,7 +153,8 @@ public struct ConfidenceView: View {
                         shabadId: runner.shabadId,
                         title: candidateTitle(forShabadId: runner.shabadId),
                         score: runner.confidence,
-                        isCommitted: false
+                        isCommitted: false,
+                        onSelect: { onEndorseRunnerUp?(runner.shabadId) }
                     )
                 }
             }
@@ -214,8 +228,13 @@ private struct CandidateRow: View {
     let score: Double
     let isCommitted: Bool
 
+    /// Non-nil → row is tappable and signals endorsement. Nil → row
+    /// is display-only (committed rows, or when the host doesn't wire
+    /// the endorsement path).
+    let onSelect: (() -> Void)?
+
     var body: some View {
-        HStack(spacing: tokens.spacing.sm) {
+        let rowContent = HStack(spacing: tokens.spacing.sm) {
             Text("#\(shabadId)")
                 .font(tokens.type.mono)
                 .foregroundStyle(tokens.colors.ink3)
@@ -242,6 +261,18 @@ private struct CandidateRow: View {
             RoundedRectangle(cornerRadius: tokens.radii.sm, style: .continuous)
                 .stroke(isCommitted ? Color.clear : tokens.colors.ruleSoft, lineWidth: 1)
         )
+        .contentShape(Rectangle())
+
+        if let onSelect {
+            Button(action: onSelect) {
+                rowContent
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("confidence.candidate.\(shabadId)")
+        } else {
+            rowContent
+                .accessibilityIdentifier("confidence.candidate.\(shabadId)")
+        }
     }
 }
 

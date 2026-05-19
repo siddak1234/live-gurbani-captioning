@@ -25,9 +25,24 @@ public struct ShabadPickerView: View {
 
     public let onPick: (Int) -> Void
 
-    public init(viewModel: ShabadPickerViewModel, onPick: @escaping (Int) -> Void) {
+    /// Header text rendered above the search bar. Defaults to the
+    /// Sevadar "Pick shabad" copy. M5.6 reuses the same picker as the
+    /// Sangat "Wrong shabad" sheet with different framing strings;
+    /// keeping the override here means there's still one picker, one
+    /// search engine, and one row atom.
+    public let headerTitle: String
+    public let headerSubtitle: String?
+
+    public init(
+        viewModel: ShabadPickerViewModel,
+        onPick: @escaping (Int) -> Void,
+        headerTitle: String = "Pick shabad",
+        headerSubtitle: String? = nil
+    ) {
         _viewModel = State(initialValue: viewModel)
         self.onPick = onPick
+        self.headerTitle = headerTitle
+        self.headerSubtitle = headerSubtitle
     }
 
     public var body: some View {
@@ -67,24 +82,33 @@ public struct ShabadPickerView: View {
     }
 
     private var titleRow: some View {
-        HStack(alignment: .lastTextBaseline) {
-            Text("Pick shabad")
-                .font(tokens.type.serifTitle)
-                .foregroundStyle(tokens.colors.ink)
-                .accessibilityAddTraits(.isHeader)
+        VStack(alignment: .leading, spacing: tokens.spacing.xs) {
+            HStack(alignment: .lastTextBaseline) {
+                Text(headerTitle)
+                    .font(tokens.type.serifTitle)
+                    .foregroundStyle(tokens.colors.ink)
+                    .accessibilityAddTraits(.isHeader)
 
-            Spacer()
+                Spacer()
 
-            Button {
-                env.haptics.play(.selection)
-                dismiss()
-            } label: {
-                Text("Cancel")
-                    .font(tokens.type.sans.weight(.semibold))
-                    .foregroundStyle(tokens.colors.accent)
+                Button {
+                    env.haptics.play(.selection)
+                    dismiss()
+                } label: {
+                    Text("Cancel")
+                        .font(tokens.type.sans.weight(.semibold))
+                        .foregroundStyle(tokens.colors.accent)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("shabadPicker.cancel")
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("shabadPicker.cancel")
+
+            if let headerSubtitle, !headerSubtitle.isEmpty {
+                Text(headerSubtitle)
+                    .font(tokens.type.sansSmall)
+                    .foregroundStyle(tokens.colors.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(.horizontal, tokens.spacing.edge)
         .padding(.top, tokens.spacing.lg)
