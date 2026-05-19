@@ -192,12 +192,25 @@ alignment/runtime behavior rather than acoustic loss alone.
 Step-9000 validation emitted `eval_loss=0.035123996` with
 `eval_runtime=2134.5091s`, `eval_samples_per_second=5.407`, and
 `eval_steps_per_second=0.676`. `trainer_state.json` moved
-`best_model_checkpoint` to `checkpoint-9000`. The improvement is very small but
-still monotonic (`0.03620 -> 0.03565 -> 0.03543 -> 0.03532 -> 0.03524 ->
-0.03516 -> 0.03514 -> 0.03512`). Continue to epoch end. The key experimental
-question is no longer "does the adapter keep lowering held-out loss?" It is
-"does the lower loss move the confirmed paired/OOS runtime metrics toward the
-95% target?"
+`best_model_checkpoint` to `checkpoint-9000`.
+
+The 2026-05-18 resume from `checkpoint-9000` finished the epoch cleanly:
+
+- step 10000: `eval_loss=0.035112731`, `eval_runtime=2004.4807s`,
+  `eval_samples_per_second=5.758`, `eval_steps_per_second=0.720`;
+- step 11000: `eval_loss=0.035107065`, `eval_runtime=2016.0926s`,
+  `eval_samples_per_second=5.724`, `eval_steps_per_second=0.716`;
+- final step: `11661`, `run_card.status=completed`, final logged train loss
+  `0.0214`, peak MPS memory `35.53 GB`;
+- `best_model_checkpoint` is now
+  `lora_adapters/v7_mac_300h_epoch1/checkpoint-11000`.
+
+The validation curve stayed monotonic but essentially flat (`0.03620 -> 0.03565
+-> 0.03543 -> 0.03532 -> 0.03524 -> 0.03516 -> 0.03514 -> 0.03512 ->
+0.03511 -> 0.035107`). This is useful evidence that acoustic scaling did not
+hurt held-out loss, but it is not a promotion signal by itself. The key
+experimental question is now entirely runtime-facing: does the lower acoustic
+loss move the confirmed paired/OOS metrics toward the 95% target?
 
 ## Gates after training
 

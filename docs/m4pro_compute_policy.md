@@ -181,21 +181,26 @@ line-path problem is solved.
 
 ## Current next step
 
-Keep the v7 300h-source epoch-1 run alive and documented. The held-out
-validation loss has improved through checkpoint 9000:
+The v7 300h-source epoch-1 run completed on 2026-05-18. Held-out validation
+loss improved monotonically but only slightly:
 
 ```text
-0.03620 -> 0.03565 -> 0.03543 -> 0.03532 -> 0.03524 -> 0.03516 -> 0.03514 -> 0.03512
+0.03620 -> 0.03565 -> 0.03543 -> 0.03532 -> 0.03524 -> 0.03516 -> 0.03514 -> 0.03512 -> 0.03511 -> 0.035107
 ```
 
-The curve is flattening, but it is not reversing. Therefore the expert move is:
+`checkpoint-11000` is the best validated checkpoint, and `run_card.json` reports
+`status=completed`, `train_n_clips=93292`, `eval_n_clips=11541`, and peak MPS
+memory `35.53 GB`. The M4 Pro was used appropriately for the intended acoustic
+scaling experiment; the next question is not "use more machine" but "did this
+lower acoustic loss improve runtime captions?"
 
-1. finish epoch 1;
-2. evaluate the final/best v7 adapter through the confirmed runtime:
+Therefore the expert move is now:
+
+1. evaluate the best v7 adapter through the confirmed runtime:
    - paired benchmark gate: beat `92.8%`;
    - assisted-OOS gate: beat `60.8%`;
    - locks remain `12/12` paired and `5/5` assisted-OOS;
-3. only then decide whether to promote v7, continue to multi-epoch/seed
+2. only then decide whether to promote v7, continue to multi-epoch/seed
    training, or pivot back to runtime/architecture.
 
 If v7 improves validation loss but not paired/OOS runtime accuracy, the

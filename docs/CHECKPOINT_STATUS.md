@@ -1,49 +1,73 @@
-# Pause checkpoint — 2026-05-18
+# Checkpoint status — 2026-05-18
 
-## v7 training paused
+## v7 training completed
 
-- adapter dir: lora_adapters/v7_mac_300h_epoch1
-- latest saved checkpoint: checkpoint-9000
-- last logged train step: 9000
-- last logged train loss: 0.0608
-- wall-clock so far: 11:59:39
-- status from run_card.json: interrupted
+- adapter dir: `lora_adapters/v7_mac_300h_epoch1`
+- final saved checkpoint: `checkpoint-11661`
+- best validated checkpoint: `checkpoint-11000`
+- last logged train step: `11661`
+- last logged train loss: `0.0214`
+- best validation loss: `0.03510706499218941` at step `11000`
+- final-resume wall-clock: `3:20:45`
+- total known wall-clock through pause + resume: about `15:20:24`
+- status from `run_card.json`: `completed`
+- train/eval clips: `93,292` train, `11,541` eval
+- peak MPS memory: `35.53 GB`
 
-## To resume training
+## Result interpretation
+
+The resumed epoch finished cleanly from `checkpoint-9000` and improved the
+held-out validation curve slightly:
+
+```text
+checkpoint-9000   eval_loss=0.03512399643659592
+checkpoint-10000  eval_loss=0.03511273115873337
+checkpoint-11000  eval_loss=0.03510706499218941  <-- best
+```
+
+The improvement is real but very small. The next expert decision cannot come
+from acoustic validation loss alone. The correct next gate is runtime scoring
+through the confirmed paired + assisted-OOS paths.
+
+## To score the best v7 adapter
+
+This folder was moved to `~/Desktop/Personal Project/live-gurbani-captioning`.
+Use the repo-local interpreter explicitly, because `.venv/bin/activate` still
+contains the old path from before the folder move.
 
 ```bash
-cd ~/Desktop/live-gurbani-captioning
-source .venv/bin/activate
-git pull origin main
-python scripts/finetune_path_b.py \
-  --config configs/training/surt_lora_mac.yaml \
-  --manifest training_data/v7_mac_300h/manifest_train.json \
-  --eval-manifest training_data/v7_mac_300h/manifest_val.json \
-  --output-dir lora_adapters/v7_mac_300h_epoch1 \
-  --epochs 1 \
-  --eval-strategy steps --eval-steps 1000 --save-steps 1000 \
-  --load-best-model-at-end \
-  --resume-from-checkpoint lora_adapters/v7_mac_300h_epoch1/checkpoint-9000
+cd "$HOME/Desktop/Personal Project/live-gurbani-captioning"
+git pull --ff-only origin main
+
+PYTHON=.venv/bin/python3 make eval-paired-recency-guard-confirmed-v6 \
+  CONFIRMED_ADAPTER_DIR=lora_adapters/v7_mac_300h_epoch1 \
+  CONFIRMED_PAIRED_OUT=submissions/phase3_confirmed_v7_300h_paired
+
+PYTHON=.venv/bin/python3 make eval-oos-recency-guard-confirmed-v6-assisted \
+  CONFIRMED_ADAPTER_DIR=lora_adapters/v7_mac_300h_epoch1 \
+  CONFIRMED_OOS_OUT=submissions/oos_v1_assisted_phase3_confirmed_v7_300h
 ```
 
 ## In-flight workstreams (state-of-the-world)
 
-- Phase 2.9 best honest runtime: phase2_9_loop_align @ 91.2%
-- OOS v1 status: drafts seeded; all five `eval_data/oos_v1/test/case_*.json`
-  files are preserved with `curation_status="NEEDS_HUMAN_CORRECTION"`
-- Phase 2.10 silver: completed; silver diagnostics supported the confirmed
-  runtime path and v6/v7 acoustic-scaling gate, but promotion still requires
-  paired + assisted-OOS runtime scoring
+- Phase 2.9 best honest runtime: `phase2_9_loop_align` at `91.2%`.
+- Current confirmed-runtime gate before promotion:
+  - paired must beat `92.8%`;
+  - assisted-OOS must beat `60.8%`;
+  - locks remain `12/12` paired and `5/5` assisted-OOS.
+- OOS v1 status: drafts are preserved; all five
+  `eval_data/oos_v1/test/case_*.json` files were committed with
+  `curation_status="NEEDS_HUMAN_CORRECTION"`.
+- Phase 2.10 silver: completed; diagnostics supported the confirmed runtime
+  path and the v6/v7 acoustic-scaling gate, but promotion still requires paired
+  + assisted-OOS runtime scoring.
 - Pending decisions:
-  - Resume v7 epoch-1 from `checkpoint-9000` and finish the remaining steps.
-  - Evaluate final/best v7 through confirmed runtime gates.
-  - Promote only if paired beats `92.8%`, assisted-OOS beats `60.8%`, and locks
-    stay `12/12` paired plus `5/5` assisted-OOS.
-  - If val loss improves but runtime metrics do not, return to line
-    alignment/candidate-resolution diagnostics rather than blindly extending
-    training.
+  - Evaluate best v7 through the confirmed paired and assisted-OOS gates.
+  - Promote only if both runtime metrics improve and locks remain stable.
+  - If validation loss improves but runtime metrics do not, return to line
+    alignment / candidate-resolution diagnostics instead of blindly extending
+    300h training.
 
-## Commits added during this pause
+## Commits added during the prior pause
 
-3e8c8a2 wip(oos): preserve machine-seeded GT working files at pause checkpoint
-
+`3e8c8a2` `wip(oos): preserve machine-seeded GT working files at pause checkpoint`
