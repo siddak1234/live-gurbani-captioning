@@ -636,6 +636,33 @@ ios-export: ## Merge LoRA into base + export .mlpackage to ios bundle.
 		--adapter-dir $(TRAIN_OUT) \
 		--output-dir $(COREML_OUT)
 
+# Paths used by `make ios-bundle-model` below. Override on the CLI when
+# the exported variant has a different suffix (e.g. `_8bit_141MB` if
+# you swap to 8-bit quantization in coreml_ane.yaml).
+COREML_EXPORT_VARIANT ?= coreml_export/surindersinghssj_surt-small-v3_221MB
+IOS_MODEL_DIR         ?= ios/Sources/GurbaniCaptioning/Resources/surt-small-v3-kirtan
+
+.PHONY: ios-bundle-model
+ios-bundle-model: ## Copy the exported .mlmodelc set into the iOS bundle (run after ios-export).
+	@if [ ! -d "$(COREML_EXPORT_VARIANT)" ]; then \
+		echo "error: $(COREML_EXPORT_VARIANT) not found."; \
+		echo "Run 'make ios-export' (or 'python scripts/export_coreml.py ...') first."; \
+		exit 1; \
+	fi
+	@for c in AudioEncoder MelSpectrogram TextDecoder; do \
+		if [ ! -d "$(COREML_EXPORT_VARIANT)/$$c.mlmodelc" ]; then \
+			echo "error: $(COREML_EXPORT_VARIANT)/$$c.mlmodelc missing — the export looks incomplete."; \
+			exit 1; \
+		fi; \
+	done
+	@mkdir -p "$(IOS_MODEL_DIR)"
+	@for c in AudioEncoder MelSpectrogram TextDecoder; do \
+		rm -rf "$(IOS_MODEL_DIR)/$$c.mlmodelc"; \
+		cp -R "$(COREML_EXPORT_VARIANT)/$$c.mlmodelc" "$(IOS_MODEL_DIR)/"; \
+	done
+	@echo "✅ Bundled .mlmodelc set into $(IOS_MODEL_DIR)"
+	@du -sh "$(IOS_MODEL_DIR)"
+
 .PHONY: ios-benchmark
 ios-benchmark: ## Measure Core ML latency on macOS (proxy for iPhone perf).
 	$(PYTHON) scripts/benchmark_ane_latency.py \
