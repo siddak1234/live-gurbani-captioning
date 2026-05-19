@@ -194,16 +194,25 @@ memory `35.53 GB`. The M4 Pro was used appropriately for the intended acoustic
 scaling experiment; the next question is not "use more machine" but "did this
 lower acoustic loss improve runtime captions?"
 
-Therefore the expert move is now:
+The confirmed runtime scoring gate has now passed:
 
-1. evaluate the best v7 adapter through the confirmed runtime:
-   - paired benchmark gate: beat `92.8%`;
-   - assisted-OOS gate: beat `60.8%`;
-   - locks remain `12/12` paired and `5/5` assisted-OOS;
-2. only then decide whether to promote v7, continue to multi-epoch/seed
-   training, or pivot back to runtime/architecture.
+- paired benchmark: `93.1%`, up from the `92.8%` gate, with `12/12` locks;
+- assisted-OOS diagnostic: `61.3%`, up from the `60.8%` gate, with `5/5` locks.
 
-If v7 improves validation loss but not paired/OOS runtime accuracy, the
-architecture implication is clear: the adapter is learning acoustic evidence,
-but the remaining blocker is line alignment/candidate resolution, not machine
-underuse.
+The M4 Pro should therefore be used for one controlled continuation from
+`checkpoint-11661` to `PHASE3_EPOCHS=3`, not yet for broad seed sweeps. This is
+justified because both runtime metrics moved up, but the OOS margin is thin and
+still machine-assisted.
+
+Next command:
+
+```bash
+PYTHON=.venv/bin/python3 make train-v7-300h \
+  PHASE3_EPOCHS=3 \
+  PHASE3_RESUME=lora_adapters/v7_mac_300h_epoch1/checkpoint-11661
+```
+
+After the continuation, rerun paired + assisted-OOS scoring. If runtime metrics
+flatten or regress, stop scaling and return to line alignment / candidate
+resolution; if they improve again, then consider a seed-variance run and gold
+OOS correction before any production/generalization claim.

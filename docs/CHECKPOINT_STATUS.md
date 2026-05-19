@@ -48,6 +48,34 @@ PYTHON=.venv/bin/python3 make eval-oos-recency-guard-confirmed-v6-assisted \
   CONFIRMED_OOS_OUT=submissions/oos_v1_assisted_phase3_confirmed_v7_300h
 ```
 
+
+## Runtime scoring result — 2026-05-18
+
+The best v7 adapter cleared both current confirmed-runtime gates:
+
+- Paired benchmark: `93.1%` (3190/3425), `12/12` locks.
+- Assisted-OOS diagnostic: `61.3%` (539/880), `5/5` locks.
+- Prior gates were `92.8%` paired and `60.8%` assisted-OOS.
+
+This is a positive acoustic-scaling signal, but the OOS margin is only `+0.5`
+points and the OOS labels are still machine-assisted. Treat this as permission
+to continue controlled 300h training, not as a production accuracy claim.
+
+## To continue v7 to 3 epochs
+
+Resume from the final optimizer checkpoint, not the best scoring adapter:
+
+```bash
+cd "$HOME/Desktop/Personal Project/live-gurbani-captioning"
+git pull --ff-only origin main
+PYTHON=.venv/bin/python3 make train-v7-300h \
+  PHASE3_EPOCHS=3 \
+  PHASE3_RESUME=lora_adapters/v7_mac_300h_epoch1/checkpoint-11661
+```
+
+After completion, rerun the paired + assisted-OOS commands above and compare
+against `93.1%` / `61.3%`.
+
 ## In-flight workstreams (state-of-the-world)
 
 - Phase 2.9 best honest runtime: `phase2_9_loop_align` at `91.2%`.
@@ -62,11 +90,12 @@ PYTHON=.venv/bin/python3 make eval-oos-recency-guard-confirmed-v6-assisted \
   path and the v6/v7 acoustic-scaling gate, but promotion still requires paired
   + assisted-OOS runtime scoring.
 - Pending decisions:
-  - Evaluate best v7 through the confirmed paired and assisted-OOS gates.
-  - Promote only if both runtime metrics improve and locks remain stable.
-  - If validation loss improves but runtime metrics do not, return to line
-    alignment / candidate-resolution diagnostics instead of blindly extending
-    300h training.
+  - Continue v7 from `checkpoint-11661` toward 3 epochs because both runtime
+    gates moved up and locks stayed stable.
+  - Re-score after the continuation; promote only if paired/OOS improve again
+    and no case regresses catastrophically.
+  - Replace machine-assisted OOS with gold-corrected OOS before any public
+    95%+ generalization claim.
 
 ## Commits added during the prior pause
 

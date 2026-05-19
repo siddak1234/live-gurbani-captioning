@@ -88,6 +88,7 @@ PHASE3_TRAIN_OUT ?= lora_adapters/v6_mac_scale20
 PHASE3_FULL_DATA_DIR ?= training_data/v7_mac_300h
 PHASE3_FULL_TRAIN_OUT ?= lora_adapters/v7_mac_300h_epoch1
 PHASE3_RESUME ?=
+PHASE3_EPOCHS ?= 3
 DATA_SHARDS_ARG := $(if $(DATA_SHARDS),--shards $(DATA_SHARDS),--shard $(DATA_SHARD))
 DATA_SPLIT_ARG := $(if $(filter-out none,$(DATA_SPLIT_BY)),--split-by $(DATA_SPLIT_BY) --split-ratios $(DATA_SPLIT_RATIOS),)
 SILVER_ADAPTER_ARG := $(if $(SILVER_ADAPTER_DIR),--adapter-dir $(SILVER_ADAPTER_DIR),)
@@ -309,19 +310,23 @@ data-v7-300h: ## Phase 3 large acoustic-scaling pull from the full 300h canonica
 		DATA_MIN_UNIQUE_SHABADS=1000 \
 		DATA_SPLIT_BY=shabad
 
-.PHONY: train-v7-300h-epoch1
-train-v7-300h-epoch1: data-v7-300h ## First 300h acoustic-scaling run: 1 epoch with shabad-level eval split.
+.PHONY: train-v7-300h
+train-v7-300h: data-v7-300h ## Phase 3 full 300h acoustic-scaling train; set PHASE3_EPOCHS/PHASE3_RESUME.
 	$(PYTHON) scripts/finetune_path_b.py \
 		--config $(TRAIN_CFG) \
 		--manifest $(PHASE3_FULL_DATA_DIR)/manifest_train.json \
 		--eval-manifest $(PHASE3_FULL_DATA_DIR)/manifest_val.json \
 		--output-dir $(PHASE3_FULL_TRAIN_OUT) \
-		--epochs 1 \
-			--eval-strategy steps \
-			--eval-steps 1000 \
-			--save-steps 1000 \
-			--load-best-model-at-end \
-			$(if $(PHASE3_RESUME),--resume-from-checkpoint $(PHASE3_RESUME),)
+		--epochs $(PHASE3_EPOCHS) \
+		--eval-strategy steps \
+		--eval-steps 1000 \
+		--save-steps 1000 \
+		--load-best-model-at-end \
+		$(if $(PHASE3_RESUME),--resume-from-checkpoint $(PHASE3_RESUME),)
+
+.PHONY: train-v7-300h-epoch1
+train-v7-300h-epoch1: PHASE3_EPOCHS=1
+train-v7-300h-epoch1: train-v7-300h ## First 300h acoustic-scaling run: 1 epoch with shabad-level eval split.
 
 # -----------------------------------------------------------------------------
 # Evaluation

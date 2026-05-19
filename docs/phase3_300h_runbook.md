@@ -238,9 +238,45 @@ metric gate is:
 
 ## Decision after epoch 1
 
-- If paired and assisted-OOS both move up: run the full 3-epoch 300h training
-  and then a seed-variance check.
+- If paired and assisted-OOS both move up: run the controlled continuation to
+  3 epochs first, then re-score before spending seed-variance budget.
 - If silver/val loss improves but runtime metrics do not: the adapter helps ASR
   but the line-path runtime is still the bottleneck.
 - If val loss and runtime both stall: stop scaling on Mac and pivot to the next
   architecture bet before spending cloud/300h budget.
+
+
+## Epoch-1 runtime result — 2026-05-18
+
+The completed v7 epoch-1 adapter was scored through the confirmed runtime:
+
+```bash
+PYTHON=.venv/bin/python3 make eval-paired-recency-guard-confirmed-v6 \
+  CONFIRMED_ADAPTER_DIR=lora_adapters/v7_mac_300h_epoch1 \
+  CONFIRMED_PAIRED_OUT=submissions/phase3_confirmed_v7_300h_paired
+
+PYTHON=.venv/bin/python3 make eval-oos-recency-guard-confirmed-v6-assisted \
+  CONFIRMED_ADAPTER_DIR=lora_adapters/v7_mac_300h_epoch1 \
+  CONFIRMED_OOS_OUT=submissions/oos_v1_assisted_phase3_confirmed_v7_300h
+```
+
+Results:
+
+- paired benchmark: **93.1%** (`3190/3425`), **12/12** locks;
+- assisted-OOS diagnostic: **61.3%** (`539/880`), **5/5** locks;
+- prior confirmed-runtime gates: **92.8%** paired, **60.8%** assisted-OOS.
+
+This is the first non-route-table runtime to beat the old overfit `x6_ensemble`
+paired score while also improving assisted-OOS. The improvement is small but
+coherent with the validation-loss curve. Continue the controlled 300h run to 3
+epochs from the final optimizer checkpoint:
+
+```bash
+PYTHON=.venv/bin/python3 make train-v7-300h \
+  PHASE3_EPOCHS=3 \
+  PHASE3_RESUME=lora_adapters/v7_mac_300h_epoch1/checkpoint-11661
+```
+
+Do not start seed sweeps yet. First prove that epochs 2-3 improve runtime
+metrics beyond `93.1%` / `61.3%`; if they do not, the next bottleneck is again
+runtime alignment or candidate resolution rather than raw acoustic scale.
