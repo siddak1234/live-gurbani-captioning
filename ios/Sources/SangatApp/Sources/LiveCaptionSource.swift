@@ -19,21 +19,30 @@ import GurbaniCaptioning
 
 /// Error specific to `LiveCaptionSource` wiring.
 public enum LiveCaptionSourceError: Error, LocalizedError {
-    /// `CaptionEngine.transcribeStream` is still the placeholder from
-    /// `docs/ios_deployment.md` Step 5. Wire the WhisperKit streaming API
-    /// for the installed SDK version, then this error goes away.
+    /// The live engine isn't ready to drive the app yet — either the
+    /// `.mlmodelc` set isn't bundled (M5.7c lands this), the WhisperKit
+    /// framework isn't linked, or `prepare()` hasn't completed. The
+    /// UI surfaces this distinct from `.engine(...)` so the
+    /// fallback to `DemoCaptionSource` can be reasoned about. Pre-
+    /// M5.7b this was the "transcribeStream is a placeholder" error;
+    /// M5.7b replaced the placeholder with a real wire and broadened
+    /// the case to cover bundle / load failures.
     case notWired
-    /// The underlying engine failed.
+    /// The underlying engine failed for a *runtime* reason (mic
+    /// permission denied, AVAudioSession setup, decoder error) —
+    /// distinct from `.notWired` which means the engine never got
+    /// off the ground.
     case engine(Error)
 
     public var errorDescription: String? {
         switch self {
         case .notWired:
             return """
-            LiveCaptionSource: WhisperKit streaming is not yet wired. Fill in \
-            CaptionEngine.transcribeStream against the installed WhisperKit \
-            version (see docs/ios_deployment.md Step 5), then this error goes \
-            away. Until then, use DemoCaptionSource for app development.
+            LiveCaptionSource: live engine not ready — the bundled \
+            Core ML model is missing or WhisperKit didn't load. Until \
+            M5.7c lands the .mlmodelc set under \
+            Sources/GurbaniCaptioning/Resources/, DemoCaptionSource \
+            drives the app (the AppEnvironment fallback handles this).
             """
         case .engine(let e):
             return "LiveCaptionSource: engine error — \(e.localizedDescription)"
@@ -95,6 +104,15 @@ public final class LiveCaptionSource: CaptionSource {
     public func prepare() async throws {
         do {
             try await engine.prepare()
+        } catch let error as CaptionEngineError {
+            // Map engine "not ready" cases (model missing, SDK absent)
+            // to the unified `.notWired` so callers can route through
+            // the same fallback path. Real runtime failures stay
+            // `.engine(...)`.
+            if Self.isNotWiredError(error) {
+                throw LiveCaptionSourceError.notWired
+            }
+            throw LiveCaptionSourceError.engine(error)
         } catch {
             throw LiveCaptionSourceError.engine(error)
         }
@@ -107,9 +125,15 @@ public final class LiveCaptionSource: CaptionSource {
             isRunning = true
             continuation.yield(.started)
         } catch let error as CaptionEngineError {
-            // Re-shape the engine's not-wired placeholder error into our
-            // domain-specific one so the UI can match on it.
-            if case .audioCaptureFailed = error {
+            // M5.7b: the placeholder is gone. `audioCaptureFailed`
+            // now means a real runtime audio failure (mic denied,
+            // AVAudioSession setup error); surface it as an engine
+            // error. The "wiring isn't done yet" semantics moved to
+            // `.modelLoadFailed` / `.modelFolderNotFound` /
+            // `.whisperKitUnavailable` — translate those to
+            // `.notWired` so the UI surface stays identical to
+            // pre-M5.7b for those classes of failure.
+            if Self.isNotWiredError(error) {
                 continuation.yield(.error(LiveCaptionSourceError.notWired.localizedDescription))
                 throw LiveCaptionSourceError.notWired
             }
@@ -118,6 +142,21 @@ public final class LiveCaptionSource: CaptionSource {
         } catch {
             continuation.yield(.error(error.localizedDescription))
             throw LiveCaptionSourceError.engine(error)
+        }
+    }
+
+    /// Classify a `CaptionEngineError` as either "engine never got
+    /// off the ground" (→ `.notWired`) or "real runtime audio /
+    /// decoder failure" (→ `.engine(...)`). Single source of truth
+    /// for both `prepare()` and `start()` so they can't drift.
+    private static func isNotWiredError(_ error: CaptionEngineError) -> Bool {
+        switch error {
+        case .whisperKitUnavailable,
+             .modelLoadFailed,
+             .modelFolderNotFound:
+            return true
+        case .audioCaptureFailed:
+            return false
         }
     }
 
