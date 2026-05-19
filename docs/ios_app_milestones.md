@@ -20,7 +20,7 @@ the audit report for N is reviewed and approved.
 | M5.3 | Sevadar surfaces | `Features/Sevadar/` — Dock, Picker, Confidence, History; Settings → Sevadar tools; mode chip in chrome row | `ios/AUDIT-M5.3.md` | **landed** |
 | M5.4.1 | "Enable microphone" affordance on IdleView | One-screen addition for users who tapped "Not now" in M5.4 | `ios/AUDIT-M5.4.1.md` | **landed** |
 | M5.5 | Cast / AirPlay | `Features/Cast/` — 16:9 projector view, UIScreen+UIWindow glue, reactive theme + layers propagation, "Casting" chrome indicator, Cast-hint sheet | `ios/AUDIT-M5.5.md` | **landed** |
-| M5.6 | Correction loop surfaces | Touchpoints in Sangat + Sevadar; `CorrectionsSettingsView`; still writes to `NoopCorrectionLog` | `ios/AUDIT-M5.6.md` | pending |
+| M5.6 | Correction loop surfaces | Touchpoints in Sangat + Sevadar; `CorrectionsSettingsView`; still writes to `NoopCorrectionLog` | `ios/AUDIT-M5.6.md` | **landed** |
 
 After M5.6 the codebase is feature-complete for everything except the
 WhisperKit wire (M5.7, blocked on model export) and real correction
