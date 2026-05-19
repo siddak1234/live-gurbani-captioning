@@ -1,130 +1,91 @@
-# Checkpoint status — 2026-05-18
+# Pause checkpoint — 2026-05-19
 
-## v7 training completed
+## v7 training paused
 
 - adapter dir: `lora_adapters/v7_mac_300h_epoch1`
-- final saved checkpoint: `checkpoint-11661`
-- best validated checkpoint: `checkpoint-11000`
-- last logged train step: `11661`
-- last logged train loss: `0.0214`
-- best validation loss: `0.03510706499218941` at step `11000`
-- final-resume wall-clock: `3:20:45`
-- total known wall-clock through pause + resume: about `15:20:24`
-- status from `run_card.json`: `completed`
-- train/eval clips: `93,292` train, `11,541` eval
-- peak MPS memory: `35.53 GB`
+- latest saved checkpoint: `checkpoint-19000`
+- best validated checkpoint: `checkpoint-19000`
+- last saved train/eval step: `19000`
+- last observed unsaved training step before SIGTERM: about `19530`
+- last logged train loss before SIGTERM: `0.04` at about step `19530`
+- best validation loss: `0.03500748425722122` at step `19000`
+- wall-clock so far for the continuation run: about `11:40:04`
+- status from `run_card.json`: `completed` (non-crashed; this file is the epoch-1 card, mtime `2026-05-18 21:20:59`)
+- stop method: `SIGTERM` to trainer PID `52672`; `make` exited with `Terminated: 15`
 
-## Result interpretation
+The continuation was stopped safely after the step-19000 checkpoint and before
+step 20000. Progress from roughly steps 19001-19530 was not checkpointed and is
+expected to be replayed when resuming. No durable checkpoint data was deleted.
 
-The resumed epoch finished cleanly from `checkpoint-9000` and improved the
-held-out validation curve slightly:
+## To resume training
 
-```text
-checkpoint-9000   eval_loss=0.03512399643659592
-checkpoint-10000  eval_loss=0.03511273115873337
-checkpoint-11000  eval_loss=0.03510706499218941  <-- best
-```
-
-The improvement is real but very small. The next expert decision cannot come
-from acoustic validation loss alone. The correct next gate is runtime scoring
-through the confirmed paired + assisted-OOS paths.
-
-## To score the best v7 adapter
-
-This folder was moved to `~/Desktop/Personal Project/live-gurbani-captioning`.
-Use the repo-local interpreter explicitly, because `.venv/bin/activate` still
-contains the old path from before the folder move.
+Use the repo-local interpreter explicitly; this folder lives under
+`~/Desktop/Personal Project/live-gurbani-captioning`.
 
 ```bash
 cd "$HOME/Desktop/Personal Project/live-gurbani-captioning"
 git pull --ff-only origin main
-
-PYTHON=.venv/bin/python3 make eval-paired-recency-guard-confirmed-v6 \
-  CONFIRMED_ADAPTER_DIR=lora_adapters/v7_mac_300h_epoch1 \
-  CONFIRMED_PAIRED_OUT=submissions/phase3_confirmed_v7_300h_paired
-
-PYTHON=.venv/bin/python3 make eval-oos-recency-guard-confirmed-v6-assisted \
-  CONFIRMED_ADAPTER_DIR=lora_adapters/v7_mac_300h_epoch1 \
-  CONFIRMED_OOS_OUT=submissions/oos_v1_assisted_phase3_confirmed_v7_300h
-```
-
-
-## Runtime scoring result — 2026-05-18
-
-The best v7 adapter cleared both current confirmed-runtime gates:
-
-- Paired benchmark: `93.1%` (3190/3425), `12/12` locks.
-- Assisted-OOS diagnostic: `61.3%` (539/880), `5/5` locks.
-- Prior gates were `92.8%` paired and `60.8%` assisted-OOS.
-
-This is a positive acoustic-scaling signal, but the OOS margin is only `+0.5`
-points and the OOS labels are still machine-assisted. Treat this as permission
-to continue controlled 300h training, not as a production accuracy claim.
-
-## To continue v7 to 3 epochs
-
-Resume from the final optimizer checkpoint, not the best scoring adapter:
-
-```bash
-cd "$HOME/Desktop/Personal Project/live-gurbani-captioning"
-git pull --ff-only origin main
-PYTHON=.venv/bin/python3 make train-v7-300h \
+export PYTHON=.venv/bin/python3
+make train-v7-300h \
   PHASE3_EPOCHS=3 \
-  PHASE3_RESUME=lora_adapters/v7_mac_300h_epoch1/checkpoint-11661
+  PHASE3_RESUME=lora_adapters/v7_mac_300h_epoch1/checkpoint-19000
 ```
 
-After completion, rerun the paired + assisted-OOS commands above and compare
-against `93.1%` / `61.3%`.
+This resumes from the last durable optimizer checkpoint. Expected behavior:
+training restarts from step 19000 and continues toward total step 34983.
 
+## If you want to score before resuming
 
-## Active continuation run — 2026-05-18
-
-The controlled continuation to 3 epochs has been started in a detached `screen`
-session so it can survive closing VS Code:
-
-- screen session: `v7_epoch23`
-- launch PID observed: `52656` (`SCREEN`), trainer PID observed: `52672`
-- log file: `/tmp/phase3_v7_epochs2_3.log`
-- resume checkpoint: `lora_adapters/v7_mac_300h_epoch1/checkpoint-11661`
-- target total steps for 3 epochs: `34983`
-
-Useful checks:
+The best adapter currently lives at `checkpoint-19000`. To measure whether this
+new validation best improves runtime metrics before spending more compute:
 
 ```bash
-screen -ls
-sed -n '1,180p' /tmp/phase3_v7_epochs2_3.log
-pgrep -fl 'scripts/finetune_path_b.py|v7_epoch23'
+cd "$HOME/Desktop/Personal Project/live-gurbani-captioning"
+git pull --ff-only origin main
+
+export PYTHON=.venv/bin/python3
+make eval-paired-recency-guard-confirmed-v6 \
+  CONFIRMED_ADAPTER_DIR=lora_adapters/v7_mac_300h_epoch1 \
+  CONFIRMED_PAIRED_OUT=submissions/phase3_confirmed_v7_300h_ckpt19000_paired
+
+make eval-oos-recency-guard-confirmed-v6-assisted \
+  CONFIRMED_ADAPTER_DIR=lora_adapters/v7_mac_300h_epoch1 \
+  CONFIRMED_OOS_OUT=submissions/oos_v1_assisted_phase3_confirmed_v7_300h_ckpt19000
 ```
-
-To attach interactively:
-
-```bash
-screen -r v7_epoch23
-```
-
-Detach again with `Ctrl-a` then `d`.
 
 ## In-flight workstreams (state-of-the-world)
 
-- Phase 2.9 best honest runtime: `phase2_9_loop_align` at `91.2%`.
-- Current confirmed-runtime gate before promotion:
-  - paired must beat `92.8%`;
-  - assisted-OOS must beat `60.8%`;
-  - locks remain `12/12` paired and `5/5` assisted-OOS.
-- OOS v1 status: drafts are preserved; all five
-  `eval_data/oos_v1/test/case_*.json` files were committed with
+- Phase 3 v7 continuation: paused safely at `checkpoint-19000`.
+- Validation trend during continuation:
+  - step 15000: `0.03506891429424286`
+  - step 16000: `0.035056933760643005`
+  - step 17000: `0.03505650907754898`
+  - step 18000: `0.03503436595201492`
+  - step 19000: `0.03500748425722122` (current best)
+- Prior runtime gate from v7 epoch-1: paired `93.1%`, assisted-OOS `61.3%`.
+- OOS v1 status: drafts preserved; all five
+  `eval_data/oos_v1/test/case_*.json` files remain committed with
   `curation_status="NEEDS_HUMAN_CORRECTION"`.
 - Phase 2.10 silver: completed; diagnostics supported the confirmed runtime
-  path and the v6/v7 acoustic-scaling gate, but promotion still requires paired
-  + assisted-OOS runtime scoring.
+  path, but promotion still requires paired + assisted-OOS runtime scoring.
 - Pending decisions:
-  - Continue v7 from `checkpoint-11661` toward 3 epochs because both runtime
-    gates moved up and locks stayed stable.
-  - Re-score after the continuation; promote only if paired/OOS improve again
-    and no case regresses catastrophically.
-  - Replace machine-assisted OOS with gold-corrected OOS before any public
-    95%+ generalization claim.
+  - Resume from `checkpoint-19000` to finish the controlled 3-epoch run, or
+    score `checkpoint-19000` first if you want a runtime check before more compute.
+  - Promote only if paired/OOS runtime metrics improve and locks stay stable.
+  - Replace machine-assisted OOS with gold-corrected OOS before any public 95%+
+    generalization claim.
 
-## Commits added during the prior pause
+## Commits added during this monitoring/pause window
 
-`3e8c8a2` `wip(oos): preserve machine-seeded GT working files at pause checkpoint`
+- `d670b0e` `docs(phase3): record v7 checkpoint-13000 watch point`
+- `88cf3fc` `docs(phase3): record v7 checkpoint-14000 recovery`
+- `6daab4a` `docs(phase3): record v7 checkpoint-15000 new best`
+- `4b879dc` `Merge remote-tracking branch 'origin/main'`
+- `640e398` `docs(phase3): record v7 checkpoints 16000-19000 trend`
+- this checkpoint-status update commit records the safe stop at `checkpoint-19000`.
+
+## What to tell Codex next time
+
+```text
+Open ~/Desktop/Personal Project/live-gurbani-captioning. Read docs/CHECKPOINT_STATUS.md and docs/phase3_300h_runbook.md. We safely stopped v7 training at checkpoint-19000 after SIGTERM. Verify git status is clean, verify lora_adapters/v7_mac_300h_epoch1/checkpoint-19000 exists, then either resume training from checkpoint-19000 or score checkpoint-19000 first. Do not delete caches or adapter/training_data directories.
+```
