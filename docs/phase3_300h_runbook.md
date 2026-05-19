@@ -297,3 +297,20 @@ Decision: continue. This is not an overfit signal; held-out shabad validation
 is still improving, albeit slowly. Keep monitoring at `checkpoint-13000` and
 beyond. If future evals regress for two consecutive checkpoints, pause and score
 the best saved checkpoint rather than spending compute blindly.
+
+
+## Epoch-2 continuation checkpoint — step 13000
+
+Step-13000 validation completed during the same controlled continuation:
+
+- `eval_loss=0.03512250632047653`
+- best remains step 12000: `0.03508933633565903`
+- relative change vs step 12000: about `+0.095%`
+- `best_model_checkpoint` remains
+  `lora_adapters/v7_mac_300h_epoch1/checkpoint-12000`
+
+Decision: continue watchfully for one more checkpoint, not stop immediately.
+This is a tiny validation uptick, not a meaningful collapse, and the step-12000
+best checkpoint is safely preserved. The stop rule is now stricter: if
+`checkpoint-14000` is also worse than step 12000, pause the continuation and
+score the best saved checkpoint before spending the rest of the epoch budget.
