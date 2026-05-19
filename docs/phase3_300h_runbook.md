@@ -332,3 +332,20 @@ Keep monitoring at `checkpoint-15000`. If validation breaks upward meaningfully
 or resumes a two-checkpoint worsening pattern, pause and score the preserved
 step-12000 checkpoint before spending more compute.
 
+## Epoch-2 continuation checkpoint — step 15000
+
+Step-15000 validation completed during the same controlled continuation:
+
+- `eval_loss=0.03506891429424286`
+- previous best at step 12000: `0.03508933633565903`
+- relative change vs step 12000: about `-0.058%`
+- relative change vs step 14000: about `-0.094%`
+- `best_model_checkpoint` should move to
+  `lora_adapters/v7_mac_300h_epoch1/checkpoint-15000`
+
+Decision: continue. This is a new held-out shabad validation best, so the
+controlled epoch-2 continuation is still learning signal that generalizes to the
+validation split. Keep monitoring at `checkpoint-16000`; do not interrupt unless
+validation begins a clear upward pattern or runtime/OOS scoring later disagrees
+with the validation improvement.
+
