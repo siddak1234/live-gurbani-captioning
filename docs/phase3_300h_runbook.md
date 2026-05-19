@@ -314,3 +314,21 @@ This is a tiny validation uptick, not a meaningful collapse, and the step-12000
 best checkpoint is safely preserved. The stop rule is now stricter: if
 `checkpoint-14000` is also worse than step 12000, pause the continuation and
 score the best saved checkpoint before spending the rest of the epoch budget.
+
+## Epoch-2 continuation checkpoint — step 14000
+
+Step-14000 validation completed during the same controlled continuation:
+
+- `eval_loss=0.03510173410177231`
+- best remains step 12000: `0.03508933633565903`
+- relative change vs step 12000: about `+0.035%`
+- relative change vs step 13000: about `-0.059%` (recovered)
+- `best_model_checkpoint` remains
+  `lora_adapters/v7_mac_300h_epoch1/checkpoint-12000`
+
+Decision: continue watchfully. This is not continuous regression: step 14000
+recovered versus step 13000 and is effectively flat against the best checkpoint.
+Keep monitoring at `checkpoint-15000`. If validation breaks upward meaningfully
+or resumes a two-checkpoint worsening pattern, pause and score the preserved
+step-12000 checkpoint before spending more compute.
+
