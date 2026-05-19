@@ -31,6 +31,12 @@ public struct RootView: View {
     @State private var showShabadPicker: Bool = false
     @State private var showCastHint: Bool = false
 
+    /// M5.6: predicted shabad id captured when the user long-presses
+    /// a reading view. Non-nil drives the `WrongShabadSheet`
+    /// presentation; nil means no sheet. Wrapped in an `Identifiable`
+    /// shim because SwiftUI's `.sheet(item:)` requires it.
+    @State private var pendingWrongShabadPrediction: PendingShabad?
+
     /// Per-session gate flipped by the user tapping Begin on
     /// `SessionStartView`. Resets to false on every cold start since
     /// it's plain `@State`, which is exactly the behavior we want:
@@ -100,7 +106,32 @@ public struct RootView: View {
                 ),
                 onPick: { shabadId in
                     env.haptics.play(.success)
+                    // M5.6: emit hardNegPos when the manual pick
+                    // disagrees with the current commit. Same picker
+                    // also handles the Sangat-side wrong-shabad sheet
+                    // via `WrongShabadSheet`, but THAT path goes
+                    // through its own emission below (different
+                    // predicted/runner-ups snapshot semantics).
+                    recordSevadarPickerCorrectionIfMismatch(pickedShabadId: shabadId)
                     env.captionModel.manuallyCommit(shabadId: shabadId)
+                }
+            )
+            .environment(env)
+            .environment(\.theme, env.theme)
+            .environment(\.themeTokens, env.theme.tokens)
+            .preferredColorScheme(env.theme.isDark ? .dark : .light)
+        }
+        .sheet(item: $pendingWrongShabadPrediction) { pending in
+            WrongShabadSheet(
+                predictedShabadId: pending.shabadId,
+                onCorrect: { correctedShabadId in
+                    recordSangatWrongShabad(
+                        predictedShabadId: pending.shabadId,
+                        correctedShabadId: correctedShabadId
+                    )
+                    env.haptics.play(.success)
+                    env.captionModel.manuallyCommit(shabadId: correctedShabadId)
+                    pendingWrongShabadPrediction = nil
                 }
             )
             .environment(env)
@@ -153,14 +184,22 @@ public struct RootView: View {
             // "Let's Begin" — per-session entry screen shown on every
             // cold start once first-time onboarding has been completed.
             // Tapping Begin flips `didStartSession` to true for the
-            // rest of this app process lifetime.
+            // rest of this app process lifetime AND rolls a fresh
+            // `env.sessionId` so M5.6 correction events stamp the
+            // current sitting consistently.
             SessionStartView {
+                env.startNewSession()
                 didStartSession = true
             }
         } else if !env.captionModel.isRunning {
             IdleView()
         } else {
-            ReadingHost(onRequestPicker: { showShabadPicker = true })
+            ReadingHost(
+                onRequestPicker: { showShabadPicker = true },
+                onRequestWrongShabad: { predicted in
+                    pendingWrongShabadPrediction = PendingShabad(shabadId: predicted)
+                }
+            )
         }
     }
 
@@ -329,13 +368,93 @@ public struct RootView: View {
     /// hand the absolute index to the source via the existing
     /// `nudge(by:)` protocol method. `env.totalLines(forShabadId:)`
     /// owns the upper bound — the source clamps only at zero.
+    ///
+    /// M5.6 side effect: when the nudge actually moves the line, emit
+    /// a `lineNudge` correction event so the smoother / loop-aligner
+    /// has training signal. Gated on `correctionsOptIn` so the trust
+    /// hinge is honored at every emission site.
     private func nudgeLine(by delta: Int) {
         guard let guess = env.captionModel.currentGuess else { return }
         let total = env.totalLines(forShabadId: guess.shabadId)
         let target = max(0, min(guess.lineIdx + delta, total - 1))
         let actualDelta = target - guess.lineIdx
         guard actualDelta != 0 else { return }
+        recordLineNudge(
+            shabadId: guess.shabadId,
+            predictedLineIdx: guess.lineIdx,
+            delta: actualDelta
+        )
         env.captionModel.nudge(by: actualDelta)
+    }
+
+    // MARK: - Correction emission helpers (M5.6)
+
+    /// Single source of truth for the "shall we record?" gate. Every
+    /// emission site funnels through this so the toggle in
+    /// `CorrectionsSettingsView` has one binding contract.
+    private func recordIfOptedIn(_ build: () -> CorrectionEvent) {
+        guard env.preferences.correctionsOptIn else {
+            AppLogger.corrections.debug("Correction skipped — user has not opted in")
+            return
+        }
+        env.correctionLog.record(build())
+    }
+
+    /// Sevadar picker → manualCommit path. Only emits when the picked
+    /// shabad differs from whatever the engine currently has — a same-
+    /// shabad pick is a no-op confirmation, not a correction.
+    private func recordSevadarPickerCorrectionIfMismatch(pickedShabadId: Int) {
+        guard let predictedId = env.captionModel.committedShabadId,
+              predictedId != pickedShabadId else { return }
+        let currentGuess = env.captionModel.currentGuess
+        let runnerUps = Dictionary(
+            uniqueKeysWithValues: env.captionModel.runnerUps.map { ($0.shabadId, $0.confidence) }
+        )
+        recordIfOptedIn {
+            CorrectionEventBuilder.makeHardNegPos(
+                sessionId: env.sessionId,
+                predictedShabadId: predictedId,
+                predictedLineIdx: currentGuess?.lineIdx,
+                predictedConfidence: currentGuess?.confidence,
+                runnerUps: runnerUps,
+                correctedShabadId: pickedShabadId,
+                engineStateRaw: CorrectionEventBuilder.engineStateRaw(env.captionModel.state)
+            )
+        }
+    }
+
+    /// Sangat long-press → WrongShabadSheet path. Predicted snapshot
+    /// is captured at long-press time, supplied by the sheet's host.
+    private func recordSangatWrongShabad(predictedShabadId: Int, correctedShabadId: Int) {
+        guard predictedShabadId != correctedShabadId else { return }
+        let currentGuess = env.captionModel.currentGuess
+        let runnerUps = Dictionary(
+            uniqueKeysWithValues: env.captionModel.runnerUps.map { ($0.shabadId, $0.confidence) }
+        )
+        recordIfOptedIn {
+            CorrectionEventBuilder.makeHardNegPos(
+                sessionId: env.sessionId,
+                predictedShabadId: predictedShabadId,
+                predictedLineIdx: currentGuess?.lineIdx,
+                predictedConfidence: currentGuess?.confidence,
+                runnerUps: runnerUps,
+                correctedShabadId: correctedShabadId,
+                engineStateRaw: CorrectionEventBuilder.engineStateRaw(env.captionModel.state)
+            )
+        }
+    }
+
+    /// Sevadar dock ± → smoother training signal.
+    private func recordLineNudge(shabadId: Int, predictedLineIdx: Int, delta: Int) {
+        recordIfOptedIn {
+            CorrectionEventBuilder.makeLineNudge(
+                sessionId: env.sessionId,
+                shabadId: shabadId,
+                predictedLineIdx: predictedLineIdx,
+                delta: delta,
+                engineStateRaw: CorrectionEventBuilder.engineStateRaw(env.captionModel.state)
+            )
+        }
     }
 
     private func layersSummary(layout: ReadingLayout, translit: Bool, meaning: Bool) -> String {
@@ -379,4 +498,21 @@ public struct RootView: View {
         hasCompletedOnboarding: false
     )
     RootView(env: env)
+}
+
+// MARK: - Identifiable shim for SwiftUI .sheet(item:)
+
+/// `.sheet(item:)` needs an `Identifiable`; an `Optional<Int>` won't
+/// do because two different `Int` values that happen to be equal
+/// should re-present the sheet. Wrapping in a struct with a fresh
+/// `UUID` per construction sidesteps that and keeps the call site
+/// readable.
+private struct PendingShabad: Identifiable {
+    let id: UUID
+    let shabadId: Int
+
+    init(shabadId: Int) {
+        self.id = UUID()
+        self.shabadId = shabadId
+    }
 }

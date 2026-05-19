@@ -42,14 +42,45 @@ public final class DemoCaptionSource: CaptionSource {
     // MARK: - Configuration
 
     private let script: DemoScript
+
+    /// Single playback task. Holds either the scripted timeline (after
+    /// `start()`) or the synthetic auto-advance loop (after
+    /// `manuallyCommit`). Cancelled on `stop()` and replaced on every
+    /// transition between the two modes.
     private var playbackTask: Task<Void, Never>?
+
+    /// M5.6.x: `manuallyCommit` switches the source into "synthetic
+    /// auto-advance" mode — the original scripted timeline can't tick
+    /// through a shabad it has no line data for, so we drive a
+    /// per-line cadence using `totalLinesProvider` for wrap behavior.
+    /// `nil` (the default) means "no auto-advance after manualCommit"
+    /// — Resume becomes a no-op in that scenario. Production passes
+    /// a real provider; tests can stub it.
+    private let totalLinesProvider: ((Int) -> Int)?
+
+    /// Seconds between synthetic-mode line advances. Default 4s in
+    /// production; tests pass a shorter interval to keep `swift test`
+    /// snappy. Has no effect on the scripted timeline, which uses
+    /// per-step delays from the `DemoScript`.
+    private let syntheticAdvanceInterval: TimeInterval
 
     // MARK: - Init
 
     /// Build a demo source for the given script. Defaults to the canonical
     /// Tati Vao Na Lagai timeline so a no-arg construction "just works".
-    public init(script: DemoScript = .tatiVaoNaLagai) {
+    ///
+    /// `totalLinesProvider` and `syntheticAdvanceInterval` drive the
+    /// post-`manuallyCommit` auto-advance behavior (M5.6.x). Both are
+    /// optional and default to safe values so the 26 existing
+    /// call sites compile unchanged.
+    public init(
+        script: DemoScript = .tatiVaoNaLagai,
+        totalLinesProvider: ((Int) -> Int)? = nil,
+        syntheticAdvanceInterval: TimeInterval = 4.0
+    ) {
         self.script = script
+        self.totalLinesProvider = totalLinesProvider
+        self.syntheticAdvanceInterval = syntheticAdvanceInterval
 
         var localContinuation: AsyncStream<CaptionSourceEvent>.Continuation!
         self.events = AsyncStream { localContinuation = $0 }
@@ -103,7 +134,15 @@ public final class DemoCaptionSource: CaptionSource {
         continuation.yield(.started)
         AppLogger.source.info("DemoCaptionSource started — fresh session")
 
-        playbackTask = Task { @MainActor [weak self] in
+        playbackTask = makeScriptedPlaybackTask()
+    }
+
+    /// Scripted timeline: walks `script.steps` once, applying each
+    /// step's mutations after its `delay`. M5.6.x: between the
+    /// per-step sleep and the apply, hold the loop while `isPaused`
+    /// so pause/resume stops the clock instead of dropping steps.
+    private func makeScriptedPlaybackTask() -> Task<Void, Never> {
+        Task { @MainActor [weak self] in
             guard let self else { return }
             for step in self.script.steps {
                 // Wait the requested delay, observing cancellation.
@@ -114,12 +153,90 @@ public final class DemoCaptionSource: CaptionSource {
                     return  // cancelled
                 }
                 if Task.isCancelled { return }
+
+                // Hold the step at the gate while paused. Canonical
+                // "Pause" semantic is "stop the clock", not "drop any
+                // step whose delay finishes during the pause window"
+                // (which is what the M5.3-era code did, producing the
+                // line 3 → line 5 jump on resume).
+                while self.isPaused {
+                    do {
+                        try await Task.sleep(nanoseconds: 100_000_000) // 100ms poll
+                    } catch {
+                        return  // cancelled mid-pause
+                    }
+                    if Task.isCancelled { return }
+                }
+                if Task.isCancelled { return }
                 self.apply(step: step)
             }
             // End of script — leave the source running (final committed state
             // visible) but mark the playback as drained.
             AppLogger.source.info("DemoCaptionSource script drained")
         }
+    }
+
+    /// Synthetic auto-advance: drives line-by-line progression within
+    /// the *currently committed* shabad, wrapping at `totalLines`.
+    /// Started by `manuallyCommit` (and only by `manuallyCommit`) —
+    /// the scripted task can't help once the user has overridden the
+    /// engine's pick, because the demo script has line data for only
+    /// one pre-baked shabad. Honors the same pause gate as the
+    /// scripted task.
+    private func makeSyntheticPlaybackTask() -> Task<Void, Never> {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            // Snapshot the interval at task start (avoid touching
+            // self on every loop iteration just for a constant).
+            let nanos = UInt64(self.syntheticAdvanceInterval * 1_000_000_000)
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(nanoseconds: nanos)
+                } catch {
+                    return  // cancelled
+                }
+                if Task.isCancelled { return }
+
+                while self.isPaused {
+                    do {
+                        try await Task.sleep(nanoseconds: 100_000_000)
+                    } catch {
+                        return
+                    }
+                    if Task.isCancelled { return }
+                }
+                if Task.isCancelled { return }
+                self.advanceOneLineSynthetic()
+            }
+        }
+    }
+
+    /// Bump `currentGuess.lineIdx` by 1, wrapping at the provider's
+    /// returned line count for the current shabad. No-op when there's
+    /// no committed guess (e.g., `resetShabad` happened) or no
+    /// provider was injected. Public state changes go through the
+    /// continuation so views observing `events` see the update.
+    private func advanceOneLineSynthetic() {
+        guard case .committed = state, let guess = currentGuess else {
+            return  // no shabad to advance within
+        }
+        let total: Int
+        if let provider = totalLinesProvider {
+            total = max(provider(guess.shabadId), 1)
+        } else {
+            // No provider → can't safely wrap. Hold position.
+            return
+        }
+        let nextIdx = (guess.lineIdx + 1) % total
+        let next = LineGuess(
+            chunk: guess.chunk,
+            shabadId: guess.shabadId,
+            lineIdx: nextIdx,
+            confidence: guess.confidence,
+            isCommitted: guess.isCommitted
+        )
+        currentGuess = next
+        continuation.yield(.guessUpdated(next))
     }
 
     public func stop() {
@@ -164,16 +281,23 @@ public final class DemoCaptionSource: CaptionSource {
         runnerUps = []
         continuation.yield(.runnerUpsUpdated([]))
 
-        // Auto-pause the scripted engine. The Sevadar's intent when
-        // manually picking a different shabad is "I'm taking control"
-        // — without this, the playback task keeps running and the
-        // next scripted `guessUpdated` event overwrites the manual
-        // selection a few seconds later (the screen flips back to
-        // Tati Vao even though the user picked Hum Aadmi). Sevadar
-        // hits Resume on the dock to let auto-detection drive again.
+        // Auto-pause first. The Sevadar's intent when manually
+        // picking is "I'm taking control" — Resume on the dock is the
+        // explicit "ok, follow this shabad now" signal.
         isPaused = true
 
-        AppLogger.source.info("DemoCaptionSource manuallyCommit to shabad #\(shabadId, privacy: .public) — engine auto-paused")
+        // M5.6.x: swap the scripted task for the synthetic auto-
+        // advance task. The scripted task only knows the script's
+        // pre-baked shabad; after a manual pick it would either
+        // overwrite the user's selection (if it has remaining steps)
+        // or sit silent (if it has drained). Neither is what the
+        // dock's "Pause/Resume" affordance is supposed to mean. The
+        // synthetic task ticks `currentGuess.lineIdx` by 1 every
+        // `syntheticAdvanceInterval` seconds while not paused.
+        playbackTask?.cancel()
+        playbackTask = makeSyntheticPlaybackTask()
+
+        AppLogger.source.info("DemoCaptionSource manuallyCommit to shabad #\(shabadId, privacy: .public) — engine auto-paused; synthetic auto-advance armed")
     }
 
     public func nudge(by delta: Int) {

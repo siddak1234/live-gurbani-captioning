@@ -29,8 +29,18 @@ public struct ReadingHost: View {
     /// single `ShabadPickerView` sheet; ReadingHost is the conduit.
     public let onRequestPicker: () -> Void
 
-    public init(onRequestPicker: @escaping () -> Void = {}) {
+    /// M5.6: long-press on a committed reading view → "this isn't
+    /// right" surface. RootView owns the `WrongShabadSheet`
+    /// presentation and the correction-event emission; ReadingHost
+    /// just relays the gesture with the currently-committed shabad.
+    public let onRequestWrongShabad: (Int) -> Void
+
+    public init(
+        onRequestPicker: @escaping () -> Void = {},
+        onRequestWrongShabad: @escaping (Int) -> Void = { _ in }
+    ) {
         self.onRequestPicker = onRequestPicker
+        self.onRequestWrongShabad = onRequestWrongShabad
     }
 
     public var body: some View {
@@ -49,13 +59,30 @@ public struct ReadingHost: View {
     @ViewBuilder
     private func committedView(shabadId: Int) -> some View {
         if let guess = env.captionModel.currentGuess, guess.isCommitted {
-            switch env.readingLayout {
-            case .hero:
-                HeroLineView(guess: guess)
-            case .karaoke:
-                KaraokeView(guess: guess)
-            case .full:
-                FullShabadView(guess: guess)
+            // Long-press on the active reading view in any layout
+            // surfaces the wrong-shabad sheet. Minimum duration is
+            // 0.55s — short enough to feel responsive, long enough
+            // not to fire on momentary touches while reading.
+            // `HeroLineView`, `KaraokeView`, and `FullShabadView` have
+            // no competing gestures (verified at M5.6 audit), so this
+            // attaches cleanly.
+            Group {
+                switch env.readingLayout {
+                case .hero:
+                    HeroLineView(guess: guess)
+                case .karaoke:
+                    KaraokeView(guess: guess)
+                case .full:
+                    FullShabadView(guess: guess)
+                }
+            }
+            .contentShape(Rectangle())
+            .onLongPressGesture(minimumDuration: 0.55) {
+                env.haptics.play(.warning)
+                onRequestWrongShabad(guess.shabadId)
+            }
+            .accessibilityAction(named: Text("Flag wrong shabad")) {
+                onRequestWrongShabad(guess.shabadId)
             }
         } else {
             waitingForLine(shabadId: shabadId)
