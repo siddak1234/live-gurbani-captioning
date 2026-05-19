@@ -33,6 +33,7 @@ public enum CaptionEngineError: Error, LocalizedError {
     case whisperKitUnavailable
     case modelLoadFailed(String)
     case audioCaptureFailed(String)
+    case modelFolderNotFound(String)
 
     public var errorDescription: String? {
         switch self {
@@ -40,6 +41,7 @@ public enum CaptionEngineError: Error, LocalizedError {
             return "CaptionEngine: WhisperKit framework not linked. Add the SPM dependency."
         case .modelLoadFailed(let s):  return "CaptionEngine: model load failed — \(s)"
         case .audioCaptureFailed(let s): return "CaptionEngine: audio capture failed — \(s)"
+        case .modelFolderNotFound(let s): return "CaptionEngine: model folder not found — \(s)"
         }
     }
 }
@@ -75,6 +77,11 @@ public final class CaptionEngine {
 
 #if canImport(WhisperKit)
     private var whisper: WhisperKit?
+    private var streamTranscriber: AudioStreamTranscriber?
+    /// Count of `confirmedSegments` we've already routed into the state
+    /// machine. WhisperKit's stream callback fires on every state mutation;
+    /// we use this to dedupe and only process newly-confirmed segments.
+    private var processedConfirmedSegmentCount: Int = 0
 #endif
 
     public init(config: Config, corpus: ShabadCorpus,
@@ -87,13 +94,41 @@ public final class CaptionEngine {
     // MARK: - Lifecycle
 
     /// Load the Core ML model and prepare the audio pipeline.
+    ///
+    /// Resolution order for `config.modelPath`:
+    ///   1. If it's an absolute path that exists on disk, use it directly
+    ///      (dev path — sideload models without re-bundling).
+    ///   2. Otherwise, look it up via `Bundle.module` as a resource folder
+    ///      name (production path — model ships in the SPM bundle once
+    ///      M5.7c lands the `.copy("Resources/...")` declaration).
+    ///   3. Otherwise, throw `.modelFolderNotFound` — `LiveCaptionSource`
+    ///      catches this and `AppEnvironment` falls back to the demo
+    ///      source, so the app remains usable.
     public func prepare() async throws {
 #if canImport(WhisperKit)
+        let folder = try resolveModelFolder(name: config.modelPath)
         do {
-            // WhisperKit's initializer differs slightly across versions; the
-            // common shape takes a model name or absolute path. Adjust here
-            // if the SDK signature changes upstream.
-            self.whisper = try await WhisperKit(model: config.modelPath)
+            // WhisperKitConfig parameter order is locked by the init
+            // signature (prewarm → load → download). The comments below
+            // explain each choice; the order is mechanical.
+            let kitConfig = WhisperKitConfig(
+                modelFolder: folder.path,
+                // Specialize each model individually to minimize peak
+                // memory during first launch. Argmax recommends prewarm
+                // on for mobile apps where peak RAM matters more than
+                // load-time latency (~1-2s tax on cold start).
+                prewarm: true,
+                // Auto-load once specialization is done.
+                load: true,
+                // Don't allow runtime download of remote weights. The
+                // production deliverable is the bundled .mlmodelc set;
+                // if it's missing, the demo source path takes over
+                // rather than silently pulling 220MB over cellular.
+                download: false
+            )
+            self.whisper = try await WhisperKit(kitConfig)
+        } catch let e as CaptionEngineError {
+            throw e
         } catch {
             throw CaptionEngineError.modelLoadFailed(String(describing: error))
         }
@@ -108,9 +143,67 @@ public final class CaptionEngine {
         guard let whisper else {
             throw CaptionEngineError.modelLoadFailed("call prepare() first")
         }
-        isRunning = true
+        guard let tokenizer = whisper.tokenizer else {
+            throw CaptionEngineError.modelLoadFailed(
+                "WhisperKit tokenizer not loaded; prepare() must complete before start()"
+            )
+        }
+
+        // Reset per-session state so a second start() on the same
+        // engine doesn't replay old confirmed segments.
+        processedConfirmedSegmentCount = 0
+        stateMachine.reset()
+
+        let decodingOptions = DecodingOptions(
+            verbose: false,
+            task: .transcribe,
+            language: config.language,
+            // Skip the special-token text in the streamed transcript so
+            // the matcher sees clean Gurmukhi (Whisper's <|punjabi|>
+            // / <|transcribe|> tokens would otherwise leak through).
+            skipSpecialTokens: true,
+            withoutTimestamps: false,
+            // VAD is on by default in AudioStreamTranscriber; we let it
+            // gate the decoder so we don't burn ANE on silence.
+            noSpeechThreshold: 0.6
+        )
+
+        let transcriber = AudioStreamTranscriber(
+            audioEncoder: whisper.audioEncoder,
+            featureExtractor: whisper.featureExtractor,
+            segmentSeeker: whisper.segmentSeeker,
+            textDecoder: whisper.textDecoder,
+            tokenizer: tokenizer,
+            audioProcessor: whisper.audioProcessor,
+            decodingOptions: decodingOptions,
+            useVAD: true,
+            stateChangeCallback: { [weak self] oldState, newState in
+                guard let self else { return }
+                // WhisperKit fires this on every state mutation. We only
+                // care about *newly-confirmed* segments (the unconfirmed
+                // bucket churns as the decoder revises tail text).
+                let oldCount = oldState.confirmedSegments.count
+                let newCount = newState.confirmedSegments.count
+                guard newCount > oldCount else { return }
+                let newSegments = Array(newState.confirmedSegments.suffix(newCount - oldCount))
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.ingestConfirmedSegments(newSegments)
+                }
+            }
+        )
+        self.streamTranscriber = transcriber
+        self.isRunning = true
         await notifyState(stateMachine.state)
-        try await transcribeStream(using: whisper)
+
+        do {
+            try await transcriber.startStreamTranscription()
+        } catch {
+            self.isRunning = false
+            self.streamTranscriber = nil
+            await notifyError(CaptionEngineError.audioCaptureFailed(String(describing: error)))
+            throw CaptionEngineError.audioCaptureFailed(String(describing: error))
+        }
 #else
         throw CaptionEngineError.whisperKitUnavailable
 #endif
@@ -120,8 +213,13 @@ public final class CaptionEngine {
     public func stop() {
         isRunning = false
 #if canImport(WhisperKit)
-        // WhisperKit-specific cancellation hook — depends on SDK version.
-        // Latest versions expose audioProcessor.stopRecording() or similar.
+        if let transcriber = streamTranscriber {
+            // `stopStreamTranscription` is an actor method; we don't need
+            // its result and the underlying audio session can be torn
+            // down asynchronously.
+            Task { await transcriber.stopStreamTranscription() }
+            streamTranscriber = nil
+        }
 #endif
     }
 
@@ -137,31 +235,63 @@ public final class CaptionEngine {
         Task { await notifyState(stateMachine.state) }
     }
 
-    // MARK: - Inference loop
+    // MARK: - Model folder resolution
 
 #if canImport(WhisperKit)
-    private func transcribeStream(using whisper: WhisperKit) async throws {
-        // The actual WhisperKit streaming API varies; current published surface
-        // includes whisperKit.transcribe(audioPath:) for files and an async
-        // streaming path via AudioProcessor + bufferCallback. The block below
-        // is a structural placeholder that mirrors what the production hookup
-        // looks like — adapt to the installed WhisperKit version's signature.
-        //
-        // Pseudocode:
-        //
-        //   for await chunk in whisper.streamingChunks(language: config.language,
-        //                                              chunkSeconds: config.chunkSeconds) {
-        //       let asr = AsrChunk(start: chunk.start, end: chunk.end, text: chunk.text)
-        //       let guess = stateMachine.processChunk(asr)
-        //       await notifyGuess(guess)
-        //       await notifyState(stateMachine.state)
-        //   }
-        //
-        // Until that's wired against the installed WhisperKit version, this
-        // throws so calls go to the error delegate rather than silently no-op.
-        throw CaptionEngineError.audioCaptureFailed(
-            "transcribeStream is not yet wired to WhisperKit's streaming API. See comments inside CaptionEngine.swift."
+    /// Locate the `.mlmodelc` set that WhisperKit will load from.
+    /// `config.modelPath` may be:
+    ///   - an absolute filesystem path (dev / sideload case), or
+    ///   - a resource folder name inside `Bundle.module` (production case
+    ///     once M5.7c lands the `.copy("Resources/...")` declaration).
+    /// Throws `.modelFolderNotFound` if neither resolves. Callers
+    /// (`LiveCaptionSource`) translate this into a graceful fallback
+    /// rather than a crash.
+    private func resolveModelFolder(name: String) throws -> URL {
+        let fm = FileManager.default
+        // (1) Absolute path
+        if name.hasPrefix("/") || name.hasPrefix("~") {
+            let expanded = (name as NSString).expandingTildeInPath
+            var isDir: ObjCBool = false
+            if fm.fileExists(atPath: expanded, isDirectory: &isDir), isDir.boolValue {
+                return URL(fileURLWithPath: expanded, isDirectory: true)
+            }
+        }
+        // (2) Bundle.module resource folder
+        if let bundleURL = Bundle.module.url(forResource: name, withExtension: nil) {
+            var isDir: ObjCBool = false
+            if fm.fileExists(atPath: bundleURL.path, isDirectory: &isDir), isDir.boolValue {
+                return bundleURL
+            }
+        }
+        throw CaptionEngineError.modelFolderNotFound(
+            "Could not find Core ML model folder \"\(name)\". " +
+            "Expected either an absolute path or a resource bundled via " +
+            "`.copy(\"Resources/<name>\")` in Package.swift (lands in M5.7c). " +
+            "Until then, `LiveCaptionSource` will throw and `AppEnvironment` " +
+            "falls back to `DemoCaptionSource`."
         )
+    }
+
+    // MARK: - Segment ingestion
+
+    /// Route newly-confirmed WhisperKit segments through the matcher /
+    /// state machine and notify the delegate of the resulting guess.
+    /// Called from the stream callback on the MainActor so we don't
+    /// race with view code reading `stateMachine.state`.
+    @MainActor
+    private func ingestConfirmedSegments(_ segments: [TranscriptionSegment]) {
+        guard !segments.isEmpty else { return }
+        for seg in segments {
+            let chunk = AsrChunk(
+                start: TimeInterval(seg.start),
+                end: TimeInterval(seg.end),
+                text: seg.text
+            )
+            let guess = stateMachine.processChunk(chunk)
+            delegate?.captionEngine(self, didUpdate: guess)
+            delegate?.captionEngine(self, didChangeState: stateMachine.state)
+            processedConfirmedSegmentCount += 1
+        }
     }
 #endif
 
