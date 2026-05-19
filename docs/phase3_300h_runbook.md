@@ -349,3 +349,21 @@ validation split. Keep monitoring at `checkpoint-16000`; do not interrupt unless
 validation begins a clear upward pattern or runtime/OOS scoring later disagrees
 with the validation improvement.
 
+## Epoch-2 continuation checkpoints — steps 16000-19000
+
+Held-out shabad validation continued improving after the step-15000 new best:
+
+| Step | Eval loss | Decision |
+|---:|---:|---|
+| 16000 | `0.035056933760643005` | new best; continue |
+| 17000 | `0.03505650907754898` | effectively flat but still new best; continue |
+| 18000 | `0.03503436595201492` | new best; continue |
+| 19000 | `0.03500748425722122` | new best; continue |
+
+Decision: continue the controlled epoch-2/3 run. The earlier step-13000 uptick
+was noise, not the start of an overfit trend. The best checkpoint has now moved
+to `lora_adapters/v7_mac_300h_epoch1/checkpoint-19000`, and validation has
+improved monotonically over the last four completed evals. Keep monitoring every
+1000 steps; only pause if validation shows a meaningful upward break or two
+consecutive worsening checkpoints away from this new best.
+
