@@ -76,6 +76,34 @@ PYTHON=.venv/bin/python3 make train-v7-300h \
 After completion, rerun the paired + assisted-OOS commands above and compare
 against `93.1%` / `61.3%`.
 
+
+## Active continuation run — 2026-05-18
+
+The controlled continuation to 3 epochs has been started in a detached `screen`
+session so it can survive closing VS Code:
+
+- screen session: `v7_epoch23`
+- launch PID observed: `52656` (`SCREEN`), trainer PID observed: `52672`
+- log file: `/tmp/phase3_v7_epochs2_3.log`
+- resume checkpoint: `lora_adapters/v7_mac_300h_epoch1/checkpoint-11661`
+- target total steps for 3 epochs: `34983`
+
+Useful checks:
+
+```bash
+screen -ls
+sed -n '1,180p' /tmp/phase3_v7_epochs2_3.log
+pgrep -fl 'scripts/finetune_path_b.py|v7_epoch23'
+```
+
+To attach interactively:
+
+```bash
+screen -r v7_epoch23
+```
+
+Detach again with `Ctrl-a` then `d`.
+
 ## In-flight workstreams (state-of-the-world)
 
 - Phase 2.9 best honest runtime: `phase2_9_loop_align` at `91.2%`.
