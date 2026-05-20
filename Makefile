@@ -639,7 +639,15 @@ ios-export: ## Merge LoRA into base + export .mlpackage to ios bundle.
 # Paths used by `make ios-bundle-model` below. Override on the CLI when
 # the exported variant has a different suffix (e.g. `_8bit_141MB` if
 # you swap to 8-bit quantization in coreml_ane.yaml).
-COREML_EXPORT_VARIANT ?= coreml_export/surindersinghssj_surt-small-v3_221MB
+#
+# Why fp16-fallback (465 MB) instead of the 4-bit _221MB variant: the
+# 4-bit + outlier-decomposition recipe destroys surt-small-v3's Punjabi
+# fine-tune — the decoder emits `<|endoftext|>` as the very first
+# generated token, producing empty transcripts. fp16 reproduces the HF
+# Python reference exactly (see `ModelParityTests`). Documented in
+# `docs/ios_deployment.md`. Try `--allowed-nbits 6` or `8` before
+# returning to 4-bit; M5.7d's findings are also in the M5.7d PR.
+COREML_EXPORT_VARIANT ?= coreml_export/surindersinghssj_surt-small-v3-fp16-fallback
 IOS_MODEL_DIR         ?= ios/Sources/GurbaniCaptioning/Resources/surt-small-v3-kirtan
 
 .PHONY: ios-bundle-model

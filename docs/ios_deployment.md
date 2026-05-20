@@ -146,12 +146,79 @@ Build and run on your iPhone. Permission prompts the first time: microphone acce
 | Crash on `WhisperKit(model:)` init | `.mlpackage` not in bundle, or wrong name | Check `CaptionEngine.Config.modelPath` matches the file in `Resources/` |
 | Listening forever, never commits | Confidence margin too high for the chunk quality | Lower `ShabadCommitConfig.minVoteScore` / `.minVoteMargin` in `ContentView.swift`'s viewModel |
 | Committed shabad is consistently wrong | Either the corpus is missing the actual shabad, or the matcher is too lenient on margins | Check `ShabadCorpus.allShabadIds` contains the GT shabad; raise `.minVoteMargin` |
-| Audio captured but transcript is garbage | Wrong language tag, or model loading the wrong weights | Verify `CaptionEngine.Config.language == "punjabi"` and the `.mlpackage` came from a kirtan-fine-tuned model |
+| Audio captured but transcript is garbage | Wrong language tag, or model loading the wrong weights | Verify `CaptionEngine.Config.language == "pa"` (ISO-639-1 short code; see "WhisperKit gotchas" below) and the `.mlpackage` came from a kirtan-fine-tuned model |
+| Audio captured but transcript is **empty** with just 2-5 tokens | Either (a) language passed as `"punjabi"` not `"pa"` (silent English fallback), or (b) the bundled `.mlmodelc` is the aggressively-quantized 4-bit + OD-MBP variant | (a) See WhisperKit gotchas. (b) Re-bundle with the fp16 variant via `make ios-bundle-model` (default since M5.7d) |
 | Battery drains absurdly fast | ANE attention path not being used | Confirm `configs/export/coreml_ane.yaml` had `ane_attention: true` and verify with WhisperKit's compute-unit info logs |
+
+## WhisperKit gotchas (caught during M5.7d parity testing)
+
+### Language strings: short code only
+
+`DecodingOptions.language` must be the ISO-639-1 short code (`"pa"`,
+`"en"`, `"hi"`), **not** the long form (`"punjabi"`, `"english"`).
+WhisperKit builds the prefill language token by literal string
+concatenation in `TextDecoder.prefillDecoderInputs`:
+
+```swift
+let languageTokenString = "<|\(options.language ?? "en")|>"
+languageToken = tokenizer.convertTokenToId(languageTokenString) ?? englishToken
+```
+
+`<|punjabi|>` is not a real Whisper vocab token; `<|pa|>` is.
+Passing the long form silently falls back to English. For a model
+fine-tuned only on Punjabi (like surt-small-v3), the English prefill
+produces an empty transcript — the decoder emits `<|notimestamps|>`
+followed immediately by `<|endoftext|>`. The 2-token signature is the
+fingerprint of this bug.
+
+WhisperKit *has* a `"punjabi" → "pa"` mapping in `Constants.languages`,
+but it's used only to enumerate language tokens at tokenizer init, never
+to normalize user input. `CaptionEngine.Config.language` now defaults to
+`"pa"`; Python scripts (which go through HF transformers' tokenizer)
+can keep using the long form.
+
+### Quantization: 4-bit + OD-MBP breaks surt-small-v3
+
+The `whisperkit-generate-model --allowed-nbits 4 --outlier-decomp`
+recipe produces a 221 MB variant that, after the language fix above is
+applied, *still* emits `<|endoftext|>` as its first generated token on
+Punjabi audio. The aggressive 4-bit palettization + outlier decomp
+discards weights critical to surt's fine-tune.
+
+The fp16 fallback (auto-generated as a sibling of the quantized variants)
+reproduces the HF Python reference exactly. `make ios-bundle-model` now
+defaults to the fp16 variant (~465 MB). Re-attempting 6-bit or 8-bit
+quantization is a future optimization milestone.
 
 ## Parity tests (M5 audit gate)
 
-Before shipping, the Swift matcher must agree with the Python matcher on ≥ 90% of test cases. Generate the fixtures from Python:
+`ios/Tests/GurbaniCaptioningTests/ModelParityTests.swift` runs the
+bundled Core ML model against a 5s fixture audio (`izos_30s_snippet_5s.wav`)
+and asserts the transcript matches a Python-dumped reference
+(`izos_30s_snippet_5s.expected.json`). Both tests are gated behind
+`WHISPER_PARITY_TEST=1` because cold-loading the model takes ~3 minutes
+(Core ML ANE specialization).
+
+To run:
+
+```bash
+# 1) Regenerate the expected transcript when the model changes:
+.venv/bin/python scripts/dump_parity_fixture.py \
+  --audio ios/Tests/GurbaniCaptioningTests/Fixtures/izos_30s_snippet_5s.wav \
+  --model surindersinghssj/surt-small-v3 \
+  --language punjabi \
+  --out ios/Tests/GurbaniCaptioningTests/Fixtures/izos_30s_snippet_5s.expected.json
+
+# 2) Run both tests:
+cd ios && WHISPER_PARITY_TEST=1 swift test --filter ModelParityTests
+```
+
+The first invocation pays the cold-load cost (~3 min); subsequent runs
+in the same session reuse the cached compiled model and complete in a
+few seconds.
+
+The matcher-side parity test (Swift `FuzzyMatcher` vs Python `matcher.py`)
+is still planned for a later milestone:
 
 ```bash
 # (planned — script lands as part of M6 hardening)

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "audio_filename": "izos_30s_snippet_5s.wav",
+  "duration_seconds": 5.0,
+  "sample_rate_hz": 16000,
+  "model_id": "surindersinghssj/surt-small-v3",
+  "language": "punjabi",
+  "decoder": {
+    "num_beams": 1,
+    "do_sample": false,
+    "temperature": 0.0
+  },
+  "expected_text": "ਨ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ"
+}

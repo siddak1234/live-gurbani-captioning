@@ -84,3 +84,24 @@ ios/*.xcodeproj/project.xcworkspace/xcuserdata/
 # regularly produces these stale copies. See memory/project_icloud_drive_repo.md
 * 2.*
 * 2/
+
+# M5.7d — small WAV fixture used by `ModelParityTests`. `*.wav` is
+# globally ignored (line 20) to keep `audio/` out of git, but this 5-second
+# snippet (160 KB) is committed so the parity test runs without requiring
+# the reviewer to also download `audio/IZOsmkdmmcg_16k.wav`.
+!ios/Tests/GurbaniCaptioningTests/Fixtures/*.wav
+
+# M5.7d — HF tokenizer files bundled alongside the Core ML .mlmodelc set.
+# Reproducible from `huggingface-cli download surindersinghssj/surt-small-v3 ...`
+# and `make ios-bundle-model`. Keep out of git for the same size + diff
+# reasons as the *.mlmodelc/ rule above (~5MB of binary-ish JSON).
+ios/Sources/GurbaniCaptioning/Resources/*/tokenizer.json
+ios/Sources/GurbaniCaptioning/Resources/*/tokenizer_config.json
+ios/Sources/GurbaniCaptioning/Resources/*/vocab.json
+ios/Sources/GurbaniCaptioning/Resources/*/merges.txt
+ios/Sources/GurbaniCaptioning/Resources/*/special_tokens_map.json
+ios/Sources/GurbaniCaptioning/Resources/*/added_tokens.json
+ios/Sources/GurbaniCaptioning/Resources/*/normalizer.json
+ios/Sources/GurbaniCaptioning/Resources/*/preprocessor_config.json
+ios/Sources/GurbaniCaptioning/Resources/*/generation_config.json
+ios/Sources/GurbaniCaptioning/Resources/*/config.json
