@@ -636,18 +636,22 @@ ios-export: ## Merge LoRA into base + export .mlpackage to ios bundle.
 		--adapter-dir $(TRAIN_OUT) \
 		--output-dir $(COREML_OUT)
 
-# Paths used by `make ios-bundle-model` below. Override on the CLI when
-# the exported variant has a different suffix (e.g. `_8bit_141MB` if
-# you swap to 8-bit quantization in coreml_ane.yaml).
+# Paths used by `make ios-bundle-model` below. The variant folder name is
+# size-derived by whisperkittools (`_<MB>MB`); re-derive it after any
+# re-export. Override on the CLI to bundle a different variant.
 #
-# Why fp16-fallback (465 MB) instead of the 4-bit _221MB variant: the
-# 4-bit + outlier-decomposition recipe destroys surt-small-v3's Punjabi
-# fine-tune — the decoder emits `<|endoftext|>` as the very first
-# generated token, producing empty transcripts. fp16 reproduces the HF
-# Python reference exactly (see `ModelParityTests`). Documented in
-# `docs/ios_deployment.md`. Try `--allowed-nbits 6` or `8` before
-# returning to 4-bit; M5.7d's findings are also in the M5.7d PR.
-COREML_EXPORT_VARIANT ?= coreml_export/surindersinghssj_surt-small-v3-fp16-fallback
+# Variant choice (validated by `ModelParityTests`):
+#   - 6-bit uniform (`_236MB`, ~226 MB): PASSES — bit-identical to the HF
+#     Python reference. **Current default.** Generated with
+#     `--allowed-nbits 6 --force-recipe-nbits` (no `--outlier-decomp`).
+#   - 8-bit uniform (`_286MB`, ~273 MB): also passes; safer fallback.
+#   - fp16 (`-fp16-fallback`, ~465 MB): passes; the pre-quant baseline.
+#   - 4-bit + OD (`_221MB`): FAILS — destroys the Punjabi fine-tune
+#     (decoder emits `<|endoftext|>` as its first token → empty output).
+#     `--force-recipe-nbits` is what avoids the English-biased recipe
+#     that crushed Gurmukhi layers. Do NOT bundle this variant.
+# See `docs/ios_deployment.md` for the full quantization findings.
+COREML_EXPORT_VARIANT ?= coreml_export/surindersinghssj_surt-small-v3_236MB
 IOS_MODEL_DIR         ?= ios/Sources/GurbaniCaptioning/Resources/surt-small-v3-kirtan
 
 .PHONY: ios-bundle-model

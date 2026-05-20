@@ -177,18 +177,42 @@ to normalize user input. `CaptionEngine.Config.language` now defaults to
 `"pa"`; Python scripts (which go through HF transformers' tokenizer)
 can keep using the long form.
 
-### Quantization: 4-bit + OD-MBP breaks surt-small-v3
+### Quantization: use `--force-recipe-nbits`; 4-bit + OD-MBP breaks surt
 
 The `whisperkit-generate-model --allowed-nbits 4 --outlier-decomp`
 recipe produces a 221 MB variant that, after the language fix above is
 applied, *still* emits `<|endoftext|>` as its first generated token on
-Punjabi audio. The aggressive 4-bit palettization + outlier decomp
-discards weights critical to surt's fine-tune.
+Punjabi audio. Root cause: whisperkittools' mixed-bit recipe search
+optimizes per-layer bit allocation against a quality target measured on
+**English** test data, so it crushes the layers critical to surt's
+Gurmukhi fine-tune while "passing" its own English metric.
 
-The fp16 fallback (auto-generated as a sibling of the quantized variants)
-reproduces the HF Python reference exactly. `make ios-bundle-model` now
-defaults to the fp16 variant (~465 MB). Re-attempting 6-bit or 8-bit
-quantization is a future optimization milestone.
+The fix is **`--force-recipe-nbits`**, which applies *uniform* N-bit
+palettization and bypasses the English-biased recipe entirely. Validated
+via `ModelParityTests` (each variant must reproduce the HF reference
+`ਨ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ` exactly):
+
+| Variant | Flags | Size | Parity |
+|---|---|---|---|
+| **6-bit uniform** | `--allowed-nbits 6 --force-recipe-nbits` | ~226 MB | **PASS (default)** |
+| 8-bit uniform | `--allowed-nbits 8 --force-recipe-nbits` | ~273 MB | pass (fallback) |
+| fp16 | auto `-fp16-fallback` | ~465 MB | pass (baseline) |
+| 4-bit + OD (recipe) | `--allowed-nbits 4 --outlier-decomp` | ~212 MB | **FAIL** |
+
+Generate 6-bit + 8-bit in one run (the flag is `action="append"`):
+
+```bash
+.venv/bin/whisperkit-generate-model \
+  --model-version surindersinghssj/surt-small-v3 \
+  --output-dir coreml_export \
+  --generate-quantized-variants \
+  --allowed-nbits 6 --allowed-nbits 8 --force-recipe-nbits
+```
+
+`make ios-bundle-model` defaults to the 6-bit variant (~226 MB) — roughly
+the size the broken 4-bit would have been, but bit-correct. True 4-bit
+would need a custom coremltools pass pinning `embed_tokens`/`proj_out` to
+higher precision; not worth it over working 6-bit for modern iPhones.
 
 ## Parity tests (M5 audit gate)
 

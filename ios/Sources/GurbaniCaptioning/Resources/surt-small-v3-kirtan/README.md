@@ -2,9 +2,9 @@
 
 This directory holds the Core ML compiled model files that
 `CaptionEngine` loads via `WhisperKit` at runtime. The files are large
-(~465 MB total, fp16) and **gitignored**; this README is committed so the
-directory itself is trackable and `Package.swift`'s `.copy(...)` resource
-declaration always finds it.
+(~226 MB total, 6-bit uniform palettization) and **gitignored**; this
+README is committed so the directory itself is trackable and
+`Package.swift`'s `.copy(...)` resource declaration always finds it.
 
 The HuggingFace tokenizer files (`tokenizer.json`, `vocab.json`,
 `merges.txt`, etc.) also live here — also gitignored — and are loaded by
@@ -18,24 +18,32 @@ unset). They're copied here as part of `make ios-bundle-model` from the
 ```
 surt-small-v3-kirtan/
 ├── README.md              (committed — this file)
-├── AudioEncoder.mlmodelc/    (gitignored, ~170 MB)
+├── AudioEncoder.mlmodelc/    (gitignored, ~67 MB)
 ├── MelSpectrogram.mlmodelc/  (gitignored, ~370 KB)
-├── TextDecoder.mlmodelc/     (gitignored, ~293 MB)
+├── TextDecoder.mlmodelc/     (gitignored, ~158 MB)
 └── tokenizer.json, vocab.json, merges.txt, …  (gitignored, ~5 MB)
 ```
 
-## Why fp16 instead of the 4-bit + OD-MBP variant
+## Which quantization variant (and why not 4-bit)
 
-The 4-bit + outlier-decomposition recipe (`whisperkit-generate-model
---allowed-nbits 4 --outlier-decomp`, output suffix `_221MB`) crushes
-weights critical to surt-small-v3's Punjabi fine-tune. Symptom: the
-decoder emits `<|endoftext|>` as its first generated token after prefill,
-producing an empty transcript. The fp16 fallback (auto-generated
-alongside the quantized variants) reproduces the HF Python reference
-exactly — see [`ModelParityTests`](../../../Tests/GurbaniCaptioningTests/ModelParityTests.swift).
+Validated by [`ModelParityTests`](../../../Tests/GurbaniCaptioningTests/ModelParityTests.swift):
 
-Re-attempting smaller quantization (6-bit or 8-bit) is a future
-optimization milestone; until then, fp16 is the production variant.
+| Variant | Generate flags | Size | Parity |
+|---|---|---|---|
+| **6-bit uniform** | `--allowed-nbits 6 --force-recipe-nbits` | ~226 MB | **PASS — current** |
+| 8-bit uniform | `--allowed-nbits 8 --force-recipe-nbits` | ~273 MB | pass (fallback) |
+| fp16 | (auto `-fp16-fallback`) | ~465 MB | pass (baseline) |
+| 4-bit + OD | `--allowed-nbits 4 --outlier-decomp` | ~212 MB | **FAIL** |
+
+The 4-bit + outlier-decomposition recipe crushes weights critical to
+surt-small-v3's Punjabi fine-tune: the decoder emits `<|endoftext|>` as
+its first generated token after prefill, producing an empty transcript.
+The fix was **`--force-recipe-nbits`** — it applies uniform N-bit instead
+of whisperkittools' mixed-bit recipe search, whose quality target is
+measured against English test data and therefore selectively crushes the
+Gurmukhi-critical layers. 6-bit uniform reproduces the HF Python
+reference exactly (`ਨ ਪਰਮੇਸਰ ਕਾ ਥਾਨੁ`) at roughly the same size the
+broken 4-bit variant would have been.
 
 If any of the three `.mlmodelc/` directories is missing,
 `CaptionEngine.resolveModelFolder` will throw `.modelFolderNotFound` at
