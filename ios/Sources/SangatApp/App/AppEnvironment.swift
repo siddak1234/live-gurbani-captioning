@@ -210,7 +210,10 @@ public final class AppEnvironment {
             let corpus = try ShabadCorpus.loadFromBundle()
             let config = CaptionEngine.Config(
                 modelPath: "surt-small-v3-kirtan",
-                language: "punjabi",
+                // ISO-639-1 short code only — `"punjabi"` silently falls
+                // back to English in WhisperKit (see CaptionEngine.Config
+                // doc-comment for why).
+                language: "pa",
                 chunkSeconds: 5.0
             )
             return LiveCaptionSource(corpus: corpus, config: config)

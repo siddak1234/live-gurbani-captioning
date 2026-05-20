@@ -58,13 +58,22 @@ public final class CaptionEngine {
         /// Local path or HF model id of the Core ML .mlpackage WhisperKit will load.
         /// In production this is your fine-tuned surt converted by scripts/export_coreml.py.
         public let modelPath: String
-        /// Whisper generation language tag. Surt is Punjabi-trained.
+        /// Whisper generation language tag. MUST be the ISO-639-1 short code
+        /// (`"pa"`), not the long form (`"punjabi"`). WhisperKit's prefill
+        /// path (`TextDecoder.prefillDecoderInputs`) builds the language
+        /// token by literal string concatenation — `"<|\(language)|>"` —
+        /// and looks it up in the tokenizer. The short-code form maps to
+        /// `<|pa|>` (a real Whisper vocab token); the long-form `<|punjabi|>`
+        /// is **not** a vocab token and silently falls back to English,
+        /// which on a Punjabi-fine-tuned model produces an empty transcript
+        /// (decoder emits notimestamps → endoftext immediately).
+        /// Caught during M5.7d parity testing.
         public let language: String
         /// Streaming chunk size in seconds (how often the state machine sees a new ASR chunk).
         public let chunkSeconds: TimeInterval
 
         public init(modelPath: String,
-                    language: String = "punjabi",
+                    language: String = "pa",
                     chunkSeconds: TimeInterval = 5.0) {
             self.modelPath = modelPath
             self.language = language
@@ -159,7 +168,7 @@ public final class CaptionEngine {
             task: .transcribe,
             language: config.language,
             // Skip the special-token text in the streamed transcript so
-            // the matcher sees clean Gurmukhi (Whisper's <|punjabi|>
+            // the matcher sees clean Gurmukhi (Whisper's <|pa|>
             // / <|transcribe|> tokens would otherwise leak through).
             skipSpecialTokens: true,
             withoutTimestamps: false,
