@@ -22,4 +22,7 @@ public enum SupabaseConfig {
 
     /// REST endpoint for the corrections table.
     public static var correctionsEndpoint: String { "\(url)/rest/v1/corrections" }
+
+    /// Edge Function endpoint for the right-to-delete path.
+    public static var deleteFunctionEndpoint: String { "\(url)/functions/v1/delete-my-data" }
 }

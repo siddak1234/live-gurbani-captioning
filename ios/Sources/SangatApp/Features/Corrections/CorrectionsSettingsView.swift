@@ -266,13 +266,15 @@ public struct CorrectionsSettingsView: View {
 
                 Button {
                     env.haptics.play(.selection)
+                    // Local purge is immediate; server delete is best-effort.
                     env.correctionLog.clear()
                     env.audioClipWriter?.deleteAll()
                     savedCount = env.correctionLog.approximateCount
-                    AppLogger.app.info("On-device correction data deleted (corrections + audio clips)")
+                    AppLogger.app.info("Delete my data: purged on-device corrections + audio clips")
+                    Task { await env.syncCoordinator?.deleteMyData() }
                 } label: {
                     HStack {
-                        Text("Delete on-device data")
+                        Text("Delete my data")
                             .font(tokens.type.serif)
                             .foregroundStyle(savedCount == 0 ? tokens.colors.ink3 : tokens.colors.accent)
                         Spacer()

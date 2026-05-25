@@ -91,4 +91,31 @@ public final class SyncCoordinator {
         AppLogger.sync.info("Sync uploaded \(uploaded, privacy: .public)/\(pending.count, privacy: .public)")
         return uploaded
     }
+
+    /// Right-to-delete: ask the server to remove every correction for this
+    /// device (via the `delete-my-data` Edge Function). Best-effort; the caller
+    /// also purges local data. Returns true on a 2xx. Works regardless of
+    /// `uploadOptIn` — a user can always delete their data.
+    @discardableResult
+    public func deleteMyData() async -> Bool {
+        guard let url = URL(string: SupabaseConfig.deleteFunctionEndpoint) else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(SupabaseConfig.publishableKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: ["device_id": deviceId.uuidString])
+        } catch {
+            return false
+        }
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            AppLogger.sync.info("delete-my-data → http \(code, privacy: .public)")
+            return (200...299).contains(code)
+        } catch {
+            AppLogger.sync.error("delete-my-data failed: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
 }

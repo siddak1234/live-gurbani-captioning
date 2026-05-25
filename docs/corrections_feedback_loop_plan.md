@@ -585,12 +585,43 @@ copy falsely said "we do not upload").
 - **Visual verification on the Simulator** — the upload/audio section renders
   behind `if optedIn` / `if uploadOptIn` (seeded in `onAppear`), which unit
   smokes don't drive. Matches the standing simulator-verification debt.
-- **Server-side delete** — "Delete on-device data" is local-only; anon cannot
-  delete server rows. A `delete-my-data` Edge Function (keyed by `device_id`,
-  run as `service_role`) is owed for a true right-to-delete. Server rows are
-  anonymous (device UUID only).
+- ✅ **Server-side delete — DONE (2026-05-21).** `delete-my-data` Edge Function
+  deployed (`verify_jwt=false`; self-authorizes via the secret device UUID; runs
+  as `service_role` to delete rows for that `device_id`). Client: the "Delete my
+  data" button purges local data + calls `SyncCoordinator.deleteMyData()`.
+  Live-verified (insert 2 → delete → `*/2`; bad id → 400; table empty).
+  `supabase/functions/delete-my-data/index.ts`.
 
-Phase 5 = **DONE (UI)**; server-delete + visual check owed.
+Phase 5 = **DONE** (UI + server-delete); Simulator visual check still owed.
+
+---
+
+## 11. Owed items → phase assignments (tracker)
+
+Every deferred item now lives in a phase, so nothing floats:
+
+| Item | Phase | Status |
+|---|---|---|
+| Server-side delete (`delete-my-data` Edge Function + client call) | **5** (privacy) | ✅ DONE 2026-05-21 |
+| Audio upload — Storage bucket + client upload of the clip | **6a** | owed (needs bucket) |
+| Training ingestion — `scripts/pull_corrections.py` → manifest + QA gate + holdout | **6b** | owed (best after 6a so audio is present) |
+| Background `URLSession` upload (survive suspension mid-upload) | **7** (hardening) | optional |
+| Observability — client metrics, rate limits, dashboards | **7** | owed |
+| Simulator/device E2E verification of capture→upload | **8** (beta readiness) | owed (needs device/sim) |
+
+### Phase 6a — audio upload (sketch)
+Add a private `correction-audio` Storage bucket + storage RLS (a device writes
+only its own `<device_id>/` prefix). In `SyncCoordinator`, after the metadata
+row uploads, upload the local clip to `correction-audio/<device_id>/<id>.<ext>`,
+set the row's `audio_path` to that key, then delete the local clip. Idempotent
+(overwrite by key). Honors `audioCaptureOptIn` + `uploadOptIn` + Wi-Fi.
+
+### Phase 6b — training ingestion (sketch)
+`scripts/pull_corrections.py`: read `public.corrections` via **service_role**
+(key from env, never committed), download referenced audio, enforce the
+benchmark-shabad holdout (`configs/datasets.yaml`), emit a reviewable manifest
+under `training_data/<batch>/`, and flip `export_status` to `exported` (or
+`discarded`) behind a human QA gate.
 
 ### Approach / deliverables (all under a new `supabase/`)
 1. **Local stack:** `supabase init` → `config.toml`; `supabase start` (Docker:
