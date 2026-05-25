@@ -65,7 +65,8 @@ final class SyncCoordinatorTests: XCTestCase {
         uploadOptIn: Bool = true,
         wifiOnly: Bool = true,
         audioUploader: (any CorrectionAudioUploading)? = nil,
-        audioWriter: AudioClipWriter? = nil
+        audioWriter: AudioClipWriter? = nil,
+        maxAttempts: Int = 5
     ) -> SyncCoordinator {
         let prefs = Preferences.inMemory()
         prefs.uploadOptIn = uploadOptIn
@@ -77,7 +78,8 @@ final class SyncCoordinatorTests: XCTestCase {
             preferences: prefs,
             deviceId: UUID(),
             audioUploader: audioUploader,
-            audioWriter: audioWriter
+            audioWriter: audioWriter,
+            maxAttempts: maxAttempts
         )
     }
 
@@ -221,6 +223,50 @@ final class SyncCoordinatorTests: XCTestCase {
         XCTAssertEqual(metaUploader.uploadCount, 0, "metadata not sent when audio upload is retryable")
         XCTAssertEqual(log.status(forId: e.id), .pending, "whole record retries next trigger")
         XCTAssertTrue(FileManager.default.fileExists(atPath: clipURL.path), "clip kept for retry")
+    }
+
+    // MARK: - Observability + robustness (Phase 7)
+
+    func testStatsRecordLastSyncAndUploadCount() async throws {
+        let log = try makeLog()
+        log.record(event())
+        let coordinator = makeCoordinator(log: log, uploader: FakeUploader(.success))
+        XCTAssertNil(coordinator.stats.lastSyncDate)
+        _ = await coordinator.sync()
+        XCTAssertNotNil(coordinator.stats.lastSyncDate)
+        XCTAssertEqual(coordinator.stats.lastUploaded, 1)
+        XCTAssertNil(coordinator.stats.lastError)
+    }
+
+    func testStatsRecordLastError() async throws {
+        let log = try makeLog()
+        log.record(event())
+        let coordinator = makeCoordinator(log: log, uploader: FakeUploader(.permanent("422 boom")))
+        _ = await coordinator.sync()
+        XCTAssertEqual(coordinator.stats.lastError, "422 boom")
+    }
+
+    func testStatusCountsExposedThroughCoordinator() async throws {
+        let log = try makeLog()
+        log.record(event())
+        let coordinator = makeCoordinator(log: log, uploader: FakeUploader(.success))
+        XCTAssertEqual(coordinator.statusCounts().pending, 1)
+        _ = await coordinator.sync()
+        XCTAssertEqual(coordinator.statusCounts().uploaded, 1)
+    }
+
+    func testParksPoisonRecordAtSyncStart() async throws {
+        let log = try makeLog()
+        let e = event()
+        log.record(e)
+        // Simulate prior exhausted attempts.
+        for _ in 0..<3 { log.markStatus(.uploading, forId: e.id) }
+        let uploader = FakeUploader(.success)
+        let coordinator = makeCoordinator(log: log, uploader: uploader, maxAttempts: 3)
+        let count = await coordinator.sync()
+        XCTAssertEqual(count, 0, "exhausted record is parked, not uploaded")
+        XCTAssertEqual(uploader.uploadCount, 0)
+        XCTAssertEqual(log.status(forId: e.id), .failed)
     }
 
     func testRequeuesStaleUploadingThenUploads() async throws {

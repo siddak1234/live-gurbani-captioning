@@ -605,8 +605,8 @@ Every deferred item now lives in a phase, so nothing floats:
 | Server-side delete (`delete-my-data` Edge Function + client call) | **5** (privacy) | ✅ DONE 2026-05-21 |
 | Audio upload — Storage bucket + client upload of the clip | **6a** | ✅ DONE 2026-05-21 |
 | Training ingestion — `scripts/pull_corrections.py` → manifest + QA gate + holdout | **6b** | owed (best after 6a so audio is present) |
-| Background `URLSession` upload (survive suspension mid-upload) | **7** (hardening) | optional |
-| Observability — client metrics, rate limits, dashboards | **7** | owed |
+| Background `URLSession` upload (survive suspension mid-upload) | **7** | deferred (rationale §13) |
+| Observability — client outbox metrics + robustness | **7** | ✅ DONE 2026-05-21 (UI surface owed) |
 | Simulator/device E2E verification of capture→upload | **8** (beta readiness) | owed (needs device/sim) |
 
 ### Phase 6a — audio upload (sketch)
@@ -664,6 +664,48 @@ online (+ Wi-Fi unless disabled).
   empty after.
 
 Phase 6a = **DONE.**
+
+---
+
+## 13. Phase 7 — hardening: observability + robustness (DONE 2026-05-21)
+
+**Role:** MLOps/Platform (client). Made the outbox observable and resilient.
+
+### Done
+- `DurableCorrectionLog.statusCounts()` → `CorrectionSyncCounts`
+  (pending/uploading/uploaded/failed) — outbox observability.
+- `DurableCorrectionLog.parkExhausted(maxAttempts:)` — retires poison records as
+  `.failed` after N attempts so the outbox stops retrying forever. Called at sync
+  start (default `maxAttempts = 5`).
+- `SyncCoordinator.stats` (`SyncStats`: lastSyncDate, lastUploaded, lastError) +
+  `statusCounts()` passthrough — programmatic observability (plus `AppLogger.sync`).
+- Foreground trigger: `RootView` syncs on `scenePhase == .active` (in addition to
+  the launch `.task`), so the outbox drains when the user returns to the app.
+
+### Audit
+- **Touch budget:** 3 modified source (`DurableCorrectionLog`, `SyncCoordinator`,
+  `CorrectionSyncStatus` counts struct) + `RootView` trigger; 2 modified tests.
+  ios-only.
+- **Invariants:** consent gates unchanged ✅; no new dependency ✅; poison records
+  bounded (no infinite retry) ✅.
+- **Tests:** build clean; full suite **240 pass** (2 parity skips); +7 tests
+  (status counts, park over/under cap, stats last-sync/error, statusCounts
+  passthrough, poison-park-at-sync-start).
+
+### Deferred (with rationale)
+- **Background `URLSession` upload** — marginal for tiny metadata + ~120 KB clips,
+  needs a device to verify, and the foreground trigger + retry already drains
+  reliably. Revisit only if real usage shows uploads stranded by suspension.
+- **Online-connectivity auto-trigger** (`NWPathMonitor` → sync) — the foreground
+  trigger covers the common case; small follow-up.
+- **Observability UI** (show pending/uploaded/failed + last-synced in Settings) —
+  owed with Phase 8 verification (live-only; not previewable since
+  `syncCoordinator` is nil in previews).
+- **Server observability/rate limits** = Supabase dashboard/logs/advisors +
+  platform defaults.
+
+Phase 7 = **DONE** (client observability + robustness); UI surface + background
+session deferred.
 
 ### Approach / deliverables (all under a new `supabase/`)
 1. **Local stack:** `supabase init` → `config.toml`; `supabase start` (Docker:

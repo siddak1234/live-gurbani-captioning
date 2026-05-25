@@ -126,6 +126,47 @@ public final class DurableCorrectionLog: CorrectionLog, @unchecked Sendable {
         }
     }
 
+    /// Count of stored corrections by sync state (Phase 7 observability).
+    public func statusCounts() -> CorrectionSyncCounts {
+        queue.sync {
+            let all = (try? context.fetch(FetchDescriptor<CorrectionRecord>())) ?? []
+            var counts = CorrectionSyncCounts()
+            for record in all {
+                switch CorrectionSyncStatus(rawValue: record.syncStatusRaw) {
+                case .pending:   counts.pending += 1
+                case .uploading: counts.uploading += 1
+                case .uploaded:  counts.uploaded += 1
+                case .failed:    counts.failed += 1
+                case .none:      break
+                }
+            }
+            return counts
+        }
+    }
+
+    /// Mark still-unsent records that have exhausted their upload attempts as
+    /// `.failed`, so the outbox stops retrying poison records forever (Phase 7).
+    public func parkExhausted(maxAttempts: Int) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            let pendingRaw = CorrectionSyncStatus.pending.rawValue
+            let uploadingRaw = CorrectionSyncStatus.uploading.rawValue
+            let descriptor = FetchDescriptor<CorrectionRecord>(
+                predicate: #Predicate {
+                    ($0.syncStatusRaw == pendingRaw || $0.syncStatusRaw == uploadingRaw)
+                    && $0.attemptCount >= maxAttempts
+                }
+            )
+            guard let records = try? self.context.fetch(descriptor), !records.isEmpty else { return }
+            for record in records {
+                record.syncStatusRaw = CorrectionSyncStatus.failed.rawValue
+                record.lastError = "max upload attempts reached (\(maxAttempts))"
+            }
+            try? self.context.save()
+            AppLogger.sync.info("Parked \(records.count, privacy: .public) exhausted correction(s) as failed")
+        }
+    }
+
     /// Reclaim records stuck in `.uploading` (an upload interrupted by app
     /// suspension/kill) back to `.pending` so the next sync retries them.
     /// Called at the start of a sync; within a process, overlapping syncs are

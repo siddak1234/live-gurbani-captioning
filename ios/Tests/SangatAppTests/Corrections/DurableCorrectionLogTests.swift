@@ -94,6 +94,42 @@ final class DurableCorrectionLogTests: XCTestCase {
         XCTAssertTrue(log.pending(limit: 10).isEmpty, "uploaded records leave the outbox")
     }
 
+    // MARK: - Observability + robustness (Phase 7)
+
+    func testStatusCountsReflectState() throws {
+        let log = try inMemoryLog()
+        let a = event(); let b = event(); let c = event()
+        log.record(a); log.record(b); log.record(c)
+        log.markStatus(.uploaded, forId: a.id)
+        log.markStatus(.failed, forId: b.id)
+        let counts = log.statusCounts()
+        XCTAssertEqual(counts.pending, 1)
+        XCTAssertEqual(counts.uploaded, 1)
+        XCTAssertEqual(counts.failed, 1)
+        XCTAssertEqual(counts.total, 3)
+    }
+
+    func testParkExhaustedMarksOverAttemptedAsFailed() throws {
+        let log = try inMemoryLog()
+        let e = event()
+        log.record(e)
+        // Each markStatus(.uploading) bumps attemptCount.
+        for _ in 0..<3 { log.markStatus(.uploading, forId: e.id) }
+        log.parkExhausted(maxAttempts: 3)
+        XCTAssertEqual(log.status(forId: e.id), .failed)
+        XCTAssertTrue(log.pending(limit: 10).isEmpty, "parked record leaves the outbox")
+    }
+
+    func testParkExhaustedSparesUnderAttempted() throws {
+        let log = try inMemoryLog()
+        let e = event()
+        log.record(e)
+        log.markStatus(.uploading, forId: e.id)   // attemptCount = 1
+        log.markStatus(.pending, forId: e.id)
+        log.parkExhausted(maxAttempts: 5)
+        XCTAssertEqual(log.status(forId: e.id), .pending, "under the cap stays in the outbox")
+    }
+
     func testPersistsAcrossContainersOnDisk() throws {
         let url = URL.temporaryDirectory.appending(path: "corr-\(UUID().uuidString).store")
         defer {

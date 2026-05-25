@@ -24,3 +24,21 @@ public enum CorrectionSyncStatus: String, Codable, Sendable, CaseIterable {
     /// until manually retried; carries `lastError` for diagnosis.
     case failed
 }
+
+/// Snapshot of how many stored corrections sit in each sync state — the outbox
+/// observability surface (Phase 7).
+public struct CorrectionSyncCounts: Equatable, Sendable {
+    public var pending = 0
+    public var uploading = 0
+    public var uploaded = 0
+    public var failed = 0
+
+    public init(pending: Int = 0, uploading: Int = 0, uploaded: Int = 0, failed: Int = 0) {
+        self.pending = pending
+        self.uploading = uploading
+        self.uploaded = uploaded
+        self.failed = failed
+    }
+
+    public var total: Int { pending + uploading + uploaded + failed }
+}

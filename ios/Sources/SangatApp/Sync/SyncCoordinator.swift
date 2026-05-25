@@ -17,6 +17,14 @@
 
 import Foundation
 
+/// Last-sync observability snapshot (Phase 7).
+public struct SyncStats: Equatable, Sendable {
+    public var lastSyncDate: Date?
+    public var lastUploaded = 0
+    public var lastError: String?
+    public init() {}
+}
+
 @MainActor
 public final class SyncCoordinator {
 
@@ -28,7 +36,11 @@ public final class SyncCoordinator {
     private let preferences: Preferences
     private let deviceId: UUID
     private let batchSize: Int
+    private let maxAttempts: Int
     private var isSyncing = false
+
+    /// Observability: result of the most recent drain.
+    public private(set) var stats = SyncStats()
 
     public init(
         log: DurableCorrectionLog,
@@ -38,7 +50,8 @@ public final class SyncCoordinator {
         deviceId: UUID,
         audioUploader: (any CorrectionAudioUploading)? = nil,
         audioWriter: AudioClipWriter? = nil,
-        batchSize: Int = 25
+        batchSize: Int = 25,
+        maxAttempts: Int = 5
     ) {
         self.log = log
         self.uploader = uploader
@@ -48,7 +61,11 @@ public final class SyncCoordinator {
         self.preferences = preferences
         self.deviceId = deviceId
         self.batchSize = batchSize
+        self.maxAttempts = maxAttempts
     }
+
+    /// Current outbox state by sync status (for diagnostics / UI).
+    public func statusCounts() -> CorrectionSyncCounts { log.statusCounts() }
 
     /// Drain pending corrections to the server. Returns the number uploaded.
     /// Safe to call repeatedly; overlapping calls are coalesced.
@@ -71,14 +88,21 @@ public final class SyncCoordinator {
         isSyncing = true
         defer { isSyncing = false }
 
-        // Reclaim any records stuck `uploading` from a prior interrupted run.
+        // Reclaim records stuck `uploading` from a prior interrupted run, then
+        // retire any that have exhausted their attempts (poison records).
         log.requeueInFlight()
+        log.parkExhausted(maxAttempts: maxAttempts)
 
         let pending = log.pending(limit: batchSize)
-        guard !pending.isEmpty else { return 0 }
+        if pending.isEmpty {
+            stats.lastSyncDate = Date()
+            stats.lastUploaded = 0
+            return 0
+        }
         AppLogger.sync.info("Sync draining \(pending.count, privacy: .public) pending correction(s)")
 
         var uploaded = 0
+        var lastError: String?
         for event in pending {
             log.markStatus(.uploading, forId: event.id)
 
@@ -96,6 +120,7 @@ public final class SyncCoordinator {
                     storageKey = key
                 case .retryable(let reason):
                     AppLogger.sync.info("Audio retryable for \(event.id.uuidString, privacy: .public): \(reason, privacy: .public)")
+                    lastError = reason
                     log.markStatus(.pending, forId: event.id)
                     continue   // retry the whole record next trigger
                 case .permanent(let reason):
@@ -116,13 +141,18 @@ public final class SyncCoordinator {
                 uploaded += 1
             case .retryable(let reason):
                 AppLogger.sync.info("Correction \(event.id.uuidString, privacy: .public) retryable: \(reason, privacy: .public)")
+                lastError = reason
                 log.markStatus(.pending, forId: event.id)        // retry next trigger
             case .permanent(let reason):
                 AppLogger.sync.error("Correction \(event.id.uuidString, privacy: .public) permanent failure: \(reason, privacy: .public)")
+                lastError = reason
                 log.markStatus(.failed, forId: event.id, error: reason)
             }
         }
         AppLogger.sync.info("Sync uploaded \(uploaded, privacy: .public)/\(pending.count, privacy: .public)")
+        stats.lastSyncDate = Date()
+        stats.lastUploaded = uploaded
+        stats.lastError = lastError
         return uploaded
     }
 

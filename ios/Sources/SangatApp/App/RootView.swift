@@ -43,6 +43,9 @@ public struct RootView: View {
     /// every cold start lands on Let's Begin before the Listen page.
     @State private var didStartSession: Bool = false
 
+    /// Phase 7: drives an outbox drain when the app returns to the foreground.
+    @Environment(\.scenePhase) private var scenePhase
+
     /// Owns the external-display UIWindow + observation. `@State` so
     /// it survives RootView body re-renders; lazily initialized in
     /// `.task` once the env is fully wired (a UIScreen may already be
@@ -161,6 +164,12 @@ public struct RootView: View {
             // user opted in to upload and the device is online; safe to call
             // when `syncCoordinator` is nil (demo / in-memory store).
             await env.syncCoordinator?.sync()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Phase 7: drain the outbox when the app returns to the foreground.
+            if newPhase == .active {
+                Task { await env.syncCoordinator?.sync() }
+            }
         }
         .onChange(of: env.mode) { _, newMode in
             // Cast is a Sevadar-only surface (per onboarding role copy
