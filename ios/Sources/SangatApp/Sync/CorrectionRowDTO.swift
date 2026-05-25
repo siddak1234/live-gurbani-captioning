@@ -44,7 +44,10 @@ struct CorrectionRowDTO: Encodable, Equatable {
         let text: String
     }
 
-    init(_ envelope: CorrectionEnvelope) {
+    /// - Parameter storageAudioPath: the Storage object key for the uploaded
+    ///   clip (`<device_id>/<id>.<ext>`), or nil if no audio was uploaded. The
+    ///   server stores this key — never the device-local file path.
+    init(_ envelope: CorrectionEnvelope, storageAudioPath: String? = nil) {
         let e = envelope.event
         id = e.id
         device_id = envelope.deviceId
@@ -59,7 +62,7 @@ struct CorrectionRowDTO: Encodable, Equatable {
         ground_truth_line_idx = e.groundTruth.lineIdx
         engine_state = e.engineStateRaw
         recent_chunks = e.recentChunks.map { Chunk(start: $0.start, end: $0.end, text: $0.text) }
-        audio_path = e.audioBufferPath
+        audio_path = storageAudioPath
         audio_start = e.audioStart
         audio_end = e.audioEnd
         app_version = envelope.appVersion

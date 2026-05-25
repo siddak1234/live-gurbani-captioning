@@ -169,8 +169,13 @@ public final class AppEnvironment {
         // capture happens under `audioCaptureOptIn`).
         let audioClipWriter = try? AudioClipWriter.makeDefault()
         // Phase 4: outbox sync coordinator (nil if no durable store). Nothing
-        // uploads unless `uploadOptIn` is on and the device is online.
-        let syncCoordinator = makeSyncCoordinator(correctionLog: correctionLog, preferences: preferences)
+        // uploads unless `uploadOptIn` is on and the device is online. Phase 6a:
+        // also uploads the audio clip (when present) to Storage.
+        let syncCoordinator = makeSyncCoordinator(
+            correctionLog: correctionLog,
+            preferences: preferences,
+            audioClipWriter: audioClipWriter
+        )
 
         return AppEnvironment(
             captionSource: source,
@@ -189,7 +194,8 @@ public final class AppEnvironment {
     /// previews/tests, so those paths never reach the network.
     private static func makeSyncCoordinator(
         correctionLog: any CorrectionLog,
-        preferences: Preferences
+        preferences: Preferences,
+        audioClipWriter: AudioClipWriter?
     ) -> SyncCoordinator? {
         guard let durable = correctionLog as? DurableCorrectionLog else { return nil }
         return SyncCoordinator(
@@ -197,7 +203,9 @@ public final class AppEnvironment {
             uploader: SupabaseRESTUploader(),
             reachability: NetworkReachability(),
             preferences: preferences,
-            deviceId: DeviceIdentity().deviceId
+            deviceId: DeviceIdentity().deviceId,
+            audioUploader: SupabaseStorageUploader(),
+            audioWriter: audioClipWriter
         )
     }
 

@@ -18,9 +18,23 @@ final class SyncCoordinatorTests: XCTestCase {
     private final class FakeUploader: CorrectionsUploading, @unchecked Sendable {
         var outcome: UploadOutcome
         private(set) var uploadCount = 0
+        private(set) var lastStorageAudioPath: String?
         init(_ outcome: UploadOutcome) { self.outcome = outcome }
-        func upload(_ envelope: CorrectionEnvelope) async -> UploadOutcome {
+        func upload(_ envelope: CorrectionEnvelope, storageAudioPath: String?) async -> UploadOutcome {
             uploadCount += 1
+            lastStorageAudioPath = storageAudioPath
+            return outcome
+        }
+    }
+
+    private final class FakeAudioUploader: CorrectionAudioUploading, @unchecked Sendable {
+        var outcome: UploadOutcome
+        private(set) var uploadCount = 0
+        private(set) var lastKey: String?
+        init(_ outcome: UploadOutcome) { self.outcome = outcome }
+        func upload(fileURL: URL, toKey key: String) async -> UploadOutcome {
+            uploadCount += 1
+            lastKey = key
             return outcome
         }
     }
@@ -49,7 +63,9 @@ final class SyncCoordinatorTests: XCTestCase {
         online: Bool = true,
         wifi: Bool = true,
         uploadOptIn: Bool = true,
-        wifiOnly: Bool = true
+        wifiOnly: Bool = true,
+        audioUploader: (any CorrectionAudioUploading)? = nil,
+        audioWriter: AudioClipWriter? = nil
     ) -> SyncCoordinator {
         let prefs = Preferences.inMemory()
         prefs.uploadOptIn = uploadOptIn
@@ -59,8 +75,26 @@ final class SyncCoordinatorTests: XCTestCase {
             uploader: uploader,
             reachability: FakeReachability(isOnline: online, isOnWifi: wifi),
             preferences: prefs,
-            deviceId: UUID()
+            deviceId: UUID(),
+            audioUploader: audioUploader,
+            audioWriter: audioWriter
         )
+    }
+
+    /// Event referencing a real temp clip file, plus the writer that owns it.
+    private func eventWithClip() throws -> (CorrectionEvent, AudioClipWriter, URL) {
+        let dir = URL.temporaryDirectory.appending(path: "clips-\(UUID().uuidString)")
+        let writer = try AudioClipWriter(directory: dir)
+        let clipURL = dir.appendingPathComponent("clip.m4a")
+        try Data([0, 1, 2, 3, 4]).write(to: clipURL)
+        let e = CorrectionEvent(
+            sessionId: UUID(), kind: .hardNegPos,
+            predicted: .init(shabadId: 4377, lineIdx: 1, confidence: 0.6, runnerUps: [:]),
+            groundTruth: .init(shabadId: 1821, lineIdx: nil),
+            engineStateRaw: "committed(4377)",
+            audioBufferPath: clipURL.path
+        )
+        return (e, writer, clipURL)
     }
 
     // MARK: - Tests
@@ -146,6 +180,47 @@ final class SyncCoordinatorTests: XCTestCase {
         let count = await coordinator.sync()
         XCTAssertEqual(count, 1)
         XCTAssertEqual(log.status(forId: e.id), .uploaded)
+    }
+
+    // MARK: - Audio upload (Phase 6a)
+
+    func testUploadsAudioThenMetadataAndDeletesLocalClip() async throws {
+        let log = try makeLog()
+        let (e, writer, clipURL) = try eventWithClip()
+        defer { try? FileManager.default.removeItem(at: writer.directory) }
+        log.record(e)
+
+        let audioUploader = FakeAudioUploader(.success)
+        let metaUploader = FakeUploader(.success)
+        let coordinator = makeCoordinator(log: log, uploader: metaUploader,
+                                          audioUploader: audioUploader, audioWriter: writer)
+
+        let count = await coordinator.sync()
+        XCTAssertEqual(count, 1)
+        XCTAssertEqual(audioUploader.uploadCount, 1)
+        XCTAssertEqual(audioUploader.lastKey?.hasSuffix("\(e.id.uuidString).m4a"), true)
+        XCTAssertEqual(metaUploader.lastStorageAudioPath, audioUploader.lastKey,
+                       "metadata row carries the Storage key")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: clipURL.path),
+                       "local clip deleted after successful upload")
+        XCTAssertEqual(log.status(forId: e.id), .uploaded)
+    }
+
+    func testAudioRetryableKeepsRecordPendingAndClip() async throws {
+        let log = try makeLog()
+        let (e, writer, clipURL) = try eventWithClip()
+        defer { try? FileManager.default.removeItem(at: writer.directory) }
+        log.record(e)
+
+        let audioUploader = FakeAudioUploader(.retryable("net blip"))
+        let metaUploader = FakeUploader(.success)
+        let coordinator = makeCoordinator(log: log, uploader: metaUploader,
+                                          audioUploader: audioUploader, audioWriter: writer)
+
+        _ = await coordinator.sync()
+        XCTAssertEqual(metaUploader.uploadCount, 0, "metadata not sent when audio upload is retryable")
+        XCTAssertEqual(log.status(forId: e.id), .pending, "whole record retries next trigger")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: clipURL.path), "clip kept for retry")
     }
 
     func testRequeuesStaleUploadingThenUploads() async throws {

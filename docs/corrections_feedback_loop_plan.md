@@ -603,7 +603,7 @@ Every deferred item now lives in a phase, so nothing floats:
 | Item | Phase | Status |
 |---|---|---|
 | Server-side delete (`delete-my-data` Edge Function + client call) | **5** (privacy) | ✅ DONE 2026-05-21 |
-| Audio upload — Storage bucket + client upload of the clip | **6a** | owed (needs bucket) |
+| Audio upload — Storage bucket + client upload of the clip | **6a** | ✅ DONE 2026-05-21 |
 | Training ingestion — `scripts/pull_corrections.py` → manifest + QA gate + holdout | **6b** | owed (best after 6a so audio is present) |
 | Background `URLSession` upload (survive suspension mid-upload) | **7** (hardening) | optional |
 | Observability — client metrics, rate limits, dashboards | **7** | owed |
@@ -622,6 +622,48 @@ set the row's `audio_path` to that key, then delete the local clip. Idempotent
 benchmark-shabad holdout (`configs/datasets.yaml`), emit a reviewable manifest
 under `training_data/<batch>/`, and flip `export_status` to `exported` (or
 `discarded`) behind a human QA gate.
+
+---
+
+## 12. Phase 6a — audio upload (DONE 2026-05-21)
+
+**Role:** Backend + Mobile. Audio clips now upload to a private Storage bucket
+alongside the metadata, completing the trainable-signal pipeline. Consent-gated:
+clip exists only with `audioCaptureOptIn`; upload only with `uploadOptIn` +
+online (+ Wi-Fi unless disabled).
+
+### Backend (`supabase/migrations/`, applied via MCP)
+- `20260525234000_correction_audio_bucket.sql` — private `correction-audio`
+  bucket (5 MB limit, audio mime types) + storage RLS: **anon INSERT-only**,
+  service_role full. Object key `<device_id>/<correction_id>.<ext>`.
+- `delete-my-data` Edge Function **v2** now also purges the device's Storage
+  objects (lists `<device_id>/`, deletes), so right-to-delete covers audio.
+
+### Client (`ios/Sources/SangatApp/Sync/`)
+- `SupabaseStorageUploader` (`CorrectionAudioUploading`) — POSTs the clip; **no
+  `x-upsert`** (anon is insert-only); detects Storage's "409 Duplicate" body →
+  `alreadyUploaded` for idempotent retries.
+- `CorrectionRowDTO.audio_path` now holds the **Storage key** (never the local path).
+- `CorrectionsUploading.upload` gains `storageAudioPath`.
+- `SyncCoordinator`: uploads audio **first** (so the row carries the key — anon
+  can't UPDATE post-insert), then metadata; deletes the local clip on success;
+  audio-retryable re-queues the whole record.
+- `AppEnvironment` wires the storage uploader + clip writer into the coordinator.
+
+### Audit
+- **Touch budget:** +1 migration, +1 function redeploy, +1 new client source, 4
+  modified client source, 2 modified tests; scope = `ios/` + `supabase/`.
+- **Invariants:** consent structural (audio only with both opt-ins + online) ✅;
+  anon insert-only on the bucket (no read/list/update) ✅; idempotent
+  (409→already) ✅; `audio_path` = storage key, not local path ✅;
+  **security advisor: 0 lints** (re-run after storage policies).
+- **Tests:** build clean; full suite **233 pass** (2 parity skips); +2 coordinator
+  audio tests (audio→key→metadata→clip deleted; audio-retryable keeps pending+clip).
+- **Live verification:** anon audio upload → 200; metadata row with key → 201;
+  duplicate → 409-in-body; `delete-my-data` purged rows + objects; bucket/table
+  empty after.
+
+Phase 6a = **DONE.**
 
 ### Approach / deliverables (all under a new `supabase/`)
 1. **Local stack:** `supabase init` → `config.toml`; `supabase start` (Docker:

@@ -36,10 +36,11 @@ public enum UploadOutcome: Equatable, Sendable {
     }
 }
 
-/// Uploads one correction. Abstracted so the coordinator can be tested with a
-/// fake (no network).
+/// Uploads one correction's metadata row. Abstracted so the coordinator can be
+/// tested with a fake (no network). `storageAudioPath` is the Storage object
+/// key for the already-uploaded clip (or nil), stored in the row's `audio_path`.
 public protocol CorrectionsUploading: Sendable {
-    func upload(_ envelope: CorrectionEnvelope) async -> UploadOutcome
+    func upload(_ envelope: CorrectionEnvelope, storageAudioPath: String?) async -> UploadOutcome
 }
 
 /// PostgREST-backed uploader over `URLSession`. Stateless + `Sendable`.
@@ -59,7 +60,7 @@ public struct SupabaseRESTUploader: CorrectionsUploading {
         self.session = session
     }
 
-    public func upload(_ envelope: CorrectionEnvelope) async -> UploadOutcome {
+    public func upload(_ envelope: CorrectionEnvelope, storageAudioPath: String?) async -> UploadOutcome {
         guard let url = URL(string: endpoint) else { return .permanent("bad endpoint URL") }
 
         var request = URLRequest(url: url)
@@ -74,7 +75,7 @@ public struct SupabaseRESTUploader: CorrectionsUploading {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         do {
-            request.httpBody = try encoder.encode(CorrectionRowDTO(envelope))
+            request.httpBody = try encoder.encode(CorrectionRowDTO(envelope, storageAudioPath: storageAudioPath))
         } catch {
             return .permanent("encode failed: \(error.localizedDescription)")
         }

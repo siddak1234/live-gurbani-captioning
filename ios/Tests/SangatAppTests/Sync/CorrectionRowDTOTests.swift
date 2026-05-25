@@ -26,10 +26,10 @@ final class CorrectionRowDTOTests: XCTestCase {
     }
 
     /// Encode and decode to a generic JSON object to assert column-name shape.
-    private func encodedObject(_ env: CorrectionEnvelope) throws -> [String: Any] {
+    private func encodedObject(_ env: CorrectionEnvelope, storageAudioPath: String? = nil) throws -> [String: Any] {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(CorrectionRowDTO(env))
+        let data = try encoder.encode(CorrectionRowDTO(env, storageAudioPath: storageAudioPath))
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 
@@ -53,7 +53,11 @@ final class CorrectionRowDTOTests: XCTestCase {
         XCTAssertEqual(obj["ground_truth_shabad_id"] as? Int, 1821)
         XCTAssertEqual(obj["schema_version"] as? Int, env.schemaVersion)
         XCTAssertEqual(obj["model_version"] as? String, env.modelVersion)
-        XCTAssertEqual(obj["audio_path"] as? String, "/tmp/clip.m4a")
+        // audio_path holds the Storage key (not the device-local path), or is
+        // omitted when no clip was uploaded.
+        XCTAssertNil(obj["audio_path"], "no storage key → audio_path omitted")
+        let withAudio = try encodedObject(env, storageAudioPath: "device/abc.m4a")
+        XCTAssertEqual(withAudio["audio_path"] as? String, "device/abc.m4a")
         // runner_ups jsonb object: integer shabad ids become string keys.
         let runners = try XCTUnwrap(obj["runner_ups"] as? [String: Any])
         XCTAssertEqual(runners["1821"] as? Double, 0.55)

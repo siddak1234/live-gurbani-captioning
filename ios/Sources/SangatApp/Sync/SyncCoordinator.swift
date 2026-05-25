@@ -22,6 +22,8 @@ public final class SyncCoordinator {
 
     private let log: DurableCorrectionLog
     private let uploader: any CorrectionsUploading
+    private let audioUploader: (any CorrectionAudioUploading)?
+    private let audioWriter: AudioClipWriter?
     private let reachability: any ReachabilityProviding
     private let preferences: Preferences
     private let deviceId: UUID
@@ -34,10 +36,14 @@ public final class SyncCoordinator {
         reachability: any ReachabilityProviding,
         preferences: Preferences,
         deviceId: UUID,
+        audioUploader: (any CorrectionAudioUploading)? = nil,
+        audioWriter: AudioClipWriter? = nil,
         batchSize: Int = 25
     ) {
         self.log = log
         self.uploader = uploader
+        self.audioUploader = audioUploader
+        self.audioWriter = audioWriter
         self.reachability = reachability
         self.preferences = preferences
         self.deviceId = deviceId
@@ -75,10 +81,38 @@ public final class SyncCoordinator {
         var uploaded = 0
         for event in pending {
             log.markStatus(.uploading, forId: event.id)
+
+            // 1) Upload the audio clip first, so the metadata row can carry its
+            //    Storage key (anon has no UPDATE grant — the path can't be set
+            //    after insert). Skipped if there's no clip / no audio uploader.
+            var storageKey: String?
+            if let localPath = event.audioBufferPath,
+               let audioUploader,
+               FileManager.default.fileExists(atPath: localPath) {
+                let ext = (localPath as NSString).pathExtension
+                let key = "\(deviceId.uuidString)/\(event.id.uuidString).\(ext)"
+                switch await audioUploader.upload(fileURL: URL(fileURLWithPath: localPath), toKey: key) {
+                case .success, .alreadyUploaded:
+                    storageKey = key
+                case .retryable(let reason):
+                    AppLogger.sync.info("Audio retryable for \(event.id.uuidString, privacy: .public): \(reason, privacy: .public)")
+                    log.markStatus(.pending, forId: event.id)
+                    continue   // retry the whole record next trigger
+                case .permanent(let reason):
+                    AppLogger.sync.error("Audio permanent failure for \(event.id.uuidString, privacy: .public): \(reason, privacy: .public); sending metadata without audio")
+                    storageKey = nil
+                }
+            }
+
+            // 2) Upload the metadata row (with the Storage key, or nil).
             let envelope = CorrectionEnvelope(event: event, deviceId: deviceId)
-            switch await uploader.upload(envelope) {
+            switch await uploader.upload(envelope, storageAudioPath: storageKey) {
             case .success, .alreadyUploaded:
                 log.markStatus(.uploaded, forId: event.id)
+                // Clip is in Storage now (or permanently bad) — reclaim local space.
+                if let localPath = event.audioBufferPath {
+                    audioWriter?.deleteClip(atPath: localPath)
+                }
                 uploaded += 1
             case .retryable(let reason):
                 AppLogger.sync.info("Correction \(event.id.uuidString, privacy: .public) retryable: \(reason, privacy: .public)")
