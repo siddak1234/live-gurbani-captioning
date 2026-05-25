@@ -553,6 +553,45 @@ upload can be added later.
 
 Phase 4 = **DONE.**
 
+---
+
+## 10. Phase 5 — consent / privacy UI (DONE 2026-05-21)
+
+**Role:** Privacy + Mobile. **Goal:** make consent user-controllable and the
+copy honest before any beta use (until now nothing could be opted into and the
+copy falsely said "we do not upload").
+
+### Changes (`CorrectionsSettingsView`)
+- New toggles, nested under the master "Help improve detection" opt-in (shown
+  only when it's on): **"Upload my corrections"** (`uploadOptIn`) → **"Wi-Fi
+  only"** (`wifiOnlyUpload`, shown when upload on); **"Include a short audio
+  clip"** (`audioCaptureOptIn`). Each seeds from / persists to `Preferences`.
+- Fixed the inaccurate *"We do not upload anything in this build"* copy →
+  "Private by default … only sent if you turn on uploading … no account, no
+  personal info"; explainer now mentions the optional audio clip.
+- "Clear corrections" → **"Delete on-device data"**: also purges audio clips
+  (`audioClipWriter.deleteAll()`). Storage subtitle corrected.
+
+### Audit
+- **Touch budget:** 1 modified source (`CorrectionsSettingsView.swift`) + 1
+  modified test (`CorrectionsViewSmokeTests.swift`). ios-only.
+- **Invariants:** consent structural — toggles drive the gates already enforced
+  by `recordIfOptedIn` / `captureCorrectionClip` / `SyncCoordinator` ✅; privacy
+  copy now accurate ✅.
+- **Tests:** build clean; full suite **231 pass** (2 parity skips); smokes
+  construct the view incl. upload+audio on.
+
+### Owed
+- **Visual verification on the Simulator** — the upload/audio section renders
+  behind `if optedIn` / `if uploadOptIn` (seeded in `onAppear`), which unit
+  smokes don't drive. Matches the standing simulator-verification debt.
+- **Server-side delete** — "Delete on-device data" is local-only; anon cannot
+  delete server rows. A `delete-my-data` Edge Function (keyed by `device_id`,
+  run as `service_role`) is owed for a true right-to-delete. Server rows are
+  anonymous (device UUID only).
+
+Phase 5 = **DONE (UI)**; server-delete + visual check owed.
+
 ### Approach / deliverables (all under a new `supabase/`)
 1. **Local stack:** `supabase init` → `config.toml`; `supabase start` (Docker:
    Postgres + Auth + Storage + Edge runtime). Develop/test entirely locally.
