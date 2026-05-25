@@ -58,6 +58,29 @@ final class PreferencesTests: XCTestCase {
         XCTAssertFalse(prefs.correctionsOptIn)
     }
 
+    // MARK: - Corrections feedback loop (Phase 0)
+
+    func testAudioCaptureOptInDefaultsToFalse() {
+        let prefs = Preferences.inMemory()
+        XCTAssertFalse(prefs.audioCaptureOptIn)
+        prefs.audioCaptureOptIn = true
+        XCTAssertTrue(prefs.audioCaptureOptIn)
+    }
+
+    func testUploadOptInDefaultsToFalse() {
+        let prefs = Preferences.inMemory()
+        XCTAssertFalse(prefs.uploadOptIn)
+        prefs.uploadOptIn = true
+        XCTAssertTrue(prefs.uploadOptIn)
+    }
+
+    func testWifiOnlyUploadDefaultsToTrue() {
+        let prefs = Preferences.inMemory()
+        XCTAssertTrue(prefs.wifiOnlyUpload)
+        prefs.wifiOnlyUpload = false
+        XCTAssertFalse(prefs.wifiOnlyUpload)
+    }
+
     func testEachInMemoryInstanceIsIsolated() {
         let p1 = Preferences.inMemory()
         let p2 = Preferences.inMemory()

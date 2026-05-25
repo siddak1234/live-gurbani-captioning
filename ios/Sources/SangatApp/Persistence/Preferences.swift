@@ -40,6 +40,9 @@ public final class Preferences {
         static let useDemoSource = "preferences.useDemoSource"
         static let micPermissionAcknowledged = "preferences.micPermissionAcknowledged"
         static let correctionsOptIn = "preferences.correctionsOptIn"
+        static let audioCaptureOptIn = "preferences.audioCaptureOptIn"
+        static let uploadOptIn = "preferences.uploadOptIn"
+        static let wifiOnlyUpload = "preferences.wifiOnlyUpload"
     }
 
     // MARK: - Theme
@@ -124,6 +127,37 @@ public final class Preferences {
     public var correctionsOptIn: Bool {
         get { defaults.bool(forKey: Key.correctionsOptIn) }
         set { defaults.set(newValue, forKey: Key.correctionsOptIn) }
+    }
+
+    // MARK: - Corrections feedback loop (Phase 0 — scaffolding, default OFF)
+    //
+    // These three toggles are the consent gates for the corrections → Supabase
+    // feedback loop (see docs/corrections_feedback_loop_plan.md). They are
+    // additive and read by **no emission or sync site yet** — later phases wire
+    // them. Defaults preserve today's behavior: no audio captured, nothing
+    // uploaded, and uploads (when enabled) restricted to Wi-Fi.
+
+    /// Whether the user opted in to capturing a short audio clip around each
+    /// correction — the trainable acoustic signal. Default false; a separate
+    /// trust hinge from `correctionsOptIn` (text retention). Phase 2 reads this.
+    public var audioCaptureOptIn: Bool {
+        get { defaults.bool(forKey: Key.audioCaptureOptIn) }
+        set { defaults.set(newValue, forKey: Key.audioCaptureOptIn) }
+    }
+
+    /// Whether the user opted in to uploading saved corrections to our server.
+    /// Default false — distinct from on-device retention; **nothing leaves the
+    /// device unless this is explicitly enabled**. Phase 4 reads this.
+    public var uploadOptIn: Bool {
+        get { defaults.bool(forKey: Key.uploadOptIn) }
+        set { defaults.set(newValue, forKey: Key.uploadOptIn) }
+    }
+
+    /// Restrict correction uploads to Wi-Fi. Default true — protects the user's
+    /// cellular data; the offline outbox simply waits for Wi-Fi. Phase 4 reads this.
+    public var wifiOnlyUpload: Bool {
+        get { defaults.object(forKey: Key.wifiOnlyUpload) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.wifiOnlyUpload) }
     }
 }
 

@@ -50,6 +50,18 @@ final class CorrectionEventBuilderTests: XCTestCase {
         XCTAssertNil(event.notes)
     }
 
+    func testHardNegPosThreadsAudioBufferPathWhenProvided() {
+        // Phase 2b: the picker / wrong-shabad sites pass a captured clip path.
+        let event = CorrectionEventBuilder.makeHardNegPos(
+            sessionId: UUID(),
+            predictedShabadId: 1, predictedLineIdx: nil, predictedConfidence: nil,
+            runnerUps: [:], correctedShabadId: 2,
+            engineStateRaw: "committed(1)",
+            audioBufferPath: "/tmp/correction-clip.m4a"
+        )
+        XCTAssertEqual(event.audioBufferPath, "/tmp/correction-clip.m4a")
+    }
+
     // MARK: - runnerUpEndorsed
 
     func testRunnerUpEndorsedKindAndTruth() {

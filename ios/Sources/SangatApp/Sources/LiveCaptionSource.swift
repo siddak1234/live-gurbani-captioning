@@ -51,7 +51,7 @@ public enum LiveCaptionSourceError: Error, LocalizedError {
 }
 
 @MainActor
-public final class LiveCaptionSource: CaptionSource {
+public final class LiveCaptionSource: CaptionSource, AudioClipCapturing {
 
     // MARK: - CaptionSource state
 
@@ -202,6 +202,26 @@ public final class LiveCaptionSource: CaptionSource {
         guard isPaused else { return }
         isPaused = false
         AppLogger.source.warning("LiveCaptionSource.resume — not yet wired")
+    }
+
+    // MARK: - AudioClipCapturing (corrections feedback loop, Phase 2)
+
+    /// Snapshot recent mic audio and persist it as a correction clip. Returns
+    /// the local path, or nil if no audio is available. The `audioCaptureOptIn`
+    /// consent gate is the caller's responsibility (see `AudioClipCapturing`).
+    /// Live-engine only; verified end-to-end on device in Phase 2b.
+    public func captureCorrectionClip(id: UUID, seconds: Double, writer: AudioClipWriter) -> String? {
+        guard let samples = engine.snapshotRecentAudio(seconds: seconds), !samples.isEmpty else {
+            return nil
+        }
+        do {
+            let url = try writer.writeClip(id: id, samples: samples)
+            AppLogger.sync.info("Captured correction clip (\(samples.count, privacy: .public) samples) → \(url.lastPathComponent, privacy: .public)")
+            return url.path
+        } catch {
+            AppLogger.sync.error("captureCorrectionClip failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
     }
 
     // MARK: - Internal — receive delegate callbacks

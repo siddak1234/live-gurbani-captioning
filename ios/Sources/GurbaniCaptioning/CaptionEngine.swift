@@ -232,6 +232,34 @@ public final class CaptionEngine {
 #endif
     }
 
+    // MARK: - Audio snapshot (corrections feedback loop, Phase 2)
+
+    /// Sample rate of WhisperKit's captured microphone audio (Whisper standard
+    /// 16 kHz mono float). Public so the clip writer encodes at the right rate.
+    public static let captureSampleRate: Double = 16_000
+
+    /// Snapshot the last `seconds` of captured microphone audio as 16 kHz mono
+    /// float samples, or `nil` if the engine isn't running / WhisperKit is
+    /// unavailable / nothing has been captured yet.
+    ///
+    /// Read-on-demand from WhisperKit's rolling buffer
+    /// (`audioProcessor.audioSamples`); the available history is bounded by
+    /// WhisperKit's internal purge policy, so the returned window may be shorter
+    /// than `seconds`. Used to attach a trainable audio clip to a correction
+    /// when the user has opted in to audio capture (Phase 2b wires the trigger).
+    public func snapshotRecentAudio(seconds: Double) -> [Float]? {
+#if canImport(WhisperKit)
+        guard let whisper, isRunning, seconds > 0 else { return nil }
+        let samples = whisper.audioProcessor.audioSamples
+        guard !samples.isEmpty else { return nil }
+        let wanted = Int(seconds * Self.captureSampleRate)
+        let window = wanted >= samples.count ? samples : ContiguousArray(samples.suffix(wanted))
+        return Array(window)
+#else
+        return nil
+#endif
+    }
+
     /// Sewadar pressed "Reset shabad" — drop the committed shabad and re-listen.
     public func resetShabad() {
         stateMachine.reset()
