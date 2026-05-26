@@ -14,8 +14,10 @@
 
 import SwiftUI
 
-#if DEBUG
-
+// Compiled in all configs: `#Preview` macro bodies (which reference this helper)
+// are not DEBUG-gated by the compiler, so gating this behind `#if DEBUG` breaks
+// Release builds. The type is preview-only by convention — never used in
+// production views.
 public struct DevicePreviewFrame<Content: View>: View {
 
     @Environment(\.themeTokens) private var tokens
@@ -76,5 +78,3 @@ public struct DevicePreviewFrame<Content: View>: View {
             .padding(.bottom, 8)
     }
 }
-
-#endif

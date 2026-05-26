@@ -9,7 +9,9 @@
 
 import SwiftUI
 
-#if DEBUG
+// Compiled in all configs: `#Preview` macro bodies reference these helpers and
+// are not DEBUG-gated by the compiler, so gating them behind `#if DEBUG` breaks
+// Release builds. Preview-only by convention.
 
 /// Standard preview environments. Use the `.preview` env when an entire
 /// `AppEnvironment` is needed; use `withPreviewTheme(_:)` for atom-only
@@ -45,5 +47,3 @@ extension View {
             .background(theme.tokens.colors.bg)
     }
 }
-
-#endif
