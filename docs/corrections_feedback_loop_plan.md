@@ -604,7 +604,7 @@ Every deferred item now lives in a phase, so nothing floats:
 |---|---|---|
 | Server-side delete (`delete-my-data` Edge Function + client call) | **5** (privacy) | ✅ DONE 2026-05-21 |
 | Audio upload — Storage bucket + client upload of the clip | **6a** | ✅ DONE 2026-05-21 |
-| Training ingestion — `scripts/pull_corrections.py` → manifest + QA gate + holdout | **6b** | owed (best after 6a so audio is present) |
+| Training ingestion (collect-and-label) — `scripts/pull_corrections.py` | **6b** | ✅ DONE skeleton 2026-05-21 (real pull owed: key + data) |
 | Background `URLSession` upload (survive suspension mid-upload) | **7** | deferred (rationale §13) |
 | Observability — client outbox metrics + robustness | **7** | ✅ DONE 2026-05-21 (UI surface owed) |
 | Simulator/device E2E verification of capture→upload | **8** (beta readiness) | owed (needs device/sim) |
@@ -706,6 +706,47 @@ Phase 6a = **DONE.**
 
 Phase 7 = **DONE** (client observability + robustness); UI surface + background
 session deferred.
+
+---
+
+## 14. Phase 6b — training ingestion, option 1 (DONE 2026-05-21)
+
+**Role:** ML / Speech Data Engineer. Collect-and-label pull: corrections → a
+labeled dataset under `training_data/<batch>/`.
+
+### `scripts/pull_corrections.py`
+- Reads `SUPABASE_SERVICE_ROLE_KEY` from env (**never committed**; URL defaults
+  to the project). Pulls `export_status=new` rows via service_role REST.
+- **Enforces the benchmark-shabad holdout** from `configs/datasets.yaml` (drops
+  rows whose ground-truth/predicted shabad is a benchmark shabad) + a safety
+  check that aborts if any holdout shabad leaks into the manifest.
+- Downloads each clip from the `correction-audio` bucket → `clips/<id>.<ext>`.
+- Resolves canonical text from `corpus_cache/` (fetches + caches via
+  `build_corpus` on miss). Writes `manifest.json` + `data_card.md`.
+- **Read-only by default**; `--mark-exported` flips `export_status` after review.
+
+### What it is / isn't
+`text` = the **full canonical shabad** (`text_granularity: "shabad"`), **not
+line-aligned**. `hardNegPos` carries no line index, so this is labeled audio for
+later **forced alignment** (or a shabad-ID signal), behind a review gate
+(`review_status: "unreviewed"`). Forced alignment is its own later phase.
+
+### Audit
+- **Touch budget:** +1 script, +1 test; training-side (`scripts/` + `tests/`),
+  no `ios/`.
+- **Invariants:** service_role key from env only (never committed) ✅; holdout
+  enforced + safety-checked ✅; read-only by default ✅; no new dependency
+  (`urllib` + `pyyaml`, both already used) ✅.
+- **Tests:** 7 unit tests pass (holdout load/enforce, text join, record shape,
+  data card); CLI errors clearly without the key; `--help` builds.
+
+### Owed
+- A **real end-to-end pull** (needs the service_role key + actual corrections —
+  the table is empty until the app ships and users correct).
+- **Forced alignment** to turn shabad-level clips into line-level `(audio, text)`
+  pairs — a separate phase.
+
+Phase 6b (option 1) = **DONE** (skeleton + tests); real pull + alignment owed.
 
 ### Approach / deliverables (all under a new `supabase/`)
 1. **Local stack:** `supabase init` → `config.toml`; `supabase start` (Docker:
