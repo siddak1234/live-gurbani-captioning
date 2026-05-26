@@ -607,7 +607,7 @@ Every deferred item now lives in a phase, so nothing floats:
 | Training ingestion (collect-and-label) — `scripts/pull_corrections.py` | **6b** | ✅ DONE skeleton 2026-05-21 (real pull owed: key + data) |
 | Background `URLSession` upload (survive suspension mid-upload) | **7** | deferred (rationale §13) |
 | Observability — client outbox metrics + robustness | **7** | ✅ DONE 2026-05-21 (UI surface owed) |
-| Simulator/device E2E verification of capture→upload | **8** (beta readiness) | owed (needs device/sim) |
+| Simulator/device E2E verification of capture→upload | **8** | ✅ Sim: live build + model load verified 2026-05-21; mic→capture→upload interaction + real-device perf still owed |
 
 ### Phase 6a — audio upload (sketch)
 Add a private `correction-audio` Storage bucket + storage RLS (a device writes
@@ -747,6 +747,45 @@ later **forced alignment** (or a shabad-ID signal), behind a review gate
   pairs — a separate phase.
 
 Phase 6b (option 1) = **DONE** (skeleton + tests); real pull + alignment owed.
+
+---
+
+## 15. Phase 8 — iOS Simulator verification (DONE 2026-05-21)
+
+**Role:** Edge ML / QA. Got the live build running end-to-end on the booted
+iPhone 16 Plus simulator (via the **xcodegen app target**, not the SPM
+executable — the latter has no Info.plist and crashes).
+
+### Verified (from device logs)
+- `LiveCaptionSource initialized for model: surt-small-v3-kirtan` — live source
+  chosen (`useDemoSource: false`, Release).
+- `AppEnvironment using DurableCorrectionLog (SwiftData)` — durable outbox active.
+- `Loaded models for whisper size: small in 4.64s` — the bundled 226 MB Core ML
+  model **memory-maps + loads on the sim CPU in ~4.6s** (the big unknown — resolved).
+- App runs to the "Let's Begin" screen; no crash.
+
+### Beta-blocker fixes found by building/running Release
+1. **Release build was broken.** `#Preview` macro bodies compile in Release but
+   referenced `previewTheme` / `DevicePreviewFrame`, which were `#if DEBUG`-only.
+   Un-gated both (preview-only, negligible). Release had never been built before.
+2. **On-device corpus failed to decode → silent demo fallback.**
+   `build_ios_corpus.py` emitted `verse_id` as int; Swift `ShabadLine.verseId` is
+   a String. Stringified it in the generator.
+3. **Onboarding copy** ("microphone audio never leaves the phone") reworded —
+   corrections audio is an opt-in upload now.
+
+### Notes / still owed
+- **Keychain write fails on the unsigned sim** → `DeviceIdentity` degrades to a
+  session-only id (by design); works on a provisioned device.
+- **Corpus is only the 4 cached (benchmark) shabads** — `shabads.json` is tracked
+  (despite `.gitignore`) and now holds those 4. Blind-ID only works for them on
+  the sim. **Real beta needs the full SGGS corpus** (run `build_corpus` broadly →
+  `build_ios_corpus`). Open beta blocker.
+- **Owed:** the actual mic→caption→correction→upload interaction (needs UI taps +
+  kirtan audio into the sim mic) and real-device ANE performance.
+
+Phase 8 = **partially DONE** (build + model load verified on sim); interactive
+flow + device perf owed.
 
 ### Approach / deliverables (all under a new `supabase/`)
 1. **Local stack:** `supabase init` → `config.toml`; `supabase start` (Docker:
