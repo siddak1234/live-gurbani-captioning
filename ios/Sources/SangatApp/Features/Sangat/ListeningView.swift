@@ -19,8 +19,26 @@ public struct ListeningView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.themeTokens) private var tokens
     @State private var startTime: Date = Date()
+    @State private var hasPromptedForPick: Bool = false
 
-    public init() {}
+    /// Fires once after `pickTimeout` of continuous listening with no
+    /// shabad commit. RootView opens the shared `ShabadPickerView`
+    /// sheet (same one the Sevadar dock + TentativeView use). The engine
+    /// keeps running in the background — if it commits while the sheet
+    /// is up, ReadingHost swaps this view out and the next tap on the
+    /// picker either confirms the auto-pick or overrides it.
+    public let onPickManually: () -> Void
+
+    /// Window before nudging the user toward manual pick. Real kirtan
+    /// normally locks in ~20-30s; 45s is a comfortable buffer past that
+    /// without making the user feel abandoned when the audio is too
+    /// quiet, too noisy, or not-actually-kirtan (e.g. on a simulator
+    /// pointed at a silent room mic).
+    public static let pickTimeout: Duration = .seconds(45)
+
+    public init(onPickManually: @escaping () -> Void = {}) {
+        self.onPickManually = onPickManually
+    }
 
     public var body: some View {
         VStack(spacing: tokens.spacing.xl) {
@@ -57,6 +75,12 @@ public struct ListeningView: View {
         .padding(.horizontal, tokens.spacing.edge)
         .onAppear {
             startTime = Date()
+        }
+        .task {
+            try? await Task.sleep(for: Self.pickTimeout)
+            guard !Task.isCancelled, !hasPromptedForPick else { return }
+            hasPromptedForPick = true
+            onPickManually()
         }
     }
 
