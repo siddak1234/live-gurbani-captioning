@@ -777,15 +777,54 @@ executable — the latter has no Info.plist and crashes).
 ### Notes / still owed
 - **Keychain write fails on the unsigned sim** → `DeviceIdentity` degrades to a
   session-only id (by design); works on a provisioned device.
-- **Corpus is only the 4 cached (benchmark) shabads** — `shabads.json` is tracked
-  (despite `.gitignore`) and now holds those 4. Blind-ID only works for them on
-  the sim. **Real beta needs the full SGGS corpus** (run `build_corpus` broadly →
-  `build_ios_corpus`). Open beta blocker.
+- ~~**Corpus is only the 4 cached (benchmark) shabads**~~ **RESOLVED 2026-05-26**
+  by commit `6d35ed5`. `scripts/build_corpus.py --range 1 5540` populates the
+  full BaniDB cache; `build_ios_corpus.py` regenerates a 13.2 MB bundle JSON
+  containing **5,505 shabads / 60,067 lines** (35 BaniDB-404 gaps in the
+  1–5540 range, none of which are real shabads). `shabads.json` is now
+  untracked from git — regenerated at build time.
 - **Owed:** the actual mic→caption→correction→upload interaction (needs UI taps +
   kirtan audio into the sim mic) and real-device ANE performance.
 
-Phase 8 = **partially DONE** (build + model load verified on sim); interactive
-flow + device perf owed.
+### Late discoveries — both fixed 2026-05-26
+
+These were NOT caught by Phase 8 sim verification because the verification stopped
+at "build runs + model loads." Manual interactive testing immediately surfaced both.
+
+1. **`engine.start()` blocked forever on the realtime loop** (commit `9817d75`).
+   `AudioStreamTranscriber.startStreamTranscription()` awaits an internal
+   `while state.isRecording` loop and only returns when `stop()` flips the flag.
+   `CaptionEngine.start()` was awaiting it inline, so the next two lines
+   (`isRunning = true` + `.started` yield in `LiveCaptionSource.start()`) never
+   ran. `CaptionSourceModel.isRunning` stayed false. SwiftUI kept rendering
+   `IdleView` even though the engine was decoding audio fine.
+   Fix: spawn the realtime loop in a tracked `Task<Void, Never>` and cancel it
+   in `stop()`. **Engine activity logs (WhisperKit decoding chunks) are NOT a
+   proof of "UI works"** — they prove only that audio is flowing. The UI gate
+   is the `.started` event reaching the Observable model.
+2. **No escape hatch when audio is silence / noise / not kirtan** (commit `42619ce`).
+   Whisper's `noSpeechThreshold` correctly suppresses transcripts for
+   non-speech audio; the matcher then has nothing to score, the engine never
+   commits, and `ListeningView` ticks indefinitely. `ListeningView` now opens
+   the existing `ShabadPickerView` sheet after 45s of continuous listening
+   with no commit, via a callback threaded through `ReadingHost.onRequestPicker`.
+   The engine keeps running in background; the prompt fires only once per
+   session.
+
+### Process lesson
+**Tests passing + build succeeding are not the same as "the feature works."**
+The Phase 8 sim verification ran 240 tests + launched the Release build + watched
+the model load — and signed off as "BETA-READY with minor verification debts."
+A manual tap on the Listen button (the very next action) immediately exposed a
+silent regression that had been there since `LiveCaptionSource.start()` was first
+wired. **Any audit that doesn't tap through the primary user flow is incomplete,
+regardless of test count.**
+
+Phase 8 = **DONE for the simulator** (build, model load, Listen → ListeningView,
+45s-timeout escape hatch). **OWED on a real device**: Keychain-persistent
+`DeviceIdentity`, ANE perf measurement, end-to-end correction → Supabase round
+trip with a real audio clip. These move to the dedicated beta-readiness plan
+([`docs/beta_readiness_plan.md`](beta_readiness_plan.md), 2026-05-27).
 
 ### Approach / deliverables (all under a new `supabase/`)
 1. **Local stack:** `supabase init` → `config.toml`; `supabase start` (Docker:
