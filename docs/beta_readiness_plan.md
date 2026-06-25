@@ -34,7 +34,8 @@ Without this group, no signed `.ipa`, no TestFlight, no Keychain on device.
 | # | Task | Owner | Audit | Status |
 |---|---|---|---|---|
 | 2.1 | App Store Connect → My Apps → "+" → New App. Platform iOS, name "Sangat", primary lang English, bundle ID from 1.2, SKU `sangat-001`, user access Full | YOU | App appears in Apps list | ⏳ |
-| 2.2 | **Privacy Nutrition Labels** — Claude drafts the exact answers based on the 3 consent gates + audio upload + Keychain UUID; user clicks through the questionnaire in App Store Connect | CLAUDE drafts, YOU submits | Privacy section shows "Complete" green check | ⏳ |
+| 2.2 | **Privacy Nutrition Labels** — Claude drafts the exact answers based on the 3 consent gates + audio upload + Keychain UUID; user clicks through the questionnaire in App Store Connect | CLAUDE drafts, YOU submits | Privacy section shows "Complete" green check | 🔄 **Draft ready** — `docs/privacy_nutrition_labels.md`; user submits at Group 2 time |
+| 2.2a | **Privacy Policy URL** (App Store Connect requires one before TestFlight external testing) | CLAUDE wrote + hosted | ✅ **LIVE** at https://siddak1234.github.io/live-gurbani-captioning/ (source: `docs/privacy_policy.md` → `gh-pages` branch). Paste into App Store Connect → App Information → Privacy Policy URL. | ✅ |
 | 2.3 | Upload first build via Xcode Organizer → Distribute App → TestFlight | YOU | Build appears in App Store Connect → TestFlight tab, status "Processing" (clears in ~5-10 min) | ⏳ |
 | 2.4 | Add internal testers (just YOU and any close collaborators) by email; accept invite on device | YOU | TestFlight app on iPhone shows Sangat available to install | ⏳ |
 
@@ -61,8 +62,8 @@ real device id.
 
 | # | Task | Owner | Audit | Status |
 |---|---|---|---|---|
-| 4.1 | **Decide:** TestFlight built-in feedback only **OR** add custom Settings → "Send feedback" → `public.feedback` Supabase table | YOU | Decision noted here | ⏳ |
-| 4.2 | If custom: Claude adds Supabase migration for `public.feedback` (RLS anon-INSERT-only, mirrors `corrections`), Settings UI button, uploader reusing existing `SupabaseRESTUploader` infra (~1h work) | CLAUDE | Tester taps Send feedback → row appears in Supabase `feedback` table | ⏳ |
+| 4.1 | **Decide:** TestFlight built-in feedback only **OR** add custom Settings → "Send feedback" → `public.feedback` Supabase table | YOU | Decision noted here | ✅ **DECIDED 2026-06-24: TestFlight built-in for v1** (zero engineering; crashes + screenshot feedback auto-collect in App Store Connect). No custom table. |
+| 4.2 | If custom: Claude adds Supabase migration for `public.feedback` (RLS anon-INSERT-only, mirrors `corrections`), Settings UI button, uploader reusing existing `SupabaseRESTUploader` infra (~1h work) | CLAUDE | Tester taps Send feedback → row appears in Supabase `feedback` table | ⏭️ **SKIPPED** — not building for v1 per 4.1 |
 
 **Claude's recommendation:** TestFlight built-in for v1. Crash reports auto-collect
 in App Store Connect → TestFlight → Crashes. Testers can screenshot-annotate via
