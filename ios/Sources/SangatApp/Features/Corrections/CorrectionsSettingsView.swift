@@ -27,9 +27,18 @@ public struct CorrectionsSettingsView: View {
     /// flow through to `preferences.correctionsOptIn` on `didSet`.
     @State private var optedIn: Bool = false
 
-    /// Display-only snapshot of the log's count. Refreshed on appear
-    /// and on Clear. With `NoopCorrectionLog` this stays at 0; when
-    /// a durable log lands (M5.8) the same view shows real counts.
+    /// Whether to also capture a short audio clip with each correction
+    /// (the acoustic training signal). Mirrors `audioCaptureOptIn`.
+    @State private var audioOptIn: Bool = false
+
+    /// Whether to upload saved corrections to our server. Mirrors `uploadOptIn`.
+    @State private var uploadOptIn: Bool = false
+
+    /// Restrict uploads to Wi-Fi. Mirrors `wifiOnlyUpload`.
+    @State private var wifiOnly: Bool = true
+
+    /// Display-only snapshot of the log's count. Refreshed on appear and on
+    /// Clear; reflects the durable on-device store.
     @State private var savedCount: Int = 0
 
     public init() {}
@@ -46,6 +55,10 @@ public struct CorrectionsSettingsView: View {
 
                     optInSection
 
+                    if optedIn {
+                        uploadSection
+                    }
+
                     storageSection
 
                     Spacer(minLength: tokens.spacing.xxl)
@@ -57,11 +70,25 @@ public struct CorrectionsSettingsView: View {
         }
         .onAppear {
             optedIn = env.preferences.correctionsOptIn
+            audioOptIn = env.preferences.audioCaptureOptIn
+            uploadOptIn = env.preferences.uploadOptIn
+            wifiOnly = env.preferences.wifiOnlyUpload
             savedCount = env.correctionLog.approximateCount
         }
         .onChange(of: optedIn) { _, newValue in
             env.preferences.correctionsOptIn = newValue
             AppLogger.app.info("Corrections opt-in toggled → \(newValue, privacy: .public)")
+        }
+        .onChange(of: audioOptIn) { _, newValue in
+            env.preferences.audioCaptureOptIn = newValue
+            AppLogger.app.info("Audio capture opt-in toggled → \(newValue, privacy: .public)")
+        }
+        .onChange(of: uploadOptIn) { _, newValue in
+            env.preferences.uploadOptIn = newValue
+            AppLogger.app.info("Upload opt-in toggled → \(newValue, privacy: .public)")
+        }
+        .onChange(of: wifiOnly) { _, newValue in
+            env.preferences.wifiOnlyUpload = newValue
         }
         .accessibilityIdentifier("correctionsSettings.root")
     }
@@ -106,13 +133,13 @@ public struct CorrectionsSettingsView: View {
                 )
                 explainerRow(
                     icon: "lock.shield.fill",
-                    title: "It stays on this device",
-                    body: "Corrections are saved locally. We do not upload anything in this build."
+                    title: "Private by default",
+                    body: "Corrections are saved on your device. They're only sent to us if you turn on uploading below — no account, no personal info."
                 )
                 explainerRow(
                     icon: "sparkles",
-                    title: "Future training",
-                    body: "When the next engine is fine-tuned, your saved corrections improve it."
+                    title: "Improves the model",
+                    body: "Your corrections help train the next engine. A short audio clip (optional) makes them far more useful."
                 )
             }
             .padding(.horizontal, tokens.spacing.md)
@@ -166,6 +193,48 @@ public struct CorrectionsSettingsView: View {
         }
     }
 
+    /// Upload + audio consent — shown only when the master opt-in is on, since
+    /// there's nothing to upload or enrich until corrections are being saved.
+    private var uploadSection: some View {
+        VStack(alignment: .leading, spacing: tokens.spacing.sm) {
+            SectionLabel("Send corrections to improve the model")
+
+            VStack(spacing: 0) {
+                ToggleRow(
+                    title: "Upload my corrections",
+                    subtitle: "Send anonymized corrections to our server when you're online. No account, no personal info.",
+                    isOn: $uploadOptIn
+                )
+                .accessibilityIdentifier("correctionsSettings.uploadOptIn")
+
+                if uploadOptIn {
+                    Divider()
+                    ToggleRow(
+                        title: "Wi-Fi only",
+                        subtitle: "Never use cellular data for uploads.",
+                        isOn: $wifiOnly
+                    )
+                    .accessibilityIdentifier("correctionsSettings.wifiOnly")
+                }
+
+                Divider()
+
+                ToggleRow(
+                    title: "Include a short audio clip",
+                    subtitle: "Saves ~30s of audio with each correction — the best training signal. Uses a little storage.",
+                    isOn: $audioOptIn
+                )
+                .accessibilityIdentifier("correctionsSettings.audioOptIn")
+            }
+            .background(tokens.colors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: tokens.radii.md, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: tokens.radii.md, style: .continuous)
+                    .stroke(tokens.colors.rule, lineWidth: 0.5)
+            )
+        }
+    }
+
     private var storageSection: some View {
         VStack(alignment: .leading, spacing: tokens.spacing.sm) {
             SectionLabel("Storage")
@@ -197,12 +266,15 @@ public struct CorrectionsSettingsView: View {
 
                 Button {
                     env.haptics.play(.selection)
+                    // Local purge is immediate; server delete is best-effort.
                     env.correctionLog.clear()
+                    env.audioClipWriter?.deleteAll()
                     savedCount = env.correctionLog.approximateCount
-                    AppLogger.app.info("Corrections cleared")
+                    AppLogger.app.info("Delete my data: purged on-device corrections + audio clips")
+                    Task { await env.syncCoordinator?.deleteMyData() }
                 } label: {
                     HStack {
-                        Text("Clear corrections")
+                        Text("Delete my data")
                             .font(tokens.type.serif)
                             .foregroundStyle(savedCount == 0 ? tokens.colors.ink3 : tokens.colors.accent)
                         Spacer()
@@ -226,7 +298,7 @@ public struct CorrectionsSettingsView: View {
     private var storageSubtitle: String {
         savedCount == 0
             ? "Nothing saved yet on this device."
-            : "Stored locally. Audio never leaves your phone."
+            : "Saved on this device. Uploads happen only if you enabled them above."
     }
 }
 

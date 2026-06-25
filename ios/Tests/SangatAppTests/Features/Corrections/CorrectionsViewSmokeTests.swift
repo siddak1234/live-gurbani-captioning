@@ -40,6 +40,17 @@ final class CorrectionsViewSmokeTests: XCTestCase {
             .environment(env)
         _ = ViewProbe(content: view)
     }
+
+    func testCorrectionsSettingsViewConstructsWithUploadAndAudioOn() {
+        // Exercises the Phase 5 upload/audio consent section + nested Wi-Fi row.
+        let env = AppEnvironment.preview()
+        env.preferences.correctionsOptIn = true
+        env.preferences.uploadOptIn = true
+        env.preferences.audioCaptureOptIn = true
+        let view = CorrectionsSettingsView()
+            .environment(env)
+        _ = ViewProbe(content: view)
+    }
 }
 
 /// Mirrors the existing `ViewProbe` pattern used elsewhere in the

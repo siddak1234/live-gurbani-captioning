@@ -41,7 +41,7 @@ public struct WelcomeCard: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: 280, alignment: .leading)
 
-                Text("Runs entirely on this device. Your microphone audio never leaves the phone.")
+                Text("Runs entirely on this device. Nothing is uploaded unless you opt in to help improve detection.")
                     .font(tokens.type.sans)
                     .foregroundStyle(tokens.colors.ink3)
                     .fixedSize(horizontal: false, vertical: true)

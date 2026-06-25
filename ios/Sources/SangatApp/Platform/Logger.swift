@@ -37,6 +37,9 @@ public enum AppLogger {
     /// Correction loop events — picks, nudges, retroactive labels.
     public static let corrections = Logger(subsystem: subsystem, category: "corrections")
 
+    /// Corrections feedback-loop sync — device identity, outbox, Supabase upload.
+    public static let sync = Logger(subsystem: subsystem, category: "sync")
+
     /// External display / AirPlay / cast scene lifecycle.
     public static let cast = Logger(subsystem: subsystem, category: "cast")
 

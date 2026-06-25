@@ -46,7 +46,7 @@ public struct ReadingHost: View {
     public var body: some View {
         switch env.captionModel.state {
         case .listening:
-            ListeningView()
+            ListeningView(onPickManually: onRequestPicker)
 
         case .tentative(let shabadId):
             TentativeView(shabadId: shabadId, onPickManually: onRequestPicker)

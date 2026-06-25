@@ -92,7 +92,13 @@ def main() -> int:
 
         condensed_lines = []
         for ln in shabad.get("lines", []):
-            condensed_lines.append({k: ln.get(k) for k in LINE_KEYS_KEPT if k in ln})
+            rec = {k: ln.get(k) for k in LINE_KEYS_KEPT if k in ln}
+            # Swift `ShabadLine.verseId` is a String, but BaniDB stores verse_id
+            # as an int — coerce so the on-device JSON decodes (else
+            # ShabadCorpus.loadFromBundle throws and the app falls back to demo).
+            if rec.get("verse_id") is not None:
+                rec["verse_id"] = str(rec["verse_id"])
+            condensed_lines.append(rec)
         out.append({
             "shabad_id": int(shabad["shabad_id"]),
             "lines": condensed_lines,

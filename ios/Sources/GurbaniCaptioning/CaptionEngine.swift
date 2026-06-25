@@ -87,6 +87,12 @@ public final class CaptionEngine {
 #if canImport(WhisperKit)
     private var whisper: WhisperKit?
     private var streamTranscriber: AudioStreamTranscriber?
+    /// Background task that drives `AudioStreamTranscriber.startStreamTranscription()`.
+    /// That call awaits a `while state.isRecording` loop and never returns until
+    /// `stopStreamTranscription()` flips the flag — so we must NOT await it inline
+    /// from `start()`, or `LiveCaptionSource.start()` never returns and the UI
+    /// never sees `.started` (which leaves SwiftUI parked on `IdleView`).
+    private var streamTask: Task<Void, Never>?
     /// Count of `confirmedSegments` we've already routed into the state
     /// machine. WhisperKit's stream callback fires on every state mutation;
     /// we use this to dedupe and only process newly-confirmed segments.
@@ -205,13 +211,15 @@ public final class CaptionEngine {
         self.isRunning = true
         await notifyState(stateMachine.state)
 
-        do {
-            try await transcriber.startStreamTranscription()
-        } catch {
-            self.isRunning = false
-            self.streamTranscriber = nil
-            await notifyError(CaptionEngineError.audioCaptureFailed(String(describing: error)))
-            throw CaptionEngineError.audioCaptureFailed(String(describing: error))
+        streamTask = Task { [weak self] in
+            do {
+                try await transcriber.startStreamTranscription()
+            } catch {
+                guard let self else { return }
+                self.isRunning = false
+                self.streamTranscriber = nil
+                await self.notifyError(CaptionEngineError.audioCaptureFailed(String(describing: error)))
+            }
         }
 #else
         throw CaptionEngineError.whisperKitUnavailable
@@ -223,12 +231,43 @@ public final class CaptionEngine {
         isRunning = false
 #if canImport(WhisperKit)
         if let transcriber = streamTranscriber {
-            // `stopStreamTranscription` is an actor method; we don't need
-            // its result and the underlying audio session can be torn
-            // down asynchronously.
+            // `stopStreamTranscription` flips `state.isRecording`, which lets
+            // the realtime loop inside `streamTask` fall through and the
+            // task complete naturally. We don't need the result and the
+            // underlying audio session can be torn down asynchronously.
             Task { await transcriber.stopStreamTranscription() }
             streamTranscriber = nil
         }
+        streamTask?.cancel()
+        streamTask = nil
+#endif
+    }
+
+    // MARK: - Audio snapshot (corrections feedback loop, Phase 2)
+
+    /// Sample rate of WhisperKit's captured microphone audio (Whisper standard
+    /// 16 kHz mono float). Public so the clip writer encodes at the right rate.
+    public static let captureSampleRate: Double = 16_000
+
+    /// Snapshot the last `seconds` of captured microphone audio as 16 kHz mono
+    /// float samples, or `nil` if the engine isn't running / WhisperKit is
+    /// unavailable / nothing has been captured yet.
+    ///
+    /// Read-on-demand from WhisperKit's rolling buffer
+    /// (`audioProcessor.audioSamples`); the available history is bounded by
+    /// WhisperKit's internal purge policy, so the returned window may be shorter
+    /// than `seconds`. Used to attach a trainable audio clip to a correction
+    /// when the user has opted in to audio capture (Phase 2b wires the trigger).
+    public func snapshotRecentAudio(seconds: Double) -> [Float]? {
+#if canImport(WhisperKit)
+        guard let whisper, isRunning, seconds > 0 else { return nil }
+        let samples = whisper.audioProcessor.audioSamples
+        guard !samples.isEmpty else { return nil }
+        let wanted = Int(seconds * Self.captureSampleRate)
+        let window = wanted >= samples.count ? samples : ContiguousArray(samples.suffix(wanted))
+        return Array(window)
+#else
+        return nil
 #endif
     }
 

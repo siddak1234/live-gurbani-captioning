@@ -117,9 +117,20 @@ def main() -> int:
         default=[],
         help="Additional BaniDB shabad ID to cache. Repeatable; useful for OOS curation.",
     )
+    parser.add_argument(
+        "--range",
+        nargs=2,
+        type=int,
+        metavar=("START", "END"),
+        help="Cache every shabad id in [START, END] inclusive. "
+             "Full SGGS corpus: --range 1 5540. Idempotent (skips cached); 404 gaps are skipped.",
+    )
     args = parser.parse_args()
 
     shabad_ids = resolve_shabad_ids(args.gt_dir.resolve(), args.shabad_id)
+    if args.range:
+        start, end = args.range
+        shabad_ids = sorted(set(shabad_ids) | set(range(start, end + 1)))
     if not shabad_ids:
         print(f"error: no shabad_ids found in {args.gt_dir}", file=sys.stderr)
         return 1

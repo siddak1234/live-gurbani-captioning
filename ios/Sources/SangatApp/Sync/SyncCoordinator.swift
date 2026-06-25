@@ -1,0 +1,185 @@
+//
+//  SyncCoordinator.swift
+//  GurbaniCaptioningApp · SangatApp · Sync
+//
+//  Created for the Sangat iOS app, corrections feedback loop Phase 4
+//  (Sync engine). See docs/corrections_feedback_loop_plan.md.
+//
+//  The outbox drain. On a foreground/online trigger it pushes pending durable
+//  corrections to Supabase and advances their sync status. Resilience without a
+//  background URLSession: an interrupted upload simply leaves the record
+//  `pending` (or stale-`uploading`, requeued at the next sync), so the next
+//  trigger retries — exactly-once is guaranteed server-side by the primary key.
+//
+//  Consent: nothing uploads unless `uploadOptIn` is on; cellular is skipped when
+//  `wifiOnlyUpload` is on. Metadata-only for now — local audio clips are kept
+//  (the audio-upload step is a later addition), not deleted on success.
+
+import Foundation
+
+/// Last-sync observability snapshot (Phase 7).
+public struct SyncStats: Equatable, Sendable {
+    public var lastSyncDate: Date?
+    public var lastUploaded = 0
+    public var lastError: String?
+    public init() {}
+}
+
+@MainActor
+public final class SyncCoordinator {
+
+    private let log: DurableCorrectionLog
+    private let uploader: any CorrectionsUploading
+    private let audioUploader: (any CorrectionAudioUploading)?
+    private let audioWriter: AudioClipWriter?
+    private let reachability: any ReachabilityProviding
+    private let preferences: Preferences
+    private let deviceId: UUID
+    private let batchSize: Int
+    private let maxAttempts: Int
+    private var isSyncing = false
+
+    /// Observability: result of the most recent drain.
+    public private(set) var stats = SyncStats()
+
+    public init(
+        log: DurableCorrectionLog,
+        uploader: any CorrectionsUploading,
+        reachability: any ReachabilityProviding,
+        preferences: Preferences,
+        deviceId: UUID,
+        audioUploader: (any CorrectionAudioUploading)? = nil,
+        audioWriter: AudioClipWriter? = nil,
+        batchSize: Int = 25,
+        maxAttempts: Int = 5
+    ) {
+        self.log = log
+        self.uploader = uploader
+        self.audioUploader = audioUploader
+        self.audioWriter = audioWriter
+        self.reachability = reachability
+        self.preferences = preferences
+        self.deviceId = deviceId
+        self.batchSize = batchSize
+        self.maxAttempts = maxAttempts
+    }
+
+    /// Current outbox state by sync status (for diagnostics / UI).
+    public func statusCounts() -> CorrectionSyncCounts { log.statusCounts() }
+
+    /// Drain pending corrections to the server. Returns the number uploaded.
+    /// Safe to call repeatedly; overlapping calls are coalesced.
+    @discardableResult
+    public func sync() async -> Int {
+        guard !isSyncing else { return 0 }
+        guard preferences.uploadOptIn else {
+            AppLogger.sync.debug("Sync skipped — upload not opted in")
+            return 0
+        }
+        guard reachability.isOnline else {
+            AppLogger.sync.debug("Sync skipped — offline")
+            return 0
+        }
+        if preferences.wifiOnlyUpload && !reachability.isOnWifi {
+            AppLogger.sync.debug("Sync skipped — Wi-Fi only and not on Wi-Fi")
+            return 0
+        }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        // Reclaim records stuck `uploading` from a prior interrupted run, then
+        // retire any that have exhausted their attempts (poison records).
+        log.requeueInFlight()
+        log.parkExhausted(maxAttempts: maxAttempts)
+
+        let pending = log.pending(limit: batchSize)
+        if pending.isEmpty {
+            stats.lastSyncDate = Date()
+            stats.lastUploaded = 0
+            return 0
+        }
+        AppLogger.sync.info("Sync draining \(pending.count, privacy: .public) pending correction(s)")
+
+        var uploaded = 0
+        var lastError: String?
+        for event in pending {
+            log.markStatus(.uploading, forId: event.id)
+
+            // 1) Upload the audio clip first, so the metadata row can carry its
+            //    Storage key (anon has no UPDATE grant — the path can't be set
+            //    after insert). Skipped if there's no clip / no audio uploader.
+            var storageKey: String?
+            if let localPath = event.audioBufferPath,
+               let audioUploader,
+               FileManager.default.fileExists(atPath: localPath) {
+                let ext = (localPath as NSString).pathExtension
+                let key = "\(deviceId.uuidString)/\(event.id.uuidString).\(ext)"
+                switch await audioUploader.upload(fileURL: URL(fileURLWithPath: localPath), toKey: key) {
+                case .success, .alreadyUploaded:
+                    storageKey = key
+                case .retryable(let reason):
+                    AppLogger.sync.info("Audio retryable for \(event.id.uuidString, privacy: .public): \(reason, privacy: .public)")
+                    lastError = reason
+                    log.markStatus(.pending, forId: event.id)
+                    continue   // retry the whole record next trigger
+                case .permanent(let reason):
+                    AppLogger.sync.error("Audio permanent failure for \(event.id.uuidString, privacy: .public): \(reason, privacy: .public); sending metadata without audio")
+                    storageKey = nil
+                }
+            }
+
+            // 2) Upload the metadata row (with the Storage key, or nil).
+            let envelope = CorrectionEnvelope(event: event, deviceId: deviceId)
+            switch await uploader.upload(envelope, storageAudioPath: storageKey) {
+            case .success, .alreadyUploaded:
+                log.markStatus(.uploaded, forId: event.id)
+                // Clip is in Storage now (or permanently bad) — reclaim local space.
+                if let localPath = event.audioBufferPath {
+                    audioWriter?.deleteClip(atPath: localPath)
+                }
+                uploaded += 1
+            case .retryable(let reason):
+                AppLogger.sync.info("Correction \(event.id.uuidString, privacy: .public) retryable: \(reason, privacy: .public)")
+                lastError = reason
+                log.markStatus(.pending, forId: event.id)        // retry next trigger
+            case .permanent(let reason):
+                AppLogger.sync.error("Correction \(event.id.uuidString, privacy: .public) permanent failure: \(reason, privacy: .public)")
+                lastError = reason
+                log.markStatus(.failed, forId: event.id, error: reason)
+            }
+        }
+        AppLogger.sync.info("Sync uploaded \(uploaded, privacy: .public)/\(pending.count, privacy: .public)")
+        stats.lastSyncDate = Date()
+        stats.lastUploaded = uploaded
+        stats.lastError = lastError
+        return uploaded
+    }
+
+    /// Right-to-delete: ask the server to remove every correction for this
+    /// device (via the `delete-my-data` Edge Function). Best-effort; the caller
+    /// also purges local data. Returns true on a 2xx. Works regardless of
+    /// `uploadOptIn` — a user can always delete their data.
+    @discardableResult
+    public func deleteMyData() async -> Bool {
+        guard let url = URL(string: SupabaseConfig.deleteFunctionEndpoint) else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(SupabaseConfig.publishableKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: ["device_id": deviceId.uuidString])
+        } catch {
+            return false
+        }
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            AppLogger.sync.info("delete-my-data → http \(code, privacy: .public)")
+            return (200...299).contains(code)
+        } catch {
+            AppLogger.sync.error("delete-my-data failed: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+}

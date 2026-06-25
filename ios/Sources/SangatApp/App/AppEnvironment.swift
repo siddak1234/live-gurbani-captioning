@@ -38,6 +38,17 @@ public final class AppEnvironment {
     @ObservationIgnored public let sessionHistory: any SessionHistoryStore
     @ObservationIgnored public let featureFlags: FeatureFlags
 
+    /// Writer for correction audio clips (corrections feedback loop Phase 2).
+    /// `nil` if the clip store couldn't be created or in previews/tests.
+    /// Used by the correction-emission sites when `audioCaptureOptIn` is on.
+    @ObservationIgnored public let audioClipWriter: AudioClipWriter?
+
+    /// Outbox sync coordinator (corrections feedback loop Phase 4). Drains
+    /// pending durable corrections to Supabase when `uploadOptIn` is on and the
+    /// device is online. `nil` when there is no durable store (in-memory
+    /// fallback) or in previews/tests.
+    @ObservationIgnored public let syncCoordinator: SyncCoordinator?
+
     // MARK: - Observable state
 
     /// Active theme. Persists to `Preferences` on set.
@@ -108,7 +119,9 @@ public final class AppEnvironment {
         preferences: Preferences,
         haptics: any HapticsService,
         sessionHistory: any SessionHistoryStore,
-        featureFlags: FeatureFlags
+        featureFlags: FeatureFlags,
+        audioClipWriter: AudioClipWriter? = nil,
+        syncCoordinator: SyncCoordinator? = nil
     ) {
         self.captionSource = captionSource
         self.captionModel = CaptionSourceModel(source: captionSource)
@@ -117,6 +130,8 @@ public final class AppEnvironment {
         self.haptics = haptics
         self.sessionHistory = sessionHistory
         self.featureFlags = featureFlags
+        self.audioClipWriter = audioClipWriter
+        self.syncCoordinator = syncCoordinator
 
         // Seed observable state from preferences (with safe defaults).
         self.theme = preferences.theme ?? .default
@@ -144,16 +159,53 @@ public final class AppEnvironment {
         let haptics: any HapticsService = NoopHapticsService()
         #endif
 
+        // Phase 1 (corrections feedback loop): durable SwiftData store so
+        // opted-in corrections survive app launches and form the upload outbox.
+        // Falls back to the session-only in-memory log if the store can't open,
+        // so a broken store never bricks the app. Nothing is written unless the
+        // user opts in (`correctionsOptIn`).
+        let correctionLog = makeCorrectionLog()
+        // Phase 2: clip store for opted-in correction audio (empty dir until a
+        // capture happens under `audioCaptureOptIn`).
+        let audioClipWriter = try? AudioClipWriter.makeDefault()
+        // Phase 4: outbox sync coordinator (nil if no durable store). Nothing
+        // uploads unless `uploadOptIn` is on and the device is online. Phase 6a:
+        // also uploads the audio clip (when present) to Storage.
+        let syncCoordinator = makeSyncCoordinator(
+            correctionLog: correctionLog,
+            preferences: preferences,
+            audioClipWriter: audioClipWriter
+        )
+
         return AppEnvironment(
             captionSource: source,
-            // M5.6.x: session-scoped log instead of the noop. Real
-            // counts surface in Settings → Improve detection. Durable
-            // persistence across app launches remains M5.8.
-            correctionLog: InMemoryCorrectionLog(),
+            correctionLog: correctionLog,
             preferences: preferences,
             haptics: haptics,
             sessionHistory: InMemorySessionHistoryStore(),
-            featureFlags: flags
+            featureFlags: flags,
+            audioClipWriter: audioClipWriter,
+            syncCoordinator: syncCoordinator
+        )
+    }
+
+    /// Build the outbox sync coordinator when a durable store is available.
+    /// Returns nil for the in-memory fallback (nothing durable to sync) or in
+    /// previews/tests, so those paths never reach the network.
+    private static func makeSyncCoordinator(
+        correctionLog: any CorrectionLog,
+        preferences: Preferences,
+        audioClipWriter: AudioClipWriter?
+    ) -> SyncCoordinator? {
+        guard let durable = correctionLog as? DurableCorrectionLog else { return nil }
+        return SyncCoordinator(
+            log: durable,
+            uploader: SupabaseRESTUploader(),
+            reachability: NetworkReachability(),
+            preferences: preferences,
+            deviceId: DeviceIdentity().deviceId,
+            audioUploader: SupabaseStorageUploader(),
+            audioWriter: audioClipWriter
         )
     }
 
@@ -222,6 +274,22 @@ public final class AppEnvironment {
             return DemoCaptionSource(
                 totalLinesProvider: { PreviewData.lineCount(forShabadId: $0) }
             )
+        }
+    }
+
+    /// Durable on-device correction store (Phase 1). Falls back to the
+    /// session-only in-memory log if SwiftData can't open the store, mirroring
+    /// the caption-source fallback philosophy — a broken store never bricks the
+    /// app. Behavior-neutral by default because emission is gated on
+    /// `correctionsOptIn` (default off).
+    private static func makeCorrectionLog() -> any CorrectionLog {
+        do {
+            let log = try DurableCorrectionLog.makeDefault()
+            AppLogger.corrections.info("AppEnvironment using DurableCorrectionLog (SwiftData)")
+            return log
+        } catch {
+            AppLogger.corrections.error("AppEnvironment: durable correction store unavailable — \(error.localizedDescription, privacy: .public). Falling back to InMemoryCorrectionLog.")
+            return InMemoryCorrectionLog()
         }
     }
 }

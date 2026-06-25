@@ -44,6 +44,7 @@ public enum CorrectionEventBuilder {
         correctedShabadId: Int,
         engineStateRaw: String,
         recentChunks: [CorrectionEvent.ChunkSnapshot] = [],
+        audioBufferPath: String? = nil,
         notes: String? = nil,
         now: Date = Date(),
         id: UUID = UUID()
@@ -62,7 +63,7 @@ public enum CorrectionEventBuilder {
             groundTruth: .init(shabadId: correctedShabadId, lineIdx: nil),
             engineStateRaw: engineStateRaw,
             recentChunks: recentChunks,
-            audioBufferPath: nil,
+            audioBufferPath: audioBufferPath,
             audioStart: recentChunks.first?.start ?? 0,
             audioEnd: recentChunks.last?.end ?? 0,
             notes: notes

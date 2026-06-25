@@ -43,6 +43,9 @@ public struct RootView: View {
     /// every cold start lands on Let's Begin before the Listen page.
     @State private var didStartSession: Bool = false
 
+    /// Phase 7: drives an outbox drain when the app returns to the foreground.
+    @Environment(\.scenePhase) private var scenePhase
+
     /// Owns the external-display UIWindow + observation. `@State` so
     /// it survives RootView body re-renders; lazily initialized in
     /// `.task` once the env is fully wired (a UIScreen may already be
@@ -156,6 +159,16 @@ public struct RootView: View {
             // a weak reference inside, so RootView retains ownership.
             if castCoordinator == nil {
                 castCoordinator = CastSceneCoordinator(env: env)
+            }
+            // Phase 4: drain the corrections outbox on launch. No-op unless the
+            // user opted in to upload and the device is online; safe to call
+            // when `syncCoordinator` is nil (demo / in-memory store).
+            await env.syncCoordinator?.sync()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Phase 7: drain the outbox when the app returns to the foreground.
+            if newPhase == .active {
+                Task { await env.syncCoordinator?.sync() }
             }
         }
         .onChange(of: env.mode) { _, newMode in
@@ -400,6 +413,21 @@ public struct RootView: View {
         env.correctionLog.record(build())
     }
 
+    /// Phase 2b: snapshot recent mic audio for a correction when the user has
+    /// opted in to audio capture *and* the live engine can provide it. Returns
+    /// the local clip path, or nil (demo source / opted-out / no audio). Only
+    /// called from inside `recordIfOptedIn`, so it never produces an orphan clip
+    /// for a correction we don't record. Encode is synchronous here (rare,
+    /// user-initiated tap); can move off-main later if it ever hitches.
+    private func captureCorrectionClip(forId id: UUID) -> String? {
+        CorrectionAudioCapture.capture(
+            id: id,
+            optedIn: env.preferences.audioCaptureOptIn,
+            capturer: env.captionSource as? AudioClipCapturing,
+            writer: env.audioClipWriter
+        )
+    }
+
     /// Sevadar picker → manualCommit path. Only emits when the picked
     /// shabad differs from whatever the engine currently has — a same-
     /// shabad pick is a no-op confirmation, not a correction.
@@ -411,14 +439,18 @@ public struct RootView: View {
             uniqueKeysWithValues: env.captionModel.runnerUps.map { ($0.shabadId, $0.confidence) }
         )
         recordIfOptedIn {
-            CorrectionEventBuilder.makeHardNegPos(
+            let eventId = UUID()
+            let audioPath = captureCorrectionClip(forId: eventId)
+            return CorrectionEventBuilder.makeHardNegPos(
                 sessionId: env.sessionId,
                 predictedShabadId: predictedId,
                 predictedLineIdx: currentGuess?.lineIdx,
                 predictedConfidence: currentGuess?.confidence,
                 runnerUps: runnerUps,
                 correctedShabadId: pickedShabadId,
-                engineStateRaw: CorrectionEventBuilder.engineStateRaw(env.captionModel.state)
+                engineStateRaw: CorrectionEventBuilder.engineStateRaw(env.captionModel.state),
+                audioBufferPath: audioPath,
+                id: eventId
             )
         }
     }
@@ -432,14 +464,18 @@ public struct RootView: View {
             uniqueKeysWithValues: env.captionModel.runnerUps.map { ($0.shabadId, $0.confidence) }
         )
         recordIfOptedIn {
-            CorrectionEventBuilder.makeHardNegPos(
+            let eventId = UUID()
+            let audioPath = captureCorrectionClip(forId: eventId)
+            return CorrectionEventBuilder.makeHardNegPos(
                 sessionId: env.sessionId,
                 predictedShabadId: predictedShabadId,
                 predictedLineIdx: currentGuess?.lineIdx,
                 predictedConfidence: currentGuess?.confidence,
                 runnerUps: runnerUps,
                 correctedShabadId: correctedShabadId,
-                engineStateRaw: CorrectionEventBuilder.engineStateRaw(env.captionModel.state)
+                engineStateRaw: CorrectionEventBuilder.engineStateRaw(env.captionModel.state),
+                audioBufferPath: audioPath,
+                id: eventId
             )
         }
     }
