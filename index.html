@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Privacy Policy — Sangat</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+    color: #1a1a1a;
+    background: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e6e6e6; background: #16181c; }
+    a { color: #6db3f2; }
+    th { background: #23262c; }
+    td, th { border-color: #333; }
+    hr { border-color: #333; }
+    .meta { color: #9aa0a6; }
+  }
+  h1 { font-size: 1.9rem; margin-bottom: .25rem; }
+  h2 { font-size: 1.3rem; margin-top: 2.2rem; border-bottom: 1px solid #eaeaea; padding-bottom: .3rem; }
+  h3 { font-size: 1.05rem; margin-top: 1.6rem; }
+  .meta { color: #555; font-size: .95rem; margin: .15rem 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  td, th { border: 1px solid #ddd; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f6f8fa; }
+  code { background: rgba(127,127,127,.15); padding: .1rem .35rem; border-radius: 4px; font-size: .9em; }
+  hr { border: none; border-top: 1px solid #eaeaea; margin: 2rem 0; }
+  .tldr { background: rgba(109,179,242,.12); border-left: 4px solid #6db3f2; padding: .8rem 1rem; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<h1>Privacy Policy — Sangat</h1>
+<p class="meta"><strong>Effective date:</strong> 2026-06-24</p>
+<p class="meta"><strong>Contact:</strong> <a href="mailto:siddak1234@gmail.com">siddak1234@gmail.com</a></p>
+
+<p>This is the privacy policy for <strong>Sangat</strong>, an iOS app that listens to live
+kirtan (Sikh devotional singing) and displays the canonical Gurbani lines being sung.</p>
+
+<div class="tldr">
+<h2 style="margin-top:.3rem;border:none;">The short version</h2>
+<ul>
+  <li><strong>No account, no sign-in, no name or email is required to use Sangat.</strong></li>
+  <li><strong>Nothing leaves your device unless you explicitly turn it on.</strong> Every data-sharing feature is off by default.</li>
+  <li>We never sell your data, never show ads, and never use third-party tracking.</li>
+  <li>You can delete everything we hold about your device at any time, from inside the app.</li>
+</ul>
+</div>
+
+<h2>What the app does on your device</h2>
+<p>To caption kirtan, Sangat uses your device's <strong>microphone</strong> to listen to audio
+and runs a speech-recognition model <strong>entirely on your device</strong>. This audio
+processing is local: the raw microphone audio is <strong>not transmitted anywhere</strong> as
+part of normal captioning.</p>
+
+<h2>What we collect — and only if you opt in</h2>
+<p>Sangat has three independent privacy switches, <strong>all OFF by default</strong>, found in Settings:</p>
+<ol>
+  <li><strong>Save corrections</strong> — when you correct the app (for example, telling it the
+  shabad it identified was wrong), the correction is stored on your device.</li>
+  <li><strong>Upload my corrections</strong> — sends your stored corrections to our server so we
+  can improve the captioning model. Includes an optional "Wi-Fi only" setting.</li>
+  <li><strong>Include a short audio clip</strong> — attaches a brief audio snippet of the
+  misidentified segment to an uploaded correction, so the model can learn from the actual sound.</li>
+</ol>
+
+<p>If, and only if, you enable uploading, we collect:</p>
+<table>
+  <tr><th>Data</th><th>What it is</th><th>Why</th></tr>
+  <tr><td><strong>Correction metadata</strong></td><td>Which shabad/line the app got wrong and what the correct one was, plus timestamps</td><td>To improve captioning accuracy</td></tr>
+  <tr><td><strong>Short audio clip</strong></td><td>A brief recording of the misidentified kirtan (only if you also enable "Include a short audio clip")</td><td>To improve the acoustic model</td></tr>
+  <tr><td><strong>Anonymous device ID</strong></td><td>A random identifier generated on your device</td><td>To avoid duplicate uploads and to let you delete your data</td></tr>
+</table>
+
+<p>The <strong>anonymous device ID</strong> is a random value created on your device and stored
+in the iOS Keychain. It is <strong>not</strong> your name, email, phone number, Apple ID,
+advertising identifier, or any other personal identifier. We cannot use it to contact you or
+identify you personally; it exists only to group your own uploads together so the "Delete my
+data" feature can find and remove them.</p>
+
+<h2>What we do NOT collect</h2>
+<p>We do not collect your name, email, phone number, address, contacts, location, browsing
+history, health data, financial data, or advertising identifiers. We do not track you across
+apps or websites, and we do not use the App Tracking Transparency framework because we do no tracking.</p>
+
+<h2>Sensitive / religious content</h2>
+<p>Because Sangat captions Sikh scripture, any audio clips and corrections you choose to upload
+are inherently related to <strong>religious practice</strong>. We treat this data accordingly: it
+is strictly opt-in, anonymized, transmitted over encrypted connections, used only to improve the
+app's captioning, and deletable on demand. We never share it for advertising or any unrelated purpose.</p>
+
+<h2>How your data is stored and shared</h2>
+<p>When you opt in to uploading, data is sent over an encrypted (HTTPS) connection to our backend
+hosted on <strong>Supabase</strong> (a third-party cloud database provider acting as our data
+processor). Audio clips are stored in a private storage bucket; correction metadata is stored in a
+private database table. This data is accessible only to the app's maintainers for the purpose of
+improving the model. We do not sell, rent, or share this data with any other third party.</p>
+
+<h2>Your choices and your right to delete</h2>
+<ul>
+  <li>You can turn any of the three switches off at any time in Settings.</li>
+  <li><strong>"Delete on-device data"</strong> removes all corrections and audio clips stored locally on your device.</li>
+  <li><strong>"Delete my data"</strong> sends a request to our server to delete all corrections and
+  audio clips associated with your anonymous device ID. This is a true server-side deletion.</li>
+</ul>
+
+<h2>Children's privacy</h2>
+<p>Sangat is a general-audience app and does not knowingly collect personal information from
+children. Because we collect no personal identifiers at all, the app does not build profiles of any user.</p>
+
+<h2>Changes to this policy</h2>
+<p>If we change what we collect or how we use it, we will update this policy and revise the
+effective date above. Material changes will be reflected in the app's release notes.</p>
+
+<h2>Contact</h2>
+<p>Questions about this policy or your data: <a href="mailto:siddak1234@gmail.com">siddak1234@gmail.com</a></p>
+
+</body>
+</html>
